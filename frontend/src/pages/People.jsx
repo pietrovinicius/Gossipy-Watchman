@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, UserCircle, ChevronRight } from 'lucide-react'
 import Layout from '../components/Layout'
+import InlineEdit from '../components/InlineEdit'
 import api from '../services/api'
 import { useAuthImage } from '../hooks/useAuthImage'
 
-function PersonCard({ person, onClick }) {
+function PersonCard({ person, onRename, onClick }) {
   const filename = person.profile_image_path
     ? person.profile_image_path.split('/').pop()
     : null
@@ -14,15 +15,18 @@ function PersonCard({ person, onClick }) {
   const created = new Date(person.created_at).toLocaleDateString('pt-BR')
 
   return (
-    <button
-      onClick={onClick}
-      className="card text-left cursor-pointer hover:border-primary/50 hover:bg-surface/80
-                 transition-all duration-200 group focus-visible:ring-2 focus-visible:ring-primary
-                 focus-visible:ring-offset-2 focus-visible:ring-offset-bg w-full"
+    <div
+      className="card text-left hover:border-primary/50 hover:bg-surface/80
+                 transition-all duration-200 group w-full"
     >
       <div className="flex items-center gap-3">
-        {/* Avatar */}
-        <div className="w-14 h-14 rounded-xl overflow-hidden bg-surface flex-shrink-0 border border-border">
+        {/* Avatar — clica para navegar */}
+        <button
+          onClick={onClick}
+          className="w-14 h-14 rounded-xl overflow-hidden bg-surface flex-shrink-0 border border-border
+                     focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          aria-label={`Ver detalhes de ${person.name}`}
+        >
           {imgSrc ? (
             <img
               src={imgSrc}
@@ -34,20 +38,29 @@ function PersonCard({ person, onClick }) {
               <UserCircle className="w-8 h-8 text-text-muted" aria-hidden="true" />
             </div>
           )}
-        </div>
+        </button>
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <p className="text-text-base font-medium text-sm truncate group-hover:text-primary transition-colors duration-200">
-            {person.name}
-          </p>
+          <InlineEdit
+            value={person.name}
+            onSave={(newName) => onRename(person.id, newName)}
+            className="text-text-base font-medium text-sm truncate group-hover:text-primary
+                       transition-colors duration-200 bg-transparent border-none outline-none w-full"
+          />
           <p className="text-text-muted text-xs mt-0.5">Cadastrado em {created}</p>
         </div>
 
-        <ChevronRight className="w-4 h-4 text-text-muted group-hover:text-primary flex-shrink-0
-                                  transition-colors duration-200" aria-hidden="true" />
+        <button
+          onClick={onClick}
+          className="focus-visible:ring-2 focus-visible:ring-primary rounded p-0.5"
+          aria-label={`Ver detalhes de ${person.name}`}
+        >
+          <ChevronRight className="w-4 h-4 text-text-muted group-hover:text-primary flex-shrink-0
+                                    transition-colors duration-200" aria-hidden="true" />
+        </button>
       </div>
-    </button>
+    </div>
   )
 }
 
@@ -62,6 +75,15 @@ export default function People() {
       .then((r) => setPeople(r.data))
       .catch((err) => setError(err.message))
   }, [])
+
+  const handleRename = async (id, newName) => {
+    try {
+      const res = await api.patch(`/people/${id}`, { name: newName })
+      setPeople((prev) => prev.map((p) => p.id === id ? { ...p, name: res.data.name } : p))
+    } catch {
+      // silencia — nome volta ao original via InlineEdit
+    }
+  }
 
   const filtered = people?.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
@@ -115,7 +137,12 @@ export default function People() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((p) => (
-              <PersonCard key={p.id} person={p} onClick={() => navigate(`/people/${p.id}`)} />
+              <PersonCard
+                key={p.id}
+                person={p}
+                onRename={handleRename}
+                onClick={() => navigate(`/people/${p.id}`)}
+              />
             ))}
           </div>
         )}
