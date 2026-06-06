@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, UserCircle, Pencil, Check, X, AlertCircle } from 'lucide-react'
 import Layout from '../components/Layout'
 import api from '../services/api'
-
-const FACES_BASE = 'http://localhost:8000/api/v1/faces'
+import { useAuthImage } from '../hooks/useAuthImage'
+import { sanitizeFileName } from '../utils/sanitizeFileName'
 
 function fmt3(n) {
   return n != null ? Number(n).toFixed(3) : '—'
@@ -67,7 +67,10 @@ export default function PersonDetail() {
     )
   }
 
-  const imgSrc = person ? `${FACES_BASE}/${person.id}.jpg` : null
+  const filename = person?.profile_image_path
+    ? person.profile_image_path.split('/').pop()
+    : null
+  const imgSrc = useAuthImage(filename)
 
   return (
     <Layout>
@@ -94,7 +97,6 @@ export default function PersonDetail() {
                   src={imgSrc}
                   alt={`Foto de ${person.name}`}
                   className="w-full h-full object-cover"
-                  onError={(e) => { e.target.style.display = 'none' }}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -194,7 +196,7 @@ export default function PersonDetail() {
                 ) : (
                   timeline.map((a) => (
                     <tr key={a.id} className="border-b border-border/50 hover:bg-surface/60 transition-colors duration-150">
-                      <td className="px-4 py-3 font-mono text-xs text-text-base truncate max-w-[180px]">{a.file_name}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-text-base truncate max-w-[180px]">{sanitizeFileName(a.file_name)}</td>
                       <td className="px-4 py-3 text-text-muted font-mono text-xs">{fmtSec(a.timestamp_start)}</td>
                       <td className="px-4 py-3 text-text-muted font-mono text-xs">{fmtSec(a.timestamp_end)}</td>
                       <td className="px-4 py-3 text-text-muted font-mono text-xs">{fmt3(a.confidence)}</td>

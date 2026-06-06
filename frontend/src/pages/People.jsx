@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { Search, UserCircle, ChevronRight } from 'lucide-react'
 import Layout from '../components/Layout'
 import api from '../services/api'
-
-const FACES_BASE = 'http://localhost:8000/api/v1/faces'
+import { useAuthImage } from '../hooks/useAuthImage'
 
 function PersonCard({ person, onClick }) {
-  const imgSrc = person.profile_image_path
-    ? `${FACES_BASE}/${person.id}.jpg`
+  const filename = person.profile_image_path
+    ? person.profile_image_path.split('/').pop()
     : null
+  const imgSrc = useAuthImage(filename)
 
   const created = new Date(person.created_at).toLocaleDateString('pt-BR')
 
@@ -28,7 +28,6 @@ function PersonCard({ person, onClick }) {
               src={imgSrc}
               alt={`Foto de ${person.name}`}
               className="w-full h-full object-cover"
-              onError={(e) => { e.target.style.display = 'none' }}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">

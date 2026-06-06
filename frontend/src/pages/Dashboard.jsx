@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Film, Clock, Users, UserX, RefreshCw } from 'lucide-react'
 import Layout from '../components/Layout'
 import api from '../services/api'
+import { sanitizeFileName } from '../utils/sanitizeFileName'
 
 const STATUS_BADGE = {
   Pendente:    { cls: 'bg-warning/20 text-warning',       label: 'Pendente' },
@@ -148,7 +149,7 @@ export default function Dashboard() {
                 ) : (
                   recent.map((v) => (
                     <tr key={v.id} className="border-b border-border/50 hover:bg-surface/60 transition-colors duration-150">
-                      <td className="px-4 py-3 font-mono text-xs text-text-base truncate max-w-[220px]">{v.file_name}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-text-base truncate max-w-[220px]">{sanitizeFileName(v.file_name)}</td>
                       <td className="px-4 py-3"><StatusBadge status={v.status} /></td>
                       <td className="px-4 py-3 text-text-muted">{fmt(v.uploaded_at)}</td>
                     </tr>
