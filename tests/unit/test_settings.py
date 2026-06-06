@@ -38,3 +38,43 @@ def test_app_name_default():
 def test_api_v1_prefix_default():
     from app.core.settings import settings
     assert settings.API_V1_PREFIX == "/api/v1"
+
+
+# ── Novos testes Sprint 5 ────────────────────────────────────────────────────
+
+def test_jwt_secret_key_exists():
+    from app.core.settings import settings
+    assert isinstance(settings.JWT_SECRET_KEY, str)
+    assert len(settings.JWT_SECRET_KEY) > 0
+
+
+def test_jwt_algorithm_default():
+    from app.core.settings import settings
+    assert settings.JWT_ALGORITHM == "HS256"
+
+
+def test_jwt_expire_minutes_default():
+    from app.core.settings import settings
+    assert settings.JWT_EXPIRE_MINUTES == 60
+    assert isinstance(settings.JWT_EXPIRE_MINUTES, int)
+
+
+def test_admin_username_default():
+    from app.core.settings import settings
+    assert settings.ADMIN_USERNAME == "admin"
+
+
+def test_max_upload_size_mb_default():
+    from app.core.settings import settings
+    assert settings.MAX_UPLOAD_SIZE_MB == 500
+
+
+def test_max_upload_size_bytes_calculated():
+    from app.core.settings import settings
+    assert settings.MAX_UPLOAD_SIZE_BYTES == settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+
+
+def test_docs_enabled_default():
+    from app.core.settings import settings
+    assert isinstance(settings.DOCS_ENABLED, bool)
+    assert settings.DOCS_ENABLED is True
