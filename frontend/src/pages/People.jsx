@@ -4,7 +4,7 @@ import { Search, UserCircle, ChevronRight } from 'lucide-react'
 import Layout from '../components/Layout'
 import api from '../services/api'
 
-const FACES_BASE = 'http://localhost:8000/faces'
+const FACES_BASE = 'http://localhost:8000/api/v1/faces'
 
 function PersonCard({ person, onClick }) {
   const imgSrc = person.profile_image_path

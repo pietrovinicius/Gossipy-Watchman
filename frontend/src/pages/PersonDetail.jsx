@@ -4,7 +4,7 @@ import { ArrowLeft, UserCircle, Pencil, Check, X, AlertCircle } from 'lucide-rea
 import Layout from '../components/Layout'
 import api from '../services/api'
 
-const FACES_BASE = 'http://localhost:8000/faces'
+const FACES_BASE = 'http://localhost:8000/api/v1/faces'
 
 function fmt3(n) {
   return n != null ? Number(n).toFixed(3) : '—'
