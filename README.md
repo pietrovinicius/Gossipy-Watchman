@@ -49,6 +49,11 @@ source venv/bin/activate          # Linux/Mac
 # Instalar dependências
 pip install -r requirements.txt
 
+# Configurar variáveis de ambiente
+cp .env.example .env
+# Edite .env preenchendo JWT_SECRET_KEY e ADMIN_PASSWORD_HASH conforme
+# os comandos documentados no próprio .env.example
+
 # Iniciar servidor de desenvolvimento
 uvicorn app.main:app --reload --port 8000
 ```
