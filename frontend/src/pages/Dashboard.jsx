@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Film, Clock, Users, UserX, RefreshCw } from 'lucide-react'
+import { Film, Clock, Users, UserX, RefreshCw, Download, Loader2 } from 'lucide-react'
 import Layout from '../components/Layout'
 import api from '../services/api'
 import { sanitizeFileName } from '../utils/sanitizeFileName'
+import { downloadCsv } from '../utils/downloadCsv'
 
 const STATUS_BADGE = {
   Pendente:    { cls: 'bg-warning/20 text-warning',       label: 'Pendente' },
@@ -49,6 +50,19 @@ export default function Dashboard() {
   const [people, setPeople] = useState(null)
   const [error, setError] = useState('')
   const [lastRefresh, setLastRefresh] = useState(null)
+  const [exportingId, setExportingId] = useState(null)
+
+  async function handleExportVideo(videoId, fileName) {
+    setExportingId(videoId)
+    try {
+      const res = await api.get(`/export/timeline/video/${videoId}`, { responseType: 'blob' })
+      downloadCsv(res.data, `gossipy_video_${videoId}_${sanitizeFileName(fileName)}.csv`)
+    } catch {
+      // silencia — sem toast ainda
+    } finally {
+      setExportingId(null)
+    }
+  }
 
   const fetchData = useCallback(async () => {
     setError('')
@@ -135,6 +149,7 @@ export default function Dashboard() {
                   <th className="text-left px-4 py-2.5 text-text-muted font-medium">Arquivo</th>
                   <th className="text-left px-4 py-2.5 text-text-muted font-medium">Status</th>
                   <th className="text-left px-4 py-2.5 text-text-muted font-medium">Enviado em</th>
+                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">Exportar</th>
                 </tr>
               </thead>
               <tbody>
@@ -142,7 +157,7 @@ export default function Dashboard() {
                   Array.from({ length: 5 }, (_, i) => <SkeletonRow key={i} />)
                 ) : recent.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="px-4 py-8 text-center text-text-muted">
+                    <td colSpan={4} className="px-4 py-8 text-center text-text-muted">
                       Nenhum vídeo enviado ainda.
                     </td>
                   </tr>
@@ -152,6 +167,18 @@ export default function Dashboard() {
                       <td className="px-4 py-3 font-mono text-xs text-text-base truncate max-w-[220px]">{sanitizeFileName(v.file_name)}</td>
                       <td className="px-4 py-3"><StatusBadge status={v.status} /></td>
                       <td className="px-4 py-3 text-text-muted">{fmt(v.uploaded_at)}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => handleExportVideo(v.id, v.file_name)}
+                          disabled={exportingId === v.id}
+                          aria-label={`Exportar CSV do vídeo ${sanitizeFileName(v.file_name)}`}
+                          className="text-text-muted hover:text-primary transition-colors disabled:opacity-40"
+                        >
+                          {exportingId === v.id
+                            ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                            : <Download className="w-4 h-4" aria-hidden="true" />}
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}

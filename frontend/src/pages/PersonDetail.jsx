@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, UserCircle, Pencil, Check, X, AlertCircle } from 'lucide-react'
+import { ArrowLeft, UserCircle, Pencil, Check, X, AlertCircle, Download, Loader2 } from 'lucide-react'
 import Layout from '../components/Layout'
 import CategoryBadge from '../components/CategoryBadge'
 import api from '../services/api'
 import { useAuthImage } from '../hooks/useAuthImage'
 import { sanitizeFileName } from '../utils/sanitizeFileName'
+import { downloadCsv } from '../utils/downloadCsv'
 
 const CATEGORIES = ['Funcionário', 'Visitante', 'Desconhecido', 'Monitorado']
 
@@ -42,6 +43,8 @@ export default function PersonDetail() {
   const [categoryInput, setCategoryInput] = useState('Desconhecido')
   const [metaErr, setMetaErr] = useState('')
   const [savingMeta, setSavingMeta] = useState(false)
+  const [exportLoading, setExportLoading] = useState(false)
+  const [exportErr, setExportErr] = useState('')
 
   useEffect(() => {
     Promise.all([
@@ -72,6 +75,20 @@ export default function PersonDetail() {
       setNameErr(err.message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleExportCsv() {
+    setExportLoading(true)
+    setExportErr('')
+    try {
+      const res = await api.get(`/export/timeline/person/${id}`, { responseType: 'blob' })
+      const name = person?.name?.replace(/\s+/g, '_') ?? 'pessoa'
+      downloadCsv(res.data, `gossipy_pessoa_${id}_${name}.csv`)
+    } catch {
+      setExportErr('Erro ao exportar CSV.')
+    } finally {
+      setExportLoading(false)
     }
   }
 
@@ -115,15 +132,33 @@ export default function PersonDetail() {
   return (
     <Layout>
       <div className="max-w-3xl mx-auto space-y-6">
-        {/* Back */}
-        <button
-          onClick={() => navigate('/people')}
-          className="flex items-center gap-2 text-text-muted hover:text-text-base
-                     transition-colors duration-200 cursor-pointer text-sm"
-        >
-          <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-          Voltar para Pessoas
-        </button>
+        {/* Back + Export */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => navigate('/people')}
+            className="flex items-center gap-2 text-text-muted hover:text-text-base
+                       transition-colors duration-200 cursor-pointer text-sm"
+          >
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+            Voltar para Pessoas
+          </button>
+
+          {person && (
+            <button
+              onClick={handleExportCsv}
+              disabled={exportLoading}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
+                         border-border text-text-muted hover:text-text-base transition-colors
+                         disabled:opacity-50"
+            >
+              {exportLoading
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                : <Download className="w-3.5 h-3.5" aria-hidden="true" />}
+              Exportar CSV
+            </button>
+          )}
+        </div>
+        {exportErr && <p className="text-xs text-error-color">{exportErr}</p>}
 
         {/* Profile */}
         {person === null ? (
