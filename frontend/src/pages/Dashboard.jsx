@@ -54,7 +54,7 @@ export default function Dashboard() {
     try {
       const [vRes, pRes] = await Promise.all([
         api.get('/videos?limit=200'),
-        api.get('/people?limit=500'),
+        api.get('/people?limit=200'),
       ])
       setVideos(vRes.data)
       setPeople(pRes.data)

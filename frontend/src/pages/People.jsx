@@ -59,7 +59,7 @@ export default function People() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    api.get('/people?limit=500')
+    api.get('/people?limit=200')
       .then((r) => setPeople(r.data))
       .catch((err) => setError(err.message))
   }, [])
