@@ -69,4 +69,42 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.1.0] — 2026-06-06
+
+### Adicionado
+
+#### Sprint 5 — Hardening de Segurança
+
+- `app/services/auth_service.py` — JWT com `python-jose`: `create_access_token()`, `verify_token()`, `verify_password()` / `hash_password()` via `bcrypt`, `get_current_user()` injetável via `Depends(oauth2_scheme)`
+- `app/api/v1/auth.py` — `POST /api/v1/auth/login`: valida credenciais contra `settings.ADMIN_USERNAME` e `ADMIN_PASSWORD_HASH`; fallback `"watchman"` com `logger.warning` quando hash não configurado; retorna JWT Bearer
+- `app/api/v1/faces.py` — `GET /api/v1/faces/{filename}`: requer JWT, valida que `filename` não contém `..`/`/`/`\\`, confinamento via `resolve().relative_to()`, `FileResponse` com `media_type="image/jpeg"`, HTTP 400 em violação, HTTP 404 se ausente
+- `.env.example` — template com todas as variáveis documentadas; comandos de geração de `JWT_SECRET_KEY` e `ADMIN_PASSWORD_HASH` inline
+- `tests/integration/test_auth.py` — 6 testes: login válido, senha errada (401), endpoints sem token (401), token inválido (401), `/health` público (200)
+- `tests/integration/test_upload_security.py` — 7 testes: path traversal → UUID, magic bytes MP4/AVI corretos (202), texto mascarado como MP4 (415), upload acima do limite (413), arquivo parcial deletado
+- `tests/integration/test_faces.py` — 5 testes: sem token (401), path traversal (400), inexistente (404), arquivo válido (200), percent-encoded traversal (400/404)
+- `tests/integration/test_security_headers.py` — 5 testes: um por header (`X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, `Referrer-Policy`, `Content-Security-Policy`)
+- `requirements.txt` — `python-jose[cryptography]`, `passlib[bcrypt]`, `python-magic`, `python-dotenv`
+
+### Alterado
+
+#### Sprint 5 — Hardening de Segurança
+
+- `app/core/settings.py` — reescrito com `SettingsConfigDict(env_file=".env")`; novas constantes: `JWT_SECRET_KEY` (fallback para testes), `JWT_ALGORITHM`, `JWT_EXPIRE_MINUTES`, `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH`, `MAX_UPLOAD_SIZE_MB`, `MAX_UPLOAD_SIZE_BYTES` (calculado via `@model_validator`), `DOCS_ENABLED`
+- `app/main.py` — `StaticFiles /faces` removido; `docs_url`/`redoc_url` condicionais via `DOCS_ENABLED`; `security_headers_middleware` adicionado (5 headers); router `faces_router` e `auth_router` incluídos
+- `app/api/v1/upload.py` — 3 correções críticas: (1) nome em disco = `uuid4().hex + ext` (elimina path traversal); (2) primeiros 12 bytes validados como magic bytes antes de gravar (MP4: `bytes[4:8]==b'ftyp'`; AVI: `bytes[0:4]==b'RIFF'` e `bytes[8:12]==b'AVI '`), HTTP 415 em falha; (3) acúmulo de bytes durante leitura, arquivo parcial deletado ao exceder `MAX_UPLOAD_SIZE_BYTES`, HTTP 413
+- `app/api/v1/videos.py`, `people.py`, `timeline.py` — `Depends(get_current_user)` adicionado em todos os endpoints
+- `tests/integration/conftest.py` — fixtures `auth_token` e `auth_headers` adicionados
+- `tests/integration/test_upload.py`, `test_videos.py`, `test_people.py`, `test_timeline.py` — `auth_headers` adicionado em todas as chamadas autenticadas; conteúdo de upload atualizado para magic bytes reais
+- `frontend/src/services/api.js` — interceptor de request envia `Authorization: Bearer {token}` automaticamente
+- `frontend/src/pages/Login.jsx` — autenticação real via `POST /api/v1/auth/login`; token JWT salvo em `sessionStorage`
+- `frontend/src/pages/People.jsx` + `PersonDetail.jsx` — `FACES_BASE` atualizado para `/api/v1/faces`
+- `.gitignore` — entradas `storage/videos/*`, `storage/faces/*`, `*.db`, `frontend/node_modules/`, `frontend/dist/` adicionadas
+
+### Infraestrutura
+
+- `Documentos/Cronograma de Sprints - Gossipy Watchman.docx` — Sprint 5 adicionada com objetivo e 8 itens de hardening
+- Verificação Sprint 5: 125 testes passando, build frontend 506ms sem erros
+
+---
+
 *Fragmentos individuais disponíveis em `changelog/` para rastreabilidade por tarefa.*
