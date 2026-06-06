@@ -1,0 +1,409 @@
+================================================================
+GOSSIPY WATCHMAN — ANOTAÇÕES E GUIA DE INICIALIZAÇÃO
+Versão: 1.1.0
+Última atualização: 2026-06-06
+================================================================
+
+----------------------------------------------------------------
+SOBRE O PROJETO
+----------------------------------------------------------------
+Sistema web de análise de vídeo para identificação, catalogação e
+registro temporal de pessoas via reconhecimento facial. Backend em
+FastAPI + SQLite com pipeline assíncrono usando OpenCV e face_recognition.
+Objetivo: portfólio técnico de nível sênior demonstrando arquitetura
+assíncrona, visão computacional e separação limpa de camadas.
+
+
+================================================================
+PRÉ-REQUISITOS
+================================================================
+
+--- macOS ---
+
+Instalar Homebrew (se não tiver):
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+Dependências via Homebrew:
+  brew install python@3.11    # Python 3.11+
+  brew install node           # Node.js 18+ (LTS)
+  brew install git
+  brew install libmagic        # necessário para python-magic
+  brew install ffmpeg          # opcional — geração de vídeos de teste
+
+Verificar versões:
+  python3 --version   # deve mostrar 3.11+
+  node --version      # deve mostrar 18+
+  git --version
+
+
+--- Windows ---
+
+Baixar e instalar manualmente:
+
+  Python 3.11+
+    https://www.python.org/downloads/
+    ATENÇÃO: marcar "Add Python to PATH" durante a instalação
+
+  Node.js 18+ (LTS)
+    https://nodejs.org/
+
+  Git
+    https://git-scm.com/download/win
+
+  Visual Studio Build Tools 2022 (necessário para compilar dlib)
+    https://visualstudio.microsoft.com/visual-cpp-build-tools/
+    Durante a instalação, selecionar o workload:
+    "Desktop development with C++"
+    Sem isto, o pip install do dlib falhará.
+
+  ffmpeg (opcional — geração de vídeos de teste)
+    https://ffmpeg.org/download.html
+    Extrair e adicionar a pasta bin ao PATH manualmente.
+
+  python-magic no Windows:
+    No Windows, libmagic não existe nativamente.
+    Usar python-magic-bin no lugar de python-magic — já inclui a DLL.
+    O requirements.txt já trata disso; não instalar python-magic manualmente.
+
+Verificar versões (PowerShell ou CMD):
+  python --version    # deve mostrar 3.11+
+  node --version      # deve mostrar 18+
+  git --version
+
+
+================================================================
+CONFIGURAÇÃO INICIAL (PRIMEIRA VEZ)
+================================================================
+
+Passo 1 — Clonar o repositório
+  git clone <URL_DO_REPOSITORIO>
+  cd gossipy-watchman
+
+
+Passo 2 — Criar e ativar ambiente virtual
+
+  macOS/Linux:
+    python3 -m venv venv
+    source venv/bin/activate
+
+  Windows (PowerShell):
+    python -m venv venv
+    .\venv\Scripts\Activate.ps1
+
+    Se receber erro de política de execução, rodar antes:
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+  Windows (CMD):
+    python -m venv venv
+    venv\Scripts\activate.bat
+
+
+Passo 3 — Instalar dependências Python
+  pip install -r requirements.txt
+
+  ATENÇÃO — dlib no Windows:
+    O dlib é compilado a partir do código fonte durante o pip install.
+    Ele EXIGE o Visual Studio Build Tools 2022 com workload C++ instalado
+    (ver Pré-requisitos). A compilação leva entre 5 e 15 minutos na
+    primeira vez — isso é normal. Não interromper o processo.
+
+    Se o pip install travar ou falhar com erro de compilação, verificar:
+    1. Build Tools instalado com workload correto
+    2. Reiniciar o terminal após instalar Build Tools
+    3. Tentar novamente com: pip install dlib --verbose
+
+
+Passo 4 — Configurar o .env
+
+  Copiar o arquivo de exemplo:
+
+    macOS/Linux:
+      cp .env.example .env
+
+    Windows (PowerShell ou CMD):
+      copy .env.example .env
+
+  Gerar JWT_SECRET_KEY:
+
+    macOS/Linux:
+      python3 -c "import secrets; print(secrets.token_hex(32))"
+
+    Windows:
+      python -c "import secrets; print(secrets.token_hex(32))"
+
+  Gerar ADMIN_PASSWORD_HASH (senha padrão: watchman):
+
+    macOS/Linux:
+      python3 -c "from passlib.context import CryptContext; print(CryptContext(['bcrypt']).hash('watchman'))"
+
+    Windows:
+      python -c "from passlib.context import CryptContext; print(CryptContext(['bcrypt']).hash('watchman'))"
+
+  Abrir o .env em qualquer editor e colar os valores gerados:
+    JWT_SECRET_KEY=<valor gerado>
+    ADMIN_PASSWORD_HASH=<valor gerado>
+
+  Se ADMIN_PASSWORD_HASH ficar vazio, o backend aceita a senha "watchman"
+  automaticamente como fallback de desenvolvimento.
+
+
+Passo 5 — Instalar dependências do frontend
+  cd frontend
+  npm install
+  cd ..
+
+
+================================================================
+INICIAR O PROJETO (USO DIÁRIO)
+================================================================
+
+BACKEND — Terminal 1:
+
+  macOS/Linux:
+    source venv/bin/activate
+    uvicorn app.main:app --reload --port 8000
+
+  Windows (PowerShell):
+    .\venv\Scripts\Activate.ps1
+    uvicorn app.main:app --reload --port 8000
+
+  Windows (CMD):
+    venv\Scripts\activate.bat
+    uvicorn app.main:app --reload --port 8000
+
+  Confirmar que está rodando:
+    http://localhost:8000/api/v1/health
+    Resposta esperada: {"status":"ok","app":"Gossipy Watchman"}
+
+
+FRONTEND — Terminal 2:
+  cd frontend
+  npm run dev
+
+  Abrir no browser: http://localhost:5173
+
+
+CREDENCIAIS PADRÃO DE DESENVOLVIMENTO:
+  Usuário: admin
+  Senha:   watchman
+
+
+================================================================
+RODAR OS TESTES
+================================================================
+
+  macOS/Linux:
+    source venv/bin/activate
+    pytest                          # suite completa
+    pytest tests/unit/              # apenas unitários
+    pytest tests/integration/       # apenas integração
+    pytest -v --tb=short            # verbose com traceback resumido
+
+  Windows (PowerShell ou CMD — após ativar venv):
+    pytest
+    pytest tests\unit\
+    pytest tests\integration\
+    pytest -v --tb=short
+
+  Total esperado: 125 testes passando
+
+
+================================================================
+SOLUÇÃO DE PROBLEMAS COMUNS
+================================================================
+
+PROBLEMA: dlib falha na instalação (Windows)
+CAUSA:    Build Tools não instalado ou versão/workload incorreto
+SOLUÇÃO:  1. Baixar Visual Studio Build Tools 2022
+             https://visualstudio.microsoft.com/visual-cpp-build-tools/
+          2. Instalar com workload "Desktop development with C++"
+          3. Reiniciar o terminal
+          4. Reativar o venv e rodar: pip install -r requirements.txt
+
+PROBLEMA: python-magic falha na importação (Windows)
+CAUSA:    libmagic não existe nativamente no Windows
+SOLUÇÃO:  pip uninstall python-magic
+          pip install python-magic-bin
+
+PROBLEMA: python-magic falha na importação (macOS)
+CAUSA:    libmagic não instalado via Homebrew
+SOLUÇÃO:  brew install libmagic
+          (reinstalar o pacote não é necessário)
+
+PROBLEMA: Erro "JWT_SECRET_KEY field required" ao subir o backend
+CAUSA:    .env não foi criado ou está incompleto
+SOLUÇÃO:  1. Verificar se o arquivo .env existe na raiz do projeto
+          2. Se não existir: copy .env.example .env (Windows)
+                             cp .env.example .env (macOS/Linux)
+          3. Gerar e preencher JWT_SECRET_KEY conforme Passo 4
+          4. Reiniciar o uvicorn
+
+PROBLEMA: Frontend não consegue conectar ao backend (CORS / Network Error)
+CAUSA:    Backend não está rodando ou está em porta diferente
+SOLUÇÃO:  1. Verificar se o uvicorn está ativo no Terminal 1
+          2. Confirmar que http://localhost:8000/api/v1/health responde
+          3. CORS está configurado para portas 3000 e 5173 — não mudar
+             a porta do npm run dev sem ajustar app/main.py
+
+PROBLEMA: Status do vídeo trava em "Processando"
+CAUSA:    Erro silencioso no worker de visão computacional
+SOLUÇÃO:  Verificar os logs do terminal do backend — o worker registra
+          exceções com traceback completo antes de marcar status "Erro"
+
+PROBLEMA: Rostos não detectados no vídeo
+CAUSA:    Vídeo com resolução muito baixa, faces de perfil ou threshold
+          muito permissivo
+SOLUÇÃO:  face_recognition funciona melhor com faces frontais e resolução
+          mínima de 480p. Ajustar FACE_RECOGNITION_TOLERANCE no .env para
+          valor menor (ex: 0.5) aumenta o rigor da correspondência.
+          Valor padrão: 0.6 (quanto menor, mais estrito).
+
+PROBLEMA: Erro de política de execução no PowerShell ao ativar venv
+CAUSA:    Windows bloqueia scripts .ps1 por padrão
+SOLUÇÃO:  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+          Rodar apenas uma vez; persiste para a conta do usuário.
+
+
+================================================================
+ESTRUTURA DO PROJETO (RESUMO)
+================================================================
+
+gossipy-watchman/
+├── app/
+│   ├── api/        — Routers FastAPI; apenas orquestração req/res
+│   ├── core/       — settings.py, constantes, configurações centrais
+│   ├── db/         — init_db, sessão SQLAlchemy, get_db
+│   ├── models/     — Modelos ORM: People, Videos, Appearances
+│   ├── schemas/    — Schemas Pydantic para input/output de endpoints
+│   ├── services/   — Toda lógica de negócio (face, frame, video, auth)
+│   └── workers/    — process_video(): pipeline completo de visão computacional
+├── frontend/       — App React (Vite); comunica via Axios com Bearer JWT
+├── storage/
+│   ├── videos/     — Arquivos de vídeo enviados via upload
+│   └── faces/      — Recortes .jpg e embeddings .npy por person_id
+├── tests/
+│   ├── unit/       — Testes unitários por módulo (mocks de cv2/face_recognition)
+│   └── integration/— Testes de endpoints e worker com banco SQLite in-memory
+└── changelog/      — Fragmentos de changelog por tarefa (não editar CHANGELOG.md)
+
+
+================================================================
+ENDPOINTS DA API
+================================================================
+
+Prefixo base: /api/v1
+
+Método | Path                          | Auth | Descrição
+-------|-------------------------------|------|------------------------------------------
+GET    | /health                       | Não  | Status da aplicação
+POST   | /auth/login                   | Não  | Autenticação; retorna JWT Bearer token
+POST   | /upload                       | JWT  | Upload de vídeo; inicia processamento assíncrono
+GET    | /videos                       | JWT  | Listar todos os vídeos (paginado: skip/limit)
+GET    | /videos/{id}                  | JWT  | Buscar vídeo por ID com status atual
+GET    | /videos/{id}/status           | JWT  | Consultar status de processamento do vídeo
+GET    | /people                       | JWT  | Listar todas as pessoas identificadas
+GET    | /people/{id}                  | JWT  | Buscar pessoa por ID
+PATCH  | /people/{id}                  | JWT  | Renomear pessoa (body: {"name": "..."})
+GET    | /people/{id}/timeline         | JWT  | Timeline de aparições da pessoa em vídeos
+GET    | /faces/{filename}             | JWT  | Servir imagem de recorte facial (ex: 1.jpg)
+
+Documentação interativa (apenas com DOCS_ENABLED=true no .env):
+  http://localhost:8000/docs     — Swagger UI
+  http://localhost:8000/redoc    — ReDoc
+
+
+================================================================
+COMANDOS ÚTEIS
+================================================================
+
+Gerar vídeo de teste sintético (requer ffmpeg):
+
+  macOS/Linux:
+    ffmpeg -f lavfi -i testsrc=duration=10:size=640x480:rate=25 \
+      -vf "drawtext=text='Test':fontsize=40:x=100:y=100:fontcolor=white" \
+      test_video.mp4
+
+  Windows (PowerShell — tudo em uma linha):
+    ffmpeg -f lavfi -i testsrc=duration=10:size=640x480:rate=25 -vf "drawtext=text='Test':fontsize=40:x=100:y=100:fontcolor=white" test_video.mp4
+
+
+Inspecionar banco de dados SQLite:
+
+  Linha de comando:
+    sqlite3 gossipy.db ".tables"
+    sqlite3 gossipy.db "SELECT * FROM people;"
+    sqlite3 gossipy.db "SELECT * FROM videos;"
+    sqlite3 gossipy.db "SELECT * FROM appearances LIMIT 20;"
+
+  Interface gráfica (recomendado):
+    DB Browser for SQLite — https://sqlitebrowser.org/
+    Abrir o arquivo gossipy.db diretamente.
+
+
+Limpar banco e storage para recomeçar do zero:
+
+  ATENÇÃO: esta operação é irreversível. Faça backup antes se necessário.
+
+  macOS/Linux:
+    rm -f gossipy.db
+    rm -f storage/videos/* storage/faces/*
+
+  Windows (PowerShell):
+    Remove-Item gossipy.db -ErrorAction SilentlyContinue
+    Remove-Item storage\videos\* -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item storage\faces\* -Recurse -Force -ErrorAction SilentlyContinue
+
+  Windows (CMD):
+    del gossipy.db
+    del /Q /S storage\videos\*
+    del /Q /S storage\faces\*
+
+  Após limpar, o banco é recriado automaticamente ao subir o uvicorn.
+  Os diretórios storage/videos/ e storage/faces/ devem existir — recriá-los
+  se foram deletados:
+
+    macOS/Linux:  mkdir -p storage/videos storage/faces
+    Windows:      mkdir storage\videos && mkdir storage\faces
+
+
+Atualizar dependências Python:
+  pip install -r requirements.txt
+
+
+================================================================
+DECISÕES TÉCNICAS RELEVANTES
+================================================================
+
+1. AppearanceWithVideo dataclass (v0.20)
+   Schema interno que enriquece aparições com dados de vídeo no endpoint
+   /people/{id}/timeline. Evita lazy-loading ORM cross-service ao montar
+   a resposta sem retornar objetos SQLAlchemy fora da sessão.
+
+2. StaticPool em fixtures de teste (v0.14)
+   SQLite in-memory com StaticPool garante que o worker de processamento
+   e a fixture de teste compartilhem a mesma conexão. Sem isso, o worker
+   abre uma conexão separada e enxerga um banco vazio, causando falhas
+   nos testes de integração.
+
+3. setuptools<71 pin no requirements.txt (v0.11)
+   O pacote face-recognition-models usa pkg_resources, que foi removido
+   do setuptools>=71. Sem esse pin, Python 3.14+ quebra o import do
+   face_recognition com ImportError.
+
+4. FACE_RECOGNITION_TOLERANCE centralizado em settings.py (v0.03)
+   O threshold de 0.6 (distância euclidiana) é configurável via .env.
+   Valores menores (ex: 0.5) aumentam o rigor; valores maiores (ex: 0.7)
+   tornam a correspondência mais permissiva. Nunca hardcodado no pipeline.
+
+5. Embeddings salvos como .npy por person_id (v0.12)
+   Vetores de face persistidos em storage/faces/{id}.npy permitem
+   re-identificação entre sessões sem reprocessar vídeos anteriores.
+   Pessoas sem .npy em disco são ignoradas com log de aviso.
+
+
+================================================================
+CONTATO E REPOSITÓRIO
+================================================================
+Desenvolvido por: Pietro Vinicius Lima
+GitHub: _______________________________________________
+================================================================
