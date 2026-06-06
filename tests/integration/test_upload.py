@@ -4,6 +4,14 @@ from unittest.mock import patch
 import pytest
 
 
+def mp4_bytes() -> bytes:
+    return b"\x00\x00\x00\x18" + b"ftyp" + b"isom" + b"\x00" * 4
+
+
+def avi_bytes() -> bytes:
+    return b"RIFF" + b"\x00\x00\x00\x04" + b"AVI "
+
+
 @pytest.mark.asyncio
 async def test_upload_mp4_returns_202(client, auth_headers, tmp_path):
     with patch("app.api.v1.upload.settings") as ms, \
@@ -12,7 +20,7 @@ async def test_upload_mp4_returns_202(client, auth_headers, tmp_path):
         ms.MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024
         response = await client.post(
             "/api/v1/videos/upload",
-            files={"file": ("clip.mp4", BytesIO(b"fake"), "video/mp4")},
+            files={"file": ("clip.mp4", BytesIO(mp4_bytes()), "video/mp4")},
             headers=auth_headers,
         )
     assert response.status_code == 202
@@ -26,7 +34,7 @@ async def test_upload_avi_returns_202(client, auth_headers, tmp_path):
         ms.MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024
         response = await client.post(
             "/api/v1/videos/upload",
-            files={"file": ("video.avi", BytesIO(b"fake"), "video/x-msvideo")},
+            files={"file": ("video.avi", BytesIO(avi_bytes()), "video/x-msvideo")},
             headers=auth_headers,
         )
     assert response.status_code == 202
@@ -54,18 +62,19 @@ async def test_upload_exe_returns_400(client, auth_headers):
 
 @pytest.mark.asyncio
 async def test_upload_saves_file_to_disk(client, auth_headers, tmp_path):
+    content = mp4_bytes() + b"extra-data"
     with patch("app.api.v1.upload.settings") as ms, \
          patch("app.api.v1.upload.process_video"):
         ms.STORAGE_VIDEOS = tmp_path
         ms.MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024
         await client.post(
             "/api/v1/videos/upload",
-            files={"file": ("clip.mp4", BytesIO(b"video-content"), "video/mp4")},
+            files={"file": ("clip.mp4", BytesIO(content), "video/mp4")},
             headers=auth_headers,
         )
     saved_files = list(tmp_path.iterdir())
     assert len(saved_files) == 1
-    assert saved_files[0].read_bytes() == b"video-content"
+    assert saved_files[0].read_bytes() == content
 
 
 @pytest.mark.asyncio
@@ -76,7 +85,7 @@ async def test_upload_dispatches_process_video(client, auth_headers, tmp_path):
         ms.MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024
         await client.post(
             "/api/v1/videos/upload",
-            files={"file": ("clip.mp4", BytesIO(b"fake"), "video/mp4")},
+            files={"file": ("clip.mp4", BytesIO(mp4_bytes()), "video/mp4")},
             headers=auth_headers,
         )
     mock_pv.assert_called_once()
@@ -90,7 +99,7 @@ async def test_upload_returns_status_pendente(client, auth_headers, tmp_path):
         ms.MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024
         response = await client.post(
             "/api/v1/videos/upload",
-            files={"file": ("clip.mp4", BytesIO(b"fake"), "video/mp4")},
+            files={"file": ("clip.mp4", BytesIO(mp4_bytes()), "video/mp4")},
             headers=auth_headers,
         )
     data = response.json()
