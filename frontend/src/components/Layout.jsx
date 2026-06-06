@@ -1,22 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Upload,
   Users,
+  Bell,
   LogOut,
   Shield,
   Menu,
   X,
 } from 'lucide-react'
+import api from '../services/api'
 
-const navItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/upload',    label: 'Upload',     icon: Upload },
-  { to: '/people',   label: 'Pessoas',    icon: Users },
-]
-
-function NavItem({ to, label, Icon, onClick }) {
+function NavItem({ to, label, Icon, badge, onClick }) {
   return (
     <NavLink
       to={to}
@@ -31,7 +27,12 @@ function NavItem({ to, label, Icon, onClick }) {
       }
     >
       <Icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
-      <span>{label}</span>
+      <span className="flex-1">{label}</span>
+      {badge > 0 && (
+        <span className="text-xs bg-primary text-white rounded-full px-1.5 py-0.5 leading-none">
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
     </NavLink>
   )
 }
@@ -39,6 +40,18 @@ function NavItem({ to, label, Icon, onClick }) {
 export default function Layout({ children }) {
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [unseenCount, setUnseenCount] = useState(0)
+
+  useEffect(() => {
+    api.get('/alerts/count').then((res) => setUnseenCount(res.data.unseen)).catch(() => {})
+  }, [])
+
+  const navItems = [
+    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/upload',    label: 'Upload',     icon: Upload },
+    { to: '/people',   label: 'Pessoas',    icon: Users },
+    { to: '/alerts',   label: 'Alertas',   icon: Bell, badge: unseenCount },
+  ]
 
   function handleLogout() {
     sessionStorage.removeItem('gw_token')
@@ -58,8 +71,8 @@ export default function Layout({ children }) {
 
       {/* Nav */}
       <nav aria-label="Menu principal" className="flex-1 space-y-1 px-2">
-        {navItems.map(({ to, label, icon: Icon }) => (
-          <NavItem key={to} to={to} label={label} Icon={Icon} onClick={() => setSidebarOpen(false)} />
+        {navItems.map(({ to, label, icon: Icon, badge }) => (
+          <NavItem key={to} to={to} label={label} Icon={Icon} badge={badge} onClick={() => setSidebarOpen(false)} />
         ))}
       </nav>
 
