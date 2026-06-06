@@ -9,8 +9,9 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.settings import settings
 from app.core.ws_manager import ws_manager
+from app.models.person import Person, PersonCategory
 from app.models.video import Video, VideoStatus
-from app.services import face_service, frame_service, person_service, appearance_service
+from app.services import alert_service, face_service, frame_service, person_service, appearance_service
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,7 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
         _broadcast_sync(video_id, {"event": "status", "status": "Processando", "video_id": video_id})
 
         person_counter = db.query(Video).count()  # heurística simples para índice inicial
+        alerted_in_this_video: set[int] = set()
 
         for segundo, frame in frame_service.extract_frames(video_path):
             embeddings = face_service.extract_embeddings(frame)
@@ -68,6 +70,27 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
                         timestamp=float(segundo),
                         confidence=distance,
                     )
+                    person = db.get(Person, person_id)
+                    if person and person.category == PersonCategory.monitorado.value:
+                        if person_id not in alerted_in_this_video:
+                            alerted_in_this_video.add(person_id)
+                            alert = alert_service.create_alert(
+                                db=db,
+                                person_id=person_id,
+                                video_id=video_id,
+                                timestamp_in_video=float(segundo),
+                                message=f"Pessoa monitorada detectada: {person.name}",
+                            )
+                            _broadcast_sync(video_id, {
+                                "event": "watchlist_alert",
+                                "video_id": video_id,
+                                "person_id": person_id,
+                                "person_name": person.name,
+                                "alert_id": alert.id,
+                                "timestamp_in_video": float(segundo),
+                                "message": f"ALERTA: {person.name} detectado",
+                                "severity": "high",
+                            })
 
             _broadcast_sync(video_id, {"event": "frame", "second": segundo, "video_id": video_id})
 

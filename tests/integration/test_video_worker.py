@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.models import Base
+from app.models.person import Person, PersonCategory
 from app.models.video import Video, VideoStatus
 
 
@@ -123,3 +124,103 @@ def test_known_face_calls_upsert_appearance(video_in_db):
     args, kwargs = mock_upsert.call_args
     person_id_arg = kwargs.get("person_id") or args[1]
     assert person_id_arg == 7
+
+
+# ── watchlist: alertas para Monitorado ───────────────────────────────────────
+
+def _make_monitored_person(engine) -> int:
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    p = Person(name="Suspeito", profile_image_path="faces/99.jpg",
+               category=PersonCategory.monitorado.value)
+    session.add(p)
+    session.commit()
+    pid = p.id
+    session.close()
+    return pid
+
+
+def test_monitorado_dispara_create_alert(video_in_db):
+    from app.workers.video_worker import process_video
+
+    engine, video_id = video_in_db
+    person_id = _make_monitored_person(engine)
+    embedding = np.random.rand(128)
+    fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+
+    with patch("app.workers.video_worker.frame_service.extract_frames",
+               return_value=iter([(1, fake_frame)])), \
+         patch("app.workers.video_worker.face_service.extract_embeddings",
+               return_value=[embedding]), \
+         patch("app.workers.video_worker.person_service.get_all_embeddings",
+               return_value=[(person_id, embedding)]), \
+         patch("app.workers.video_worker.face_service.find_matching_person",
+               return_value=(person_id, 0.25)), \
+         patch("app.workers.video_worker.appearance_service.upsert_appearance",
+               return_value=MagicMock()), \
+         patch("app.workers.video_worker.alert_service.create_alert") as mock_alert:
+        mock_alert.return_value = MagicMock(id=1)
+        process_video(video_id, Path("video.mp4"), _engine=engine)
+
+    mock_alert.assert_called_once()
+    kwargs = mock_alert.call_args.kwargs
+    assert kwargs["person_id"] == person_id
+    assert kwargs["video_id"] == video_id
+
+
+def test_funcionario_nao_dispara_alerta(video_in_db):
+    from app.workers.video_worker import process_video
+
+    engine, video_id = video_in_db
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    p = Person(name="Func", profile_image_path="faces/2.jpg",
+               category=PersonCategory.funcionario.value)
+    session.add(p)
+    session.commit()
+    person_id = p.id
+    session.close()
+
+    embedding = np.random.rand(128)
+    fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+
+    with patch("app.workers.video_worker.frame_service.extract_frames",
+               return_value=iter([(1, fake_frame)])), \
+         patch("app.workers.video_worker.face_service.extract_embeddings",
+               return_value=[embedding]), \
+         patch("app.workers.video_worker.person_service.get_all_embeddings",
+               return_value=[(person_id, embedding)]), \
+         patch("app.workers.video_worker.face_service.find_matching_person",
+               return_value=(person_id, 0.25)), \
+         patch("app.workers.video_worker.appearance_service.upsert_appearance",
+               return_value=MagicMock()), \
+         patch("app.workers.video_worker.alert_service.create_alert") as mock_alert:
+        process_video(video_id, Path("video.mp4"), _engine=engine)
+
+    mock_alert.assert_not_called()
+
+
+def test_alerta_criado_apenas_uma_vez_por_pessoa_por_video(video_in_db):
+    from app.workers.video_worker import process_video
+
+    engine, video_id = video_in_db
+    person_id = _make_monitored_person(engine)
+    embedding = np.random.rand(128)
+    fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+
+    # 3 frames com a mesma pessoa → apenas 1 alerta
+    with patch("app.workers.video_worker.frame_service.extract_frames",
+               return_value=iter([(1, fake_frame), (2, fake_frame), (3, fake_frame)])), \
+         patch("app.workers.video_worker.face_service.extract_embeddings",
+               return_value=[embedding]), \
+         patch("app.workers.video_worker.person_service.get_all_embeddings",
+               return_value=[(person_id, embedding)]), \
+         patch("app.workers.video_worker.face_service.find_matching_person",
+               return_value=(person_id, 0.25)), \
+         patch("app.workers.video_worker.appearance_service.upsert_appearance",
+               return_value=MagicMock()), \
+         patch("app.workers.video_worker.alert_service.create_alert") as mock_alert:
+        mock_alert.return_value = MagicMock(id=1)
+        process_video(video_id, Path("video.mp4"), _engine=engine)
+
+    assert mock_alert.call_count == 1
