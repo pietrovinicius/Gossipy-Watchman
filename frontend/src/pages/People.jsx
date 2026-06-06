@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, UserCircle, ChevronRight, GitMerge } from 'lucide-react'
+import { Search, UserCircle, ChevronRight, GitMerge, ScanFace, X, Loader2, Link } from 'lucide-react'
 import Layout from '../components/Layout'
 import InlineEdit from '../components/InlineEdit'
 import CategoryBadge from '../components/CategoryBadge'
 import MergeActionBar from '../components/MergeActionBar'
 import api from '../services/api'
 import { useAuthImage } from '../hooks/useAuthImage'
+import { useFaceSearch } from '../hooks/useFaceSearch.js'
 
 function PersonCard({ person, onRename, onClick, selectable, selected, onToggleSelect }) {
   const filename = person.profile_image_path
@@ -85,6 +86,24 @@ export default function People() {
   const [search, setSearch] = useState('')
   const [error, setError] = useState('')
 
+  // face search
+  const { results: faceResults, loading: faceLoading, error: faceError, queryTimeMs, search: faceSearch, reset: faceReset } = useFaceSearch()
+  const [faceSearchOpen, setFaceSearchOpen] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const fileInputRef = useRef(null)
+
+  function handleDrop(e) {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (file) faceSearch(file)
+  }
+
+  function handleFileSelect(e) {
+    const file = e.target.files[0]
+    if (file) faceSearch(file)
+  }
+
   // merge state
   const [mergeMode, setMergeMode] = useState(false)
   const [selected, setSelected] = useState([])
@@ -162,6 +181,86 @@ export default function People() {
               </button>
             )}
           </div>
+        </div>
+
+        {/* Face Search Panel */}
+        <div>
+          <button
+            onClick={() => { setFaceSearchOpen((o) => !o); faceReset() }}
+            className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border border-border
+                       text-text-muted hover:text-text-base hover:border-primary/50 transition-colors cursor-pointer"
+            aria-expanded={faceSearchOpen}
+          >
+            <ScanFace className="w-4 h-4" aria-hidden="true" />
+            Buscar por face
+          </button>
+
+          {faceSearchOpen && (
+            <div className="mt-3 border border-border rounded-xl p-4 bg-surface space-y-3">
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="Área de upload para busca por face"
+                className={`flex flex-col items-center justify-center gap-2 py-8 rounded-lg border-2 border-dashed
+                            cursor-pointer transition-colors
+                            ${dragOver ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
+              >
+                {faceLoading
+                  ? <Loader2 className="w-8 h-8 text-primary animate-spin" aria-hidden="true" />
+                  : <ScanFace className="w-8 h-8 text-text-muted" aria-hidden="true" />
+                }
+                <p className="text-sm text-text-muted">
+                  {faceLoading ? 'Buscando…' : 'Arraste uma imagem ou clique para selecionar'}
+                </p>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png"
+                className="hidden"
+                onChange={handleFileSelect}
+                aria-label="Selecionar imagem para busca por face"
+              />
+
+              {faceError && (
+                <p role="alert" className="text-error-color text-xs">{faceError}</p>
+              )}
+
+              {faceResults.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs text-text-muted">
+                    {faceResults.length} resultado{faceResults.length !== 1 ? 's' : ''}
+                    {queryTimeMs !== null && ` — ${queryTimeMs}ms`}
+                  </p>
+                  {faceResults.map((r) => (
+                    <div key={r.person_id} className="flex items-center justify-between text-sm
+                                                       bg-card rounded-lg px-3 py-2">
+                      <span className="font-medium text-text-base">{r.person_name}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-text-muted">{r.confidence_pct}% confiança</span>
+                        <button
+                          onClick={() => navigate(`/people/${r.person_id}`)}
+                          className="text-primary hover:underline text-xs flex items-center gap-1 cursor-pointer"
+                          aria-label={`Ver perfil de ${r.person_name}`}
+                        >
+                          <Link className="w-3 h-3" aria-hidden="true" />
+                          Ver perfil
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!faceLoading && faceResults.length === 0 && !faceError && (
+                <p className="text-xs text-text-muted text-center">
+                  Nenhum resultado ainda. Envie uma imagem com face visível.
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Search */}
