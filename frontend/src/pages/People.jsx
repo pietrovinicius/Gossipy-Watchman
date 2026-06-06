@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Search, UserCircle, ChevronRight } from 'lucide-react'
 import Layout from '../components/Layout'
 import InlineEdit from '../components/InlineEdit'
+import CategoryBadge from '../components/CategoryBadge'
 import api from '../services/api'
 import { useAuthImage } from '../hooks/useAuthImage'
 
@@ -48,7 +49,10 @@ function PersonCard({ person, onRename, onClick }) {
             className="text-text-base font-medium text-sm truncate group-hover:text-primary
                        transition-colors duration-200 bg-transparent border-none outline-none w-full"
           />
-          <p className="text-text-muted text-xs mt-0.5">Cadastrado em {created}</p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-text-muted text-xs">Cadastrado em {created}</p>
+            <CategoryBadge category={person.category} />
+          </div>
         </div>
 
         <button
