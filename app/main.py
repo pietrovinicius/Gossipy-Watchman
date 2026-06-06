@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.core.settings import settings
 from app.db import init_db
@@ -33,3 +34,5 @@ app.include_router(upload_router, prefix=settings.API_V1_PREFIX)
 app.include_router(videos_router, prefix=settings.API_V1_PREFIX)
 app.include_router(people_router, prefix=settings.API_V1_PREFIX)
 app.include_router(timeline_router, prefix=settings.API_V1_PREFIX)
+
+app.mount("/faces", StaticFiles(directory=str(settings.STORAGE_FACES)), name="faces")
