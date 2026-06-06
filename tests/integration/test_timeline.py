@@ -23,7 +23,7 @@ def seed_timeline_data(engine):
     session.commit()
 
     pid = person.id
-    fname = video.file_name  # captura antes de fechar sessão
+    fname = video.file_name
     session.close()
     return pid, fname
 
@@ -40,23 +40,23 @@ def seed_person_only(engine) -> int:
 
 
 @pytest.mark.asyncio
-async def test_timeline_person_not_found(client):
-    response = await client.get("/api/v1/people/9999/timeline")
+async def test_timeline_person_not_found(client, auth_headers):
+    response = await client.get("/api/v1/people/9999/timeline", headers=auth_headers)
     assert response.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_timeline_empty_for_person_without_appearances(client, test_engine):
+async def test_timeline_empty_for_person_without_appearances(client, auth_headers, test_engine):
     pid = seed_person_only(test_engine)
-    response = await client.get(f"/api/v1/people/{pid}/timeline")
+    response = await client.get(f"/api/v1/people/{pid}/timeline", headers=auth_headers)
     assert response.status_code == 200
     assert response.json() == []
 
 
 @pytest.mark.asyncio
-async def test_timeline_returns_appearances_sorted(client, test_engine):
+async def test_timeline_returns_appearances_sorted(client, auth_headers, test_engine):
     pid, _ = seed_timeline_data(test_engine)
-    response = await client.get(f"/api/v1/people/{pid}/timeline")
+    response = await client.get(f"/api/v1/people/{pid}/timeline", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 2
@@ -65,8 +65,8 @@ async def test_timeline_returns_appearances_sorted(client, test_engine):
 
 
 @pytest.mark.asyncio
-async def test_timeline_includes_file_name(client, test_engine):
+async def test_timeline_includes_file_name(client, auth_headers, test_engine):
     pid, file_name = seed_timeline_data(test_engine)
-    response = await client.get(f"/api/v1/people/{pid}/timeline")
+    response = await client.get(f"/api/v1/people/{pid}/timeline", headers=auth_headers)
     data = response.json()
     assert data[0]["file_name"] == file_name

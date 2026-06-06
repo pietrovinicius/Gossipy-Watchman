@@ -7,6 +7,7 @@ from app.core.settings import settings
 from app.db.session import get_db
 from app.schemas.video import VideoStatusResponse
 from app.services import video_service
+from app.services.auth_service import get_current_user
 from app.workers.video_worker import process_video
 
 router = APIRouter()
@@ -20,6 +21,7 @@ async def upload_video(
     file: UploadFile,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
 ) -> VideoStatusResponse:
     suffix = Path(file.filename).suffix.lower()
     if suffix not in _ALLOWED_EXTENSIONS:

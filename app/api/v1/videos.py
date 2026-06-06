@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.video import VideoResponse, VideoStatusResponse
 from app.services import video_service
+from app.services.auth_service import get_current_user
 
 router = APIRouter()
 
@@ -13,12 +14,17 @@ def list_videos(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
     db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
 ) -> list[VideoResponse]:
     return video_service.list_videos(db, skip=skip, limit=limit)
 
 
 @router.get("/videos/{video_id}", response_model=VideoResponse)
-def get_video(video_id: int, db: Session = Depends(get_db)) -> VideoResponse:
+def get_video(
+    video_id: int,
+    db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
+) -> VideoResponse:
     video = video_service.get_video_by_id(db, video_id)
     if video is None:
         raise HTTPException(status_code=404, detail="Vídeo não encontrado")
@@ -26,7 +32,11 @@ def get_video(video_id: int, db: Session = Depends(get_db)) -> VideoResponse:
 
 
 @router.get("/videos/{video_id}/status", response_model=VideoStatusResponse)
-def get_video_status(video_id: int, db: Session = Depends(get_db)) -> VideoStatusResponse:
+def get_video_status(
+    video_id: int,
+    db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
+) -> VideoStatusResponse:
     video = video_service.get_video_by_id(db, video_id)
     if video is None:
         raise HTTPException(status_code=404, detail="Vídeo não encontrado")

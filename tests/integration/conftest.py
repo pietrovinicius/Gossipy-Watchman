@@ -48,3 +48,17 @@ async def client(test_engine):
         yield ac
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def auth_token(client):
+    response = await client.post(
+        "/api/v1/auth/login",
+        data={"username": "admin", "password": "watchman"},
+    )
+    return response.json()["access_token"]
+
+
+@pytest.fixture
+async def auth_headers(auth_token):
+    return {"Authorization": f"Bearer {auth_token}"}

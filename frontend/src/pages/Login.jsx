@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Shield } from 'lucide-react'
+import axios from 'axios'
 
-const VALID_USER = 'admin'
-const VALID_PASS = 'watchman'
+const AUTH_URL = 'http://localhost:8000/api/v1/auth/login'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -13,20 +13,23 @@ export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     setError('')
     setLoading(true)
-
-    setTimeout(() => {
-      if (username === VALID_USER && password === VALID_PASS) {
-        sessionStorage.setItem('gw_token', 'authenticated')
-        navigate('/dashboard')
-      } else {
-        setError('Usuário ou senha incorretos.')
-      }
+    try {
+      const form = new URLSearchParams()
+      form.append('username', username)
+      form.append('password', password)
+      const res = await axios.post(AUTH_URL, form)
+      sessionStorage.setItem('gw_token', 'authenticated')
+      sessionStorage.setItem('token', res.data.access_token)
+      navigate('/dashboard')
+    } catch {
+      setError('Usuário ou senha incorretos.')
+    } finally {
       setLoading(false)
-    }, 300)
+    }
   }
 
   return (

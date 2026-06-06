@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.settings import settings
 from app.db import init_db
+from app.api.v1.auth import router as auth_router
 from app.api.v1.health import router as health_router
 from app.api.v1.upload import router as upload_router
 from app.api.v1.videos import router as videos_router
@@ -35,6 +36,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(health_router, prefix=settings.API_V1_PREFIX)
 app.include_router(upload_router, prefix=settings.API_V1_PREFIX)
 app.include_router(videos_router, prefix=settings.API_V1_PREFIX)
