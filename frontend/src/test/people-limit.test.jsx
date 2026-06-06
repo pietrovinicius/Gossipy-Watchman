@@ -7,6 +7,7 @@ vi.mock('../services/api', () => ({
     get: vi.fn().mockResolvedValue({ data: [] }),
     patch: vi.fn(),
   },
+  BACKEND_URL: 'http://localhost:8000',
 }))
 
 import api from '../services/api'

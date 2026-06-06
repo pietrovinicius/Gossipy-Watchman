@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Film, Clock, Users, UserX, RefreshCw, Download, Loader2 } from 'lucide-react'
 import Layout from '../components/Layout'
 import api from '../services/api'
 import { sanitizeFileName } from '../utils/sanitizeFileName'
 import { downloadCsv } from '../utils/downloadCsv'
+import { useGlobalWebSocket } from '../hooks/useGlobalWebSocket'
 
 const STATUS_BADGE = {
   Pendente:    { cls: 'bg-warning/20 text-warning',       label: 'Pendente' },
@@ -51,6 +52,8 @@ export default function Dashboard() {
   const [error, setError] = useState('')
   const [lastRefresh, setLastRefresh] = useState(null)
   const [exportingId, setExportingId] = useState(null)
+  const [wsConnected, setWsConnected] = useState(false)
+  const fetchRef = useRef(null)
 
   async function handleExportVideo(videoId, fileName) {
     setExportingId(videoId)
@@ -78,6 +81,18 @@ export default function Dashboard() {
       setError(err.message)
     }
   }, [])
+
+  // mantém ref atualizada para uso no callback WS sem re-criar o hook
+  fetchRef.current = fetchData
+
+  useGlobalWebSocket({
+    onEvent: useCallback((payload) => {
+      if (payload.event === 'status') {
+        setWsConnected(true)
+        fetchRef.current?.()
+      }
+    }, []),
+  })
 
   useEffect(() => {
     fetchData()
@@ -111,16 +126,25 @@ export default function Dashboard() {
               </p>
             )}
           </div>
-          <button
-            onClick={fetchData}
-            aria-label="Atualizar dados"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border
-                       text-text-muted hover:text-text-base hover:border-primary/50
-                       transition-colors duration-200 cursor-pointer text-sm"
-          >
-            <RefreshCw className="w-4 h-4" aria-hidden="true" />
-            Atualizar
-          </button>
+          <div className="flex items-center gap-2">
+            <span
+              title={wsConnected ? 'Tempo real ativo' : 'WebSocket desconectado'}
+              className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors duration-500 ${
+                wsConnected ? 'bg-success shadow-[0_0_6px_rgba(0,200,80,0.6)]' : 'bg-border'
+              }`}
+              aria-label={wsConnected ? 'Tempo real ativo' : 'WebSocket desconectado'}
+            />
+            <button
+              onClick={fetchData}
+              aria-label="Atualizar dados"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border
+                         text-text-muted hover:text-text-base hover:border-primary/50
+                         transition-colors duration-200 cursor-pointer text-sm"
+            >
+              <RefreshCw className="w-4 h-4" aria-hidden="true" />
+              Atualizar
+            </button>
+          </div>
         </div>
 
         {error && (
