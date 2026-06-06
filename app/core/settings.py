@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     FACE_RECOGNITION_TOLERANCE: float = 0.6
     FRAMES_PER_SECOND_SAMPLE: int = 1
     APP_NAME: str = "Gossipy Watchman"
+    APP_VERSION: str = "1.0.0"
     API_V1_PREFIX: str = "/api/v1"
 
     class Config:
