@@ -107,4 +107,47 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.2.0] — 2026-06-06
+
+### Adicionado
+
+#### Sprint 6 — Gestão de Pessoas
+
+**Backend**
+- `app/models/person.py` — `PersonCategory` enum Python (Funcionário, Visitante, Desconhecido, Monitorado); colunas `notes` (TEXT NULL) e `category` (VARCHAR(20) NOT NULL DEFAULT 'Desconhecido') no modelo `Person`
+- `app/db/migrations/migration_v1_13.py` — migração idempotente via `pragma_table_info`; adiciona `notes` e `category` sem recriar tabela; executada no lifespan antes de `init_db()`
+- `app/services/person_service.py` — `update_person_details(db, person_id, name, notes, category)`: atualiza apenas campos não-None; `get_person_stats(db, person_id)`: retorna `video_count`, `total_seconds`, `first_seen`, `last_seen` a partir de `appearances` + JOIN em `videos`; `merge_people(db, primary_id, secondary_ids)`: reassocia appearances do secundário para o primário, deleta `.npy` e `.jpg` do secundário, exclui `Person` secundário, HTTP 400 para self-merge, HTTP 404 para IDs inexistentes
+- `app/schemas/person.py` — `PersonCategory` como `str, Enum`; `PersonUpdate` com todos os campos opcionais + `@model_validator` exigindo ao menos um campo; `PersonStatsResponse` (video_count, total_seconds, first_seen, last_seen); `MergeRequest` com validação de secondary_ids não vazio e não contendo primary_id
+- `app/api/v1/people.py` — `POST /people/merge` registrado **antes** de `GET /people/{id}` (evita colisão de rota FastAPI com literal "merge"); `GET /people/{id}/stats`; `PATCH /people/{id}` usa `update_person_details` (parcial)
+
+**Frontend**
+- `frontend/src/components/InlineEdit.jsx` — edição inline de texto: clique ativa input, Enter/blur salva via callback `onSave`, Escape cancela, valor vazio não dispara save
+- `frontend/src/components/CategoryBadge.jsx` — badge com cor distinta por categoria: Funcionário (azul), Visitante (roxo), Monitorado (vermelho), Desconhecido (cinza)
+- `frontend/src/components/MergeActionBar.jsx` — action bar flutuante: contagem de selecionados, botão "Definir principal", botão "Mesclar" (desabilitado sem primary), botão "Cancelar"
+- `frontend/src/pages/People.jsx` — `InlineEdit` no nome de cada card (renomear sem navegar); `CategoryBadge` abaixo do nome; botão "Mesclar perfis" ativa modo multi-seleção com checkboxes visuais e `MergeActionBar`; `POST /people/merge` + refetch após sucesso
+- `frontend/src/pages/PersonDetail.jsx` — painel 4-grid com stats (video_count, total_seconds, first_seen, last_seen) via `GET /people/{id}/stats`; edição de `notes` (textarea) e `category` (select) via `PATCH /people/{id}`
+
+**Testes**
+- `tests/unit/test_migration_v1_13.py` — 4 testes (idempotência, colunas, default)
+- `tests/unit/test_models.py` — 7 testes Sprint 6 (PersonCategory, notes/category no modelo)
+- `tests/unit/test_schemas.py` — 6 testes Sprint 6 (PersonUpdate, PersonStatsResponse, MergeRequest)
+- `tests/unit/test_person_service.py` — 11 testes (update_person_details ×5, get_person_stats ×2, merge_people ×4)
+- `tests/integration/test_people.py` — 6 novos testes (PATCH parcial, stats, merge, self-merge 422, 404)
+- `frontend/src/components/InlineEdit.test.jsx` — 6 testes TDD
+- `frontend/src/components/PersonCard.test.jsx` — 5 testes TDD (CategoryBadge)
+- `frontend/src/components/PeopleMerge.test.jsx` — 6 testes TDD (MergeActionBar)
+
+### Corrigido
+
+- `frontend/src/pages/People.jsx` + `Dashboard.jsx` — `limit=500` → `limit=200` (backend aceita `le=200`); evitava HTTP 422 no carregamento inicial
+- `frontend/src/hooks/useAuthImage.js` (novo) — `<img src>` não envia JWT; substituído por `api.get` com `responseType: 'blob'` + `URL.createObjectURL`; cleanup via `URL.revokeObjectURL` no `useEffect`
+- `frontend/src/utils/sanitizeFileName.js` (novo) — extrai último segmento do path, strip de `..`, fallback `[arquivo]`; aplicado em `PersonDetail` e `Dashboard`
+
+### Infraestrutura
+
+- `Documentos/Cronograma de Sprints - Gossipy Watchman.docx` — Sprint 6 adicionada
+- Verificação Sprint 6: 159 testes pytest + 31 testes vitest passando; build de produção frontend limpo
+
+---
+
 *Fragmentos individuais disponíveis em `changelog/` para rastreabilidade por tarefa.*
