@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 
 class PersonCategory(str, Enum):
@@ -30,15 +30,41 @@ class PersonResponse(BaseModel):
         return v
 
 
+class PersonStatsResponse(BaseModel):
+    video_count: int
+    total_seconds: float
+    first_seen: datetime | None
+    last_seen: datetime | None
+
+
+class MergeRequest(BaseModel):
+    primary_id: int
+    secondary_ids: list[int]
+
+    @model_validator(mode="after")
+    def secondary_must_not_include_primary(self) -> "MergeRequest":
+        if self.primary_id in self.secondary_ids:
+            raise ValueError("primary_id não pode estar em secondary_ids")
+        if not self.secondary_ids:
+            raise ValueError("secondary_ids não pode ser vazio")
+        return self
+
+
 class PersonUpdate(BaseModel):
-    name: str
+    name: str | None = None
     notes: str | None = None
     category: str | None = None
 
+    @model_validator(mode="after")
+    def at_least_one_field(self) -> "PersonUpdate":
+        if self.name is None and self.notes is None and self.category is None:
+            raise ValueError("pelo menos um campo deve ser fornecido")
+        return self
+
     @field_validator("name")
     @classmethod
-    def name_must_not_be_empty(cls, v: str) -> str:
-        if not v.strip():
+    def name_must_not_be_empty(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
             raise ValueError("name não pode ser vazio")
         return v
 
