@@ -25,6 +25,16 @@ def list_videos(db: Session, skip: int = 0, limit: int = 50) -> list[Video]:
     )
 
 
+def update_file_path(db: Session, video_id: int, file_path: str) -> Video | None:
+    video = db.get(Video, video_id)
+    if video is None:
+        return None
+    video.file_path = file_path
+    db.commit()
+    db.refresh(video)
+    return video
+
+
 def update_video_status(db: Session, video_id: int, status: VideoStatus) -> Video | None:
     video = db.get(Video, video_id)
     if video is None:

@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.settings import settings
 from app.db import init_db
 from app.api.v1.health import router as health_router
+from app.api.v1.upload import router as upload_router
 
 
 @asynccontextmanager
@@ -25,3 +26,4 @@ app.add_middleware(
 )
 
 app.include_router(health_router, prefix=settings.API_V1_PREFIX)
+app.include_router(upload_router, prefix=settings.API_V1_PREFIX)

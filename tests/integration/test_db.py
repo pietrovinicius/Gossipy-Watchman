@@ -41,12 +41,10 @@ def test_init_db_via_function():
 
 
 def test_get_db_returns_functional_session(memory_engine):
-    from app.db import get_db
-    # Sobrescreve engine para usar o de memória
-    gen = get_db(engine=memory_engine)
+    from app.db import get_db_with_engine
+    gen = get_db_with_engine(memory_engine)
     session = next(gen)
     assert isinstance(session, Session)
-    # Executa query simples para confirmar sessão funcional
     result = session.execute(text("SELECT 1")).scalar()
     assert result == 1
     try:

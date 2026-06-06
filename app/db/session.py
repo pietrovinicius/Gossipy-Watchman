@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.settings import settings
 
 _engine: Engine | None = None
-_SessionLocal: sessionmaker | None = None
 
 
 def _get_engine(engine: Engine | None = None) -> Engine:
@@ -21,9 +20,20 @@ def _get_engine(engine: Engine | None = None) -> Engine:
     return _engine
 
 
-def get_db(engine: Engine | None = None) -> Generator[Session, None, None]:
-    eng = _get_engine(engine)
+def get_db() -> Generator[Session, None, None]:
+    """Injetável via FastAPI Depends(). Usa engine de produção."""
+    eng = _get_engine()
     factory = sessionmaker(autocommit=False, autoflush=False, bind=eng)
+    session = factory()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
+def get_db_with_engine(engine: Engine) -> Generator[Session, None, None]:
+    """Versão para testes de integração de Sprint 1/2 que injetam engine."""
+    factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     session = factory()
     try:
         yield session
