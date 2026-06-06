@@ -1,6 +1,6 @@
 ================================================================
 GOSSIPY WATCHMAN — ANOTAÇÕES E GUIA DE INICIALIZAÇÃO
-Versão: 1.1.0
+Versão: 1.2.0
 Última atualização: 2026-06-06
 ================================================================
 
@@ -399,6 +399,25 @@ DECISÕES TÉCNICAS RELEVANTES
    Vetores de face persistidos em storage/faces/{id}.npy permitem
    re-identificação entre sessões sem reprocessar vídeos anteriores.
    Pessoas sem .npy em disco são ignoradas com log de aviso.
+
+6. asyncio.run_coroutine_threadsafe para bridge thread→asyncio (v1.25)
+   O worker roda em ThreadPoolExecutor do FastAPI (thread síncrona).
+   Para emitir eventos WebSocket (coroutines asyncio) a partir do worker,
+   usa-se asyncio.run_coroutine_threadsafe(coro, loop) onde loop é o
+   event loop principal armazenado em ws_manager._loop durante o lifespan.
+   NUNCA usar asyncio.run() — levanta RuntimeError se o loop já estiver
+   rodando.
+
+7. Auth WebSocket via query param ?token=JWT (v1.25)
+   A API WebSocket do JavaScript não suporta headers customizados
+   (como Authorization: Bearer). A solução correta é passar o JWT
+   como query param: ws://host/ws/video/1?token=<jwt>. O servidor
+   chama verify_token(token) e fecha com code=1008 em caso de falha.
+
+8. Exportação CSV via stdlib (v1.22)
+   O endpoint GET /export/timeline usa csv.DictWriter + io.StringIO
+   da stdlib, sem dependências externas. Retorna StreamingResponse com
+   media_type="text/csv" e Content-Disposition: attachment.
 
 
 ================================================================
