@@ -99,6 +99,50 @@ def test_appearance_has_foreign_keys():
     assert "videos.id" in fk_targets
 
 
+# ── Person Sprint 6 — notes e category ──────────────────────────────────────
+
+def test_person_has_notes_column():
+    from app.models.person import Person
+    cols = get_columns(Person)
+    assert "notes" in cols
+
+
+def test_person_has_category_column():
+    from app.models.person import Person
+    cols = get_columns(Person)
+    assert "category" in cols
+
+
+def test_person_category_enum_values():
+    from app.models.person import PersonCategory
+    values = {e.value for e in PersonCategory}
+    assert values == {"Funcionário", "Visitante", "Desconhecido", "Monitorado"}
+
+
+def test_person_category_is_enum_type():
+    import enum
+    from app.models.person import PersonCategory
+    assert issubclass(PersonCategory, enum.Enum)
+
+
+def test_person_category_default_is_desconhecido():
+    from app.models.person import Person, PersonCategory
+    col = sa.inspect(Person).mapper.column_attrs["category"].columns[0]
+    assert col.default.arg == PersonCategory.desconhecido.value
+
+
+def test_person_notes_is_nullable():
+    from app.models.person import Person
+    col = sa.inspect(Person).mapper.column_attrs["notes"].columns[0]
+    assert col.nullable is True
+
+
+def test_person_category_is_not_nullable():
+    from app.models.person import Person
+    col = sa.inspect(Person).mapper.column_attrs["category"].columns[0]
+    assert col.nullable is False
+
+
 # ── __init__ exports ─────────────────────────────────────────────────────────
 
 def test_models_init_exports_all():

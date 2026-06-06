@@ -95,6 +95,66 @@ def test_person_response_optional_profile_image():
     assert schema.profile_image_path is None
 
 
+# ── PersonResponse Sprint 6 — notes e category ───────────────────────────────
+
+def test_person_response_includes_notes_and_category():
+    from app.schemas.person import PersonResponse
+    from app.models.person import Person
+
+    orm_obj = Person(
+        id=4,
+        name="Funcionário Silva",
+        profile_image_path=None,
+        created_at=datetime(2026, 6, 6, tzinfo=timezone.utc),
+        notes="Acesso liberado ao andar 3",
+        category="Funcionário",
+    )
+    schema = PersonResponse.model_validate(orm_obj)
+    assert schema.notes == "Acesso liberado ao andar 3"
+    assert schema.category == "Funcionário"
+
+
+def test_person_response_notes_nullable():
+    from app.schemas.person import PersonResponse
+    from app.models.person import Person
+
+    orm_obj = Person(
+        id=5,
+        name="Visitante",
+        profile_image_path=None,
+        created_at=datetime(2026, 6, 6, tzinfo=timezone.utc),
+        notes=None,
+        category="Desconhecido",
+    )
+    schema = PersonResponse.model_validate(orm_obj)
+    assert schema.notes is None
+
+
+def test_person_update_accepts_notes_and_category():
+    from app.schemas.person import PersonUpdate
+    u = PersonUpdate(name="João", notes="Monitorar entrada", category="Monitorado")
+    assert u.notes == "Monitorar entrada"
+    assert u.category == "Monitorado"
+
+
+def test_person_update_rejects_invalid_category():
+    from app.schemas.person import PersonUpdate
+    with pytest.raises(ValidationError):
+        PersonUpdate(name="João", category="InvalidoXYZ")
+
+
+def test_person_update_notes_optional():
+    from app.schemas.person import PersonUpdate
+    u = PersonUpdate(name="João")
+    assert u.notes is None
+
+
+def test_person_category_enum_schema():
+    from app.schemas.person import PersonCategory
+    values = {e.value for e in PersonCategory}
+    assert values == {"Funcionário", "Visitante", "Desconhecido", "Monitorado"}
+
+
 # ── __init__ exports ──────────────────────────────────────────────────────────
 
 def test_schemas_init_exports():

@@ -1,9 +1,17 @@
 from datetime import datetime, timezone
+from enum import Enum as PyEnum
 
-from sqlalchemy import String, DateTime
+from sqlalchemy import String, DateTime, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
+
+
+class PersonCategory(PyEnum):
+    funcionario = "Funcionário"
+    visitante = "Visitante"
+    desconhecido = "Desconhecido"
+    monitorado = "Monitorado"
 
 
 class Person(Base):
@@ -15,4 +23,10 @@ class Person(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    category: Mapped[str] = mapped_column(
+        String(20),
+        default=PersonCategory.desconhecido.value,
+        nullable=False,
     )

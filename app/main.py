@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.settings import settings
 from app.db import init_db
+from app.db.migrations.migration_v1_13 import run as migration_v1_13
 from app.api.v1.auth import router as auth_router
 from app.api.v1.faces import router as faces_router
 from app.api.v1.health import router as health_router
@@ -16,6 +17,7 @@ from app.api.v1.timeline import router as timeline_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    migration_v1_13()
     init_db()
     yield
 
