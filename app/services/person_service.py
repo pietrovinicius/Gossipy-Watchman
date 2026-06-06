@@ -44,3 +44,27 @@ def save_new_person(
     db.commit()
 
     return person
+
+
+def list_people(db: Session, skip: int = 0, limit: int = 50) -> list[Person]:
+    return (
+        db.query(Person)
+        .order_by(Person.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+
+def get_person_by_id(db: Session, person_id: int) -> Person | None:
+    return db.get(Person, person_id)
+
+
+def update_person_name(db: Session, person_id: int, name: str) -> Person | None:
+    person = db.get(Person, person_id)
+    if person is None:
+        return None
+    person.name = name
+    db.commit()
+    db.refresh(person)
+    return person

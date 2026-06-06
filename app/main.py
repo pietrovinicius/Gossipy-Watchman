@@ -8,6 +8,7 @@ from app.db import init_db
 from app.api.v1.health import router as health_router
 from app.api.v1.upload import router as upload_router
 from app.api.v1.videos import router as videos_router
+from app.api.v1.people import router as people_router
 
 
 @asynccontextmanager
@@ -29,3 +30,4 @@ app.add_middleware(
 app.include_router(health_router, prefix=settings.API_V1_PREFIX)
 app.include_router(upload_router, prefix=settings.API_V1_PREFIX)
 app.include_router(videos_router, prefix=settings.API_V1_PREFIX)
+app.include_router(people_router, prefix=settings.API_V1_PREFIX)
