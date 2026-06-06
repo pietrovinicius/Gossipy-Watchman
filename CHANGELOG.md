@@ -150,4 +150,45 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
-*Fragmentos individuais disponíveis em `changelog/` para rastreabilidade por tarefa.*
+---
+
+## [1.3.0] — 2026-06-06
+
+### Adicionado
+
+#### Sprint 7 — Export CSV e WebSocket em Tempo Real
+
+**Backend — Export CSV**
+- `app/services/export_service.py` — `generate_timeline_csv()`: JOIN `appearances + people + videos`, filtros opcionais `person_id` / `video_id`, cabeçalho de auditoria com 3 linhas de comentário (`# Gossipy Watchman`, `# Gerado em`, `# Total de registros`), 9 colunas via `csv.DictWriter` da stdlib (sem dependência externa)
+- `app/api/v1/export.py` — `GET /export/timeline` com filtros opcionais (HTTP 400 se ambos fornecidos, HTTP 404 se ID inexistente); `GET /export/timeline/person/{id}` e `GET /export/timeline/video/{id}` como atalhos semânticos; todos retornam `StreamingResponse` com `media_type="text/csv"` e `Content-Disposition: attachment`
+
+**Backend — WebSocket**
+- `app/core/ws_manager.py` — `ConnectionManager`: `dict[video_id → list[WebSocket]]` com `asyncio.Lock`; `connect()` faz `ws.accept()` e registra; `disconnect()` remove e apaga chave se vazia; `broadcast(video_id)` usa `asyncio.gather(return_exceptions=True)` e remove conexões com falha; `broadcast_all()` itera todas as chaves; `set_loop()` armazena o event loop principal para uso cross-thread; singleton `ws_manager = ConnectionManager()`
+- `app/api/v1/ws.py` — `@router.websocket("/ws/video/{video_id}")`: auth via `?token=JWT` query param (a API WebSocket do JS não suporta headers customizados); token inválido/ausente → `close(code=1008)`; registra na `ConnectionManager` e aguarda `receive_text()` em loop; `@router.websocket("/ws/global")`: mesmo fluxo usando `video_id=0` internamente
+- `app/workers/video_worker.py` — `_broadcast_sync(video_id, payload)`: bridge thread→asyncio via `asyncio.run_coroutine_threadsafe(ws_manager.broadcast(...), loop).result(timeout=2)` (nunca `asyncio.run()`, que levanta `RuntimeError` se o loop já estiver rodando); chamado em 4 momentos: status `Processando`, a cada frame processado, status `Concluído`, status `Erro`
+- `app/main.py` — `ws_router` e `export_router` incluídos; `ws_manager.set_loop(asyncio.get_event_loop())` chamado no `lifespan`
+
+**Frontend — Export CSV**
+- `frontend/src/utils/downloadCsv.js` — `downloadCsv(blob, filename)`: `URL.createObjectURL` → `<a>` hidden → `.click()` → `revokeObjectURL`; sem dependência externa
+- `frontend/src/pages/PersonDetail.jsx` — botão "Exportar CSV" com `Loader2` durante download; chama `GET /export/timeline/person/{id}` com `responseType: 'blob'`
+- `frontend/src/pages/Dashboard.jsx` — coluna "Exportar" por linha da tabela de vídeos; loading por linha via `exportingId`; chama `GET /export/timeline/video/{id}`
+
+**Frontend — WebSocket**
+- `frontend/src/hooks/useVideoWebSocket.js` — conecta `ws://host/api/v1/ws/video/{videoId}?token=...`; retorna `{ lastEvent, wsStatus }`; URL derivada de `BACKEND_URL` via `replace('http', 'ws')`; cleanup no unmount
+- `frontend/src/hooks/useGlobalWebSocket.js` — conecta `ws://host/api/v1/ws/global?token=...`; dispara `onEvent(payload)` a cada mensagem recebida; cleanup no unmount
+- `frontend/src/pages/Dashboard.jsx` — integra `useGlobalWebSocket`: ao receber evento `status`, recarrega `fetchData()` automaticamente; indicador visual (bolinha verde pulsante / cinza) no header
+
+**Testes**
+- `tests/unit/test_export_service.py` — 8 testes TDD
+- `tests/integration/test_export.py` — 8 testes TDD (3 endpoints, 400/404 guard, auth, Content-Disposition)
+- `tests/unit/test_ws_manager.py` — 6 testes TDD (connect, disconnect, broadcast, broadcast_all, exception handling)
+- `tests/integration/test_ws.py` — 5 testes TDD (missing token, invalid token, WS aceita, global WS, `_broadcast_sync` via mock)
+- `frontend/src/test/downloadCsv.test.js` — 3 testes TDD
+- `frontend/src/test/useVideoWebSocket.test.jsx` — 6 testes TDD (MockWebSocket fake)
+
+### Infraestrutura
+
+- `requirements.txt` — `websockets>=12.0` (instalado: 16.0)
+- `Documentos/Cronograma de Sprints - Gossipy Watchman.docx` — Sprint 7 adicionada
+- `Anotacoes.txt` — versão bump + decisões técnicas 6/7/8 documentadas (asyncio bridge, WS auth via query param, CSV via stdlib)
+- Verificação Sprint 7: 186 testes pytest + 40 testes vitest passando; build de produção frontend limpo
