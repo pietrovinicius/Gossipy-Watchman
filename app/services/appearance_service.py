@@ -1,6 +1,21 @@
+from dataclasses import dataclass
+
 from sqlalchemy.orm import Session
 
 from app.models.appearance import Appearance
+from app.models.video import Video
+
+
+@dataclass
+class AppearanceWithVideo:
+    """Projeção de Appearance com file_name do vídeo associado."""
+    id: int
+    person_id: int
+    video_id: int
+    timestamp_start: float
+    timestamp_end: float | None
+    confidence: float
+    file_name: str
 
 _GAP_TOLERANCE_SECONDS = 2.0
 
@@ -50,3 +65,25 @@ def upsert_appearance(
     db.commit()
     db.refresh(new_appearance)
     return new_appearance
+
+
+def get_timeline(db: Session, person_id: int) -> list[AppearanceWithVideo]:
+    rows = (
+        db.query(Appearance, Video.file_name)
+        .join(Video, Appearance.video_id == Video.id)
+        .filter(Appearance.person_id == person_id)
+        .order_by(Appearance.video_id.asc(), Appearance.timestamp_start.asc())
+        .all()
+    )
+    return [
+        AppearanceWithVideo(
+            id=app.id,
+            person_id=app.person_id,
+            video_id=app.video_id,
+            timestamp_start=app.timestamp_start,
+            timestamp_end=app.timestamp_end,
+            confidence=app.confidence,
+            file_name=file_name,
+        )
+        for app, file_name in rows
+    ]
