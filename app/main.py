@@ -1,9 +1,11 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.settings import settings
+from app.core.ws_manager import ws_manager
 from app.db import init_db
 from app.db.migrations.migration_v1_13 import run as migration_v1_13
 from app.api.v1.auth import router as auth_router
@@ -14,12 +16,14 @@ from app.api.v1.upload import router as upload_router
 from app.api.v1.videos import router as videos_router
 from app.api.v1.people import router as people_router
 from app.api.v1.timeline import router as timeline_router
+from app.api.v1.ws import router as ws_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     migration_v1_13()
     init_db()
+    ws_manager.set_loop(asyncio.get_event_loop())
     yield
 
 
@@ -65,3 +69,4 @@ app.include_router(videos_router, prefix=settings.API_V1_PREFIX)
 app.include_router(people_router, prefix=settings.API_V1_PREFIX)
 app.include_router(timeline_router, prefix=settings.API_V1_PREFIX)
 app.include_router(faces_router, prefix=settings.API_V1_PREFIX)
+app.include_router(ws_router, prefix=settings.API_V1_PREFIX)

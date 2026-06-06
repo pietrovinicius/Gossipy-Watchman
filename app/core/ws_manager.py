@@ -1,4 +1,5 @@
 import asyncio
+from typing import Optional
 
 from fastapi import WebSocket
 
@@ -7,6 +8,10 @@ class ConnectionManager:
     def __init__(self) -> None:
         self._connections: dict[int, list[WebSocket]] = {}
         self._lock = asyncio.Lock()
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+
+    def set_loop(self, loop: asyncio.AbstractEventLoop) -> None:
+        self._loop = loop
 
     async def connect(self, video_id: int, ws: WebSocket) -> None:
         await ws.accept()

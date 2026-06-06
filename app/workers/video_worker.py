@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from pathlib import Path
 
@@ -7,10 +8,22 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.settings import settings
+from app.core.ws_manager import ws_manager
 from app.models.video import Video, VideoStatus
 from app.services import face_service, frame_service, person_service, appearance_service
 
 logger = logging.getLogger(__name__)
+
+
+def _broadcast_sync(video_id: int, payload: dict) -> None:
+    loop = ws_manager._loop
+    if loop is None or not loop.is_running():
+        return
+    fut = asyncio.run_coroutine_threadsafe(ws_manager.broadcast(video_id, payload), loop)
+    try:
+        fut.result(timeout=2)
+    except Exception:
+        logger.warning("_broadcast_sync timeout/erro para video_id=%s", video_id)
 
 
 def _get_session_factory(engine):
@@ -31,6 +44,7 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
         video = db.get(Video, video_id)
         video.status = VideoStatus.PROCESSANDO
         db.commit()
+        _broadcast_sync(video_id, {"event": "status", "status": "Processando", "video_id": video_id})
 
         person_counter = db.query(Video).count()  # heurística simples para índice inicial
 
@@ -55,9 +69,12 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
                         confidence=distance,
                     )
 
+            _broadcast_sync(video_id, {"event": "frame", "second": segundo, "video_id": video_id})
+
         video = db.get(Video, video_id)
         video.status = VideoStatus.CONCLUIDO
         db.commit()
+        _broadcast_sync(video_id, {"event": "status", "status": "Concluído", "video_id": video_id})
 
     except Exception:
         logger.exception("Erro ao processar vídeo id=%s", video_id)
@@ -65,6 +82,7 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
             video = db.get(Video, video_id)
             video.status = VideoStatus.ERRO
             db.commit()
+            _broadcast_sync(video_id, {"event": "status", "status": "Erro", "video_id": video_id})
         except Exception:
             logger.exception("Falha ao atualizar status para Erro")
     finally:
