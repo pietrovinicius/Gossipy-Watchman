@@ -11,3 +11,7 @@ opencv-python>=4.9.0
 numpy>=1.26.0
 face-recognition>=1.3.0
 setuptools<71  # face-recognition-models usa pkg_resources, removido no setuptools>=71
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-magic>=0.4.27
+python-dotenv>=1.0.0
