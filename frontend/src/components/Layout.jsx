@@ -5,6 +5,7 @@ import {
   Upload,
   Users,
   Bell,
+  BarChart2,
   LogOut,
   Shield,
   Menu,
@@ -50,7 +51,8 @@ export default function Layout({ children }) {
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/upload',    label: 'Upload',     icon: Upload },
     { to: '/people',   label: 'Pessoas',    icon: Users },
-    { to: '/alerts',   label: 'Alertas',   icon: Bell, badge: unseenCount },
+    { to: '/alerts',    label: 'Alertas',   icon: Bell, badge: unseenCount },
+    { to: '/analytics', label: 'Analytics',  icon: BarChart2 },
   ]
 
   function handleLogout() {

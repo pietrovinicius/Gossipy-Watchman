@@ -10,6 +10,7 @@ const Upload = lazy(() => import('./pages/Upload'))
 const People = lazy(() => import('./pages/People'))
 const PersonDetail = lazy(() => import('./pages/PersonDetail'))
 const Alerts = lazy(() => import('./pages/Alerts'))
+const AnalyticsDashboard = lazy(() => import('./pages/AnalyticsDashboard'))
 
 const Loading = () => (
   <div className="flex items-center justify-center min-h-screen bg-bg">
@@ -32,6 +33,7 @@ const router = createBrowserRouter([
   { path: '/people', element: <Protected><People /></Protected> },
   { path: '/people/:id', element: <Protected><PersonDetail /></Protected> },
   { path: '/alerts', element: <Protected><Alerts /></Protected> },
+  { path: '/analytics', element: <Protected><AnalyticsDashboard /></Protected> },
 ])
 
 export default router
