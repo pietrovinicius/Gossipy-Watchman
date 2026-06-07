@@ -456,6 +456,37 @@ DECISÕES TÉCNICAS RELEVANTES
 
 
 ================================================================
+SPRINT 10 — FUNCIONALIDADES ADICIONADAS
+================================================================
+
+1. Endpoint GET /api/v1/videos/{video_id}/detail (v1.06)
+   Retorna {video, people, summary} consolidado: pessoas identificadas
+   no vídeo (ordenadas por first_seen_at), tempo total de presença,
+   contagem de aparições, janela temporal e status de processamento.
+   Registrado antes da rota genérica /videos/{video_id} para evitar
+   ambiguidade de roteamento.
+
+2. Página VideoDetail (/videos/:id) (v1.5.7)
+   Tela com cabeçalho (status, data de upload, exportação CSV), 4 cards
+   de resumo, lista de pessoas identificadas com foto, categoria e janela
+   de presença, e timeline de aparições colapsável. Estados especiais:
+   skeleton de carregamento, spinner com auto-refresh a cada 10s enquanto
+   o vídeo está Pendente/Processando, estado vazio com dica sobre
+   FACE_RECOGNITION_TOLERANCE, e tela de erro com "Tentar novamente".
+
+3. Navegação cruzada Dashboard → VideoDetail (v1.5.8)
+   Linhas da tabela "Vídeos recentes" tornam-se clicáveis (cursor-pointer,
+   hover destacado, ícone ChevronRight), navegando para /videos/{id}.
+   O botão de exportação usa stopPropagation para não disparar a
+   navegação da linha.
+
+4. Navegação cruzada PersonDetail → VideoDetail (v1.5.9)
+   Na timeline de aparições do perfil de pessoa, o nome do vídeo
+   torna-se um link clicável (ícone ExternalLink, hover:underline)
+   que navega para /videos/{video_id}, fechando o ciclo de navegação
+   entre pessoas e vídeos.
+
+================================================================
 CONTATO E REPOSITÓRIO
 ================================================================
 Desenvolvido por: Pietro Vinicius Lima
