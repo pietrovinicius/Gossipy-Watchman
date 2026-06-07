@@ -251,3 +251,18 @@ Consolidação dos fragmentos `v1.28` a `v1.64` (Sprints 8, 9, 10 e 11).
 
 ### Corrigido
 - `app/main.py` — Corrige ordem de inicialização no lifespan: `init_db()` passa a ser executado antes das migrações (`migration_v1_13`, etc.) para evitar erro `OperationalError (no such table: people)` em bancos de dados novos/vazios.
+
+---
+
+## [1.7.0] — 2026-06-07
+
+### Adicionado
+- **Clusterização de Desconhecidos (Re-identificação Assistida)**:
+  - `app/models/cluster.py` — Novos modelos `ClusterGroup` e `ClusterSuggestion` relacionando pessoas desconhecidas semelhantes.
+  - `app/db/migrations/migration_v1_40.py` — Nova migração para tabelas e índices de clusterização.
+  - `app/schemas/cluster.py` — Schemas de resposta Pydantic para grupos e sugestões.
+  - `app/services/cluster_service.py` — Algoritmo de clusterização DBSCAN simplificado usando distância Euclidiana e o threshold `FACE_RECOGNITION_TOLERANCE`.
+  - `app/api/v1/people.py` — Endpoints `POST /people/clusterize` em background e `GET /people/clusters`.
+  - `app/services/person_service.py` — Integração com o endpoint de merge da Sprint 6 para atualizar o status do grupo de cluster correspondente para "Aceito".
+  - `tests/unit/test_cluster_service.py` e `tests/integration/test_cluster.py` — Suite de testes cobrindo clusterização correta, isolamento de perfis conhecidos e descarte de ruído.
+

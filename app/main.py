@@ -10,6 +10,7 @@ from app.db import init_db
 from app.db.migrations.migration_v1_13 import run as migration_v1_13
 from app.db.migrations.migration_v1_20 import run as migration_v1_20
 from app.db.migrations.migration_v1_30 import run as migration_v1_30
+from app.db.migrations.migration_v1_40 import run as migration_v1_40
 from app.api.v1.auth import router as auth_router
 from app.api.v1.export import router as export_router
 from app.api.v1.faces import router as faces_router
@@ -30,6 +31,7 @@ async def lifespan(app: FastAPI):
     migration_v1_13()
     migration_v1_20()
     migration_v1_30()
+    migration_v1_40()
     ws_manager.set_loop(asyncio.get_event_loop())
     yield
 

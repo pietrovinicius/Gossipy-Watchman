@@ -332,6 +332,18 @@ def merge_people(
 
         db.delete(secondary)
 
+    # Resolve cluster suggestions containing secondary_ids
+    from app.models.cluster import ClusterGroup, ClusterSuggestion
+    suggestions = db.query(ClusterSuggestion).filter(
+        ClusterSuggestion.person_id.in_(secondary_ids),
+        ClusterSuggestion.deleted_at.is_(None)
+    ).all()
+    for sug in suggestions:
+        group = db.get(ClusterGroup, sug.group_id)
+        if group and group.status == "Pendente":
+            group.status = "Aceito"
+            logger.info("merge_people: cluster_group %s resolvido como Aceito", group.id)
+
     db.commit()
     db.refresh(primary)
     return primary

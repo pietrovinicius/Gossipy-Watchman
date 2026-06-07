@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.core.settings import settings
@@ -12,7 +12,8 @@ from app.schemas.person import (
     PrimaryPhotoRequest,
     ProfileQualityResponse,
 )
-from app.services import person_service
+from app.services import person_service, cluster_service
+from app.schemas.cluster import ClusterGroupResponse
 from app.services.auth_service import get_current_user
 
 router = APIRouter()
@@ -27,6 +28,25 @@ def list_people(
     _current_user: dict = Depends(get_current_user),
 ) -> list[PersonResponse]:
     return person_service.list_people(db, skip=skip, limit=limit, include_deleted=include_deleted)
+
+
+@router.post("/people/clusterize", status_code=202)
+def clusterize_people(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
+):
+    background_tasks.add_task(cluster_service.run_clusterization, db)
+    return {"status": "iniciado", "task_id": "clusterization_job"}
+
+
+@router.get("/people/clusters", response_model=list[ClusterGroupResponse])
+def get_clusters(
+    db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
+) -> list[ClusterGroupResponse]:
+    groups = cluster_service.get_clusters(db)
+    return [ClusterGroupResponse.model_validate(g) for g in groups]
 
 
 # CRITICAL: /people/merge, /people/{id}/restore MUST precede /people/{person_id}
