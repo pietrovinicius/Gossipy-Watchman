@@ -332,3 +332,20 @@ async def test_restore_person_resets_deleted_at(client, auth_headers, test_engin
     assert response.status_code == 200
     data = response.json()
     assert data["deleted_at"] is None
+
+
+# ── reset-name ────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_reset_person_name_returns_desconhecido_pattern(client, auth_headers, test_engine):
+    pid = seed_person(test_engine, "Fulano da Silva")
+    response = await client.post(f"/api/v1/people/{pid}/reset-name", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["name"] == f"Desconhecido #{pid}"
+
+
+@pytest.mark.asyncio
+async def test_reset_person_name_unknown_id_returns_404(client, auth_headers):
+    response = await client.post("/api/v1/people/9999/reset-name", headers=auth_headers)
+    assert response.status_code == 404

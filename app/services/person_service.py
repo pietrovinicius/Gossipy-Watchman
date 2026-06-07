@@ -172,6 +172,16 @@ def restore_person(db: Session, person_id: int) -> Person | None:
     return person
 
 
+def reset_person_name(db: Session, person_id: int) -> Person | None:
+    person = db.get(Person, person_id)
+    if person is None:
+        return None
+    person.name = f"Desconhecido #{person.id}"
+    db.commit()
+    db.refresh(person)
+    return person
+
+
 def update_person_name(db: Session, person_id: int, name: str) -> Person | None:
     person = db.get(Person, person_id)
     if person is None:

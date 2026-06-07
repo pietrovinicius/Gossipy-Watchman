@@ -43,6 +43,18 @@ def restore_person(
     return PersonResponse.model_validate(person)
 
 
+@router.post("/people/{person_id}/reset-name", response_model=PersonResponse)
+def reset_person_name(
+    person_id: int,
+    db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
+) -> PersonResponse:
+    person = person_service.reset_person_name(db, person_id)
+    if person is None:
+        raise HTTPException(status_code=404, detail="Pessoa não encontrada")
+    return PersonResponse.model_validate(person)
+
+
 @router.delete("/people/{person_id}", response_model=PersonResponse)
 def delete_person(
     person_id: int,

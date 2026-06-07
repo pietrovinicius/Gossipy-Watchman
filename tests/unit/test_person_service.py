@@ -708,3 +708,38 @@ def test_list_people_include_deleted_returns_all(db_session):
     ids = [p.id for p in result]
     assert p1.id in ids
     assert p2.id in ids
+
+
+# ── reset_person_name ─────────────────────────────────────────────────────────
+
+def test_reset_person_name_sets_desconhecido_pattern(db_session):
+    from app.services.person_service import reset_person_name
+
+    p = Person(name="Fulano da Silva")
+    db_session.add(p)
+    db_session.commit()
+
+    result = reset_person_name(db_session, p.id)
+
+    assert result is not None
+    assert result.name == f"Desconhecido #{p.id}"
+
+
+def test_reset_person_name_returns_none_for_unknown_id(db_session):
+    from app.services.person_service import reset_person_name
+
+    assert reset_person_name(db_session, 9999) is None
+
+
+def test_reset_person_name_persists_change(db_session):
+    from app.services.person_service import reset_person_name
+
+    p = Person(name="Fulano da Silva")
+    db_session.add(p)
+    db_session.commit()
+    pid = p.id
+
+    reset_person_name(db_session, pid)
+
+    reloaded = db_session.get(Person, pid)
+    assert reloaded.name == f"Desconhecido #{pid}"
