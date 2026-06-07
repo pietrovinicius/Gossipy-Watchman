@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Upload,
+  Film,
   Users,
   Bell,
   BarChart2,
@@ -78,6 +79,7 @@ export default function Layout({ children }) {
   const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/upload',    label: 'Upload',     icon: Upload },
+    { to: '/videos',    label: 'Vídeos',     icon: Film },
     { to: '/people',   label: 'Pessoas',    icon: Users },
     { to: '/alerts',    label: 'Alertas',   icon: Bell, badge: unseenCount },
     { to: '/analytics', label: 'Analytics',  icon: BarChart2 },

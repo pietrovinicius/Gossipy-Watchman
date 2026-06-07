@@ -7,6 +7,7 @@ import { lazy, Suspense } from 'react'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const VideoDetail = lazy(() => import('./pages/VideoDetail'))
+const VideosCatalog = lazy(() => import('./pages/VideosCatalog'))
 const Upload = lazy(() => import('./pages/Upload'))
 const People = lazy(() => import('./pages/People'))
 const PersonDetail = lazy(() => import('./pages/PersonDetail'))
@@ -30,6 +31,7 @@ function Protected({ children }) {
 const router = createBrowserRouter([
   { path: '/', element: <Login /> },
   { path: '/dashboard', element: <Protected><Dashboard /></Protected> },
+  { path: '/videos', element: <Protected><VideosCatalog /></Protected> },
   { path: '/videos/:id', element: <Protected><VideoDetail /></Protected> },
   { path: '/upload', element: <Protected><Upload /></Protected> },
   { path: '/people', element: <Protected><People /></Protected> },
