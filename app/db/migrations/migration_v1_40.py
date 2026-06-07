@@ -54,7 +54,7 @@ def run(engine: Engine | None = None) -> None:
         else:
             logger.info("migration_v1_40: tabela cluster_suggestions já existe, ignorando")
 
-        # 3. Índices
+        # 3. Índices para clustering
         conn.execute(text(
             "CREATE INDEX IF NOT EXISTS idx_cluster_groups_status ON cluster_groups(status) WHERE deleted_at IS NULL"
         ))
@@ -65,6 +65,39 @@ def run(engine: Engine | None = None) -> None:
             "CREATE INDEX IF NOT EXISTS idx_cluster_suggestions_person ON cluster_suggestions(person_id) WHERE deleted_at IS NULL"
         ))
         logger.info("migration_v1_40: índices de clusterização garantidos")
+
+        # 4. Criar tabela employees (cadastro prévio de funcionários)
+        exists_employees = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='employees'")
+        ).fetchone()
+
+        if not exists_employees:
+            conn.execute(text("""
+                CREATE TABLE employees (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name VARCHAR(200) NOT NULL,
+                    registration VARCHAR(100) NOT NULL UNIQUE,
+                    department VARCHAR(100),
+                    role VARCHAR(100),
+                    photo_path VARCHAR(500),
+                    embedding_path VARCHAR(500),
+                    person_id INTEGER REFERENCES people(id),
+                    active INTEGER NOT NULL DEFAULT 1,
+                    notes TEXT,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            logger.info("migration_v1_40: tabela employees criada")
+        else:
+            logger.info("migration_v1_40: tabela employees já existe, ignorando")
+
+        # 5. Índice único em registration
+        conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_registration ON employees(registration)"
+        ))
+        logger.info("migration_v1_40: índice employees.registration garantido")
+
         conn.commit()
 
     if _owns:
