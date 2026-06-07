@@ -244,3 +244,10 @@ Consolidação dos fragmentos `v1.28` a `v1.64` (Sprints 8, 9, 10 e 11).
 
 ### Infraestrutura
 - `Documentos/Cronograma de Sprints - Gossipy Watchman.docx`: seções de planejamento das Sprints 8, 9, 10 e 11 adicionadas
+
+---
+
+## [1.6.5] — 2026-06-07
+
+### Corrigido
+- `app/main.py` — Corrige ordem de inicialização no lifespan: `init_db()` passa a ser executado antes das migrações (`migration_v1_13`, etc.) para evitar erro `OperationalError (no such table: people)` em bancos de dados novos/vazios.

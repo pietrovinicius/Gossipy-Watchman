@@ -26,10 +26,10 @@ from app.api.v1.ws import router as ws_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    init_db()
     migration_v1_13()
     migration_v1_20()
     migration_v1_30()
-    init_db()
     ws_manager.set_loop(asyncio.get_event_loop())
     yield
 
