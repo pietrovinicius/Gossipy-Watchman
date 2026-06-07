@@ -54,6 +54,15 @@ class PrimaryPhotoRequest(BaseModel):
         return v
 
 
+class ProfileQualityResponse(BaseModel):
+    avg_confidence: float
+    sample_count: int
+    quality_score: float
+    quality_level: str
+    color: str
+    recommendation: str
+
+
 class MergeRequest(BaseModel):
     primary_id: int
     secondary_ids: list[int]

@@ -216,6 +216,55 @@ def get_person_stats(db: Session, person_id: int) -> dict:
     }
 
 
+_QUALITY_BANDS = (
+    # (limite mínimo de score, nível, cor, recomendação)
+    (60.0, "excelente", "green", "Perfil com amostras de alta confiança. Nenhuma ação necessária."),
+    (48.0, "bom", "green", "Perfil com boa confiança. Considere adicionar mais amostras em ângulos variados para reforçar."),
+    (44.0, "regular", "yellow", "Confiança mediana nas identificações. Recomenda-se revisar e definir uma foto principal mais nítida."),
+    (40.0, "insuficiente", "yellow", "Confiança baixa nas identificações. Adicione amostras mais nítidas e revise possíveis confusões com outras pessoas."),
+    (float("-inf"), "fraco", "red", "Confiança muito baixa. Recomenda-se revisar manualmente e considerar recadastrar esta pessoa."),
+)
+
+
+def get_profile_quality(db: Session, person_id: int) -> dict:
+    """Avalia a qualidade do perfil a partir da confiança média dos reconhecimentos.
+
+    confidence é distância euclidiana (menor = mais confiante), portanto
+    quality_score = (1 - avg_confidence) * 100 cresce conforme a confiança aumenta.
+    """
+    person = db.get(Person, person_id)
+    if person is None:
+        raise HTTPException(status_code=404, detail="Pessoa não encontrada")
+
+    appearances = db.query(Appearance).filter(Appearance.person_id == person_id).all()
+    sample_count = len(appearances)
+
+    if sample_count == 0:
+        avg_confidence = 0.0
+        quality_score = 0.0
+    else:
+        avg_confidence = round(sum(a.confidence for a in appearances) / sample_count, 4)
+        quality_score = round((1 - avg_confidence) * 100, 1)
+
+    for min_score, level, color, recommendation in _QUALITY_BANDS:
+        if sample_count > 0 and quality_score > min_score:
+            quality_level, quality_color, quality_recommendation = level, color, recommendation
+            break
+    else:
+        quality_level, quality_color, quality_recommendation = (
+            "insuficiente", "red", "Sem amostras suficientes para avaliar a qualidade do perfil. Aguarde novos reconhecimentos ou adicione fotos manualmente."
+        )
+
+    return {
+        "avg_confidence": avg_confidence,
+        "sample_count": sample_count,
+        "quality_score": quality_score,
+        "quality_level": quality_level,
+        "color": quality_color,
+        "recommendation": quality_recommendation,
+    }
+
+
 def merge_people(
     db: Session,
     primary_id: int,

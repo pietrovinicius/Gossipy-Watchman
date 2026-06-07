@@ -218,6 +218,26 @@ async def test_patch_primary_photo_other_persons_file_returns_403(client, auth_h
 
 
 @pytest.mark.asyncio
+async def test_get_person_quality_returns_correct_structure(client, auth_headers, test_engine):
+    pid = seed_person(test_engine, "Qualidade")
+    response = await client.get(f"/api/v1/people/{pid}/quality", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert set(data.keys()) == {
+        "avg_confidence", "sample_count", "quality_score",
+        "quality_level", "color", "recommendation",
+    }
+    assert data["sample_count"] == 0
+    assert data["quality_level"] == "insuficiente"
+
+
+@pytest.mark.asyncio
+async def test_get_person_quality_not_found(client, auth_headers):
+    response = await client.get("/api/v1/people/9999/quality", headers=auth_headers)
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_merge_people_returns_primary(client, auth_headers, test_engine):
     p1_id = seed_person(test_engine, "Principal")
     p2_id = seed_person(test_engine, "Secundário")

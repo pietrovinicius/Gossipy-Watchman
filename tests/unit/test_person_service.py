@@ -426,6 +426,137 @@ def test_set_primary_photo_copies_and_updates_profile_image_path(db_session, tmp
     assert result.profile_image_path == str(primary_path)
 
 
+# ── get_profile_quality ───────────────────────────────────────────────────────
+
+def _seed_appearances_with_confidences(db_session, confidences):
+    from datetime import datetime, timezone
+    from app.models.video import Video, VideoStatus
+    from app.models.appearance import Appearance
+
+    person = Person(name="Avaliada")
+    db_session.add(person)
+    video = Video(file_name="q.mp4", file_path="storage/videos/q.mp4",
+                  status=VideoStatus.CONCLUIDO, uploaded_at=datetime(2026, 6, 1, tzinfo=timezone.utc))
+    db_session.add(video)
+    db_session.commit()
+
+    for i, conf in enumerate(confidences):
+        db_session.add(Appearance(person_id=person.id, video_id=video.id,
+                                  timestamp_start=float(i), timestamp_end=float(i) + 1, confidence=conf))
+    db_session.commit()
+    return person
+
+
+def test_profile_quality_excelente_for_low_avg_confidence(db_session):
+    from app.services.person_service import get_profile_quality
+
+    person = _seed_appearances_with_confidences(db_session, [0.3, 0.3])
+    quality = get_profile_quality(db_session, person.id)
+
+    assert quality["avg_confidence"] == pytest.approx(0.3)
+    assert quality["quality_score"] == pytest.approx(70.0)
+    assert quality["quality_level"] == "excelente"
+    assert quality["color"] == "green"
+
+
+def test_profile_quality_bom_for_mid_avg_confidence(db_session):
+    from app.services.person_service import get_profile_quality
+
+    person = _seed_appearances_with_confidences(db_session, [0.5, 0.5])
+    quality = get_profile_quality(db_session, person.id)
+
+    assert quality["quality_score"] == pytest.approx(50.0)
+    assert quality["quality_level"] == "bom"
+    assert quality["color"] == "green"
+
+
+def test_profile_quality_regular_for_borderline_avg_confidence(db_session):
+    from app.services.person_service import get_profile_quality
+
+    person = _seed_appearances_with_confidences(db_session, [0.55, 0.55])
+    quality = get_profile_quality(db_session, person.id)
+
+    assert quality["quality_score"] == pytest.approx(45.0)
+    assert quality["quality_level"] == "regular"
+    assert quality["color"] == "yellow"
+
+
+def test_profile_quality_insuficiente_for_high_avg_confidence(db_session):
+    from app.services.person_service import get_profile_quality
+
+    person = _seed_appearances_with_confidences(db_session, [0.58, 0.58])
+    quality = get_profile_quality(db_session, person.id)
+
+    assert quality["quality_score"] == pytest.approx(42.0)
+    assert quality["quality_level"] == "insuficiente"
+    assert quality["color"] == "yellow"
+
+
+def test_profile_quality_fraco_for_very_high_avg_confidence(db_session):
+    from app.services.person_service import get_profile_quality
+
+    person = _seed_appearances_with_confidences(db_session, [0.7, 0.7])
+    quality = get_profile_quality(db_session, person.id)
+
+    assert quality["quality_score"] == pytest.approx(30.0)
+    assert quality["quality_level"] == "fraco"
+    assert quality["color"] == "red"
+
+
+def test_profile_quality_sample_count_matches_appearance_count(db_session):
+    from app.services.person_service import get_profile_quality
+
+    person = _seed_appearances_with_confidences(db_session, [0.3, 0.4, 0.5])
+    quality = get_profile_quality(db_session, person.id)
+
+    assert quality["sample_count"] == 3
+    assert quality["avg_confidence"] == pytest.approx(0.4)
+
+
+def test_profile_quality_handles_person_without_appearances(db_session):
+    from app.services.person_service import get_profile_quality
+
+    person = Person(name="Sem Histórico")
+    db_session.add(person)
+    db_session.commit()
+
+    quality = get_profile_quality(db_session, person.id)
+
+    assert quality["sample_count"] == 0
+    assert quality["avg_confidence"] == pytest.approx(0.0)
+    assert quality["quality_score"] == pytest.approx(0.0)
+    assert quality["quality_level"] == "insuficiente"
+    assert quality["color"] == "red"
+
+
+def test_profile_quality_recommendation_is_non_empty_for_every_level(db_session):
+    from app.services.person_service import get_profile_quality
+
+    for confidences in ([0.3, 0.3], [0.5, 0.5], [0.55, 0.55], [0.58, 0.58], [0.7, 0.7]):
+        person = _seed_appearances_with_confidences(db_session, confidences)
+        quality = get_profile_quality(db_session, person.id)
+        assert isinstance(quality["recommendation"], str)
+        assert quality["recommendation"].strip() != ""
+
+
+def test_profile_quality_score_rounded_to_one_decimal(db_session):
+    from app.services.person_service import get_profile_quality
+
+    person = _seed_appearances_with_confidences(db_session, [0.333, 0.334, 0.335])
+    quality = get_profile_quality(db_session, person.id)
+
+    assert quality["quality_score"] == round((1 - quality["avg_confidence"]) * 100, 1)
+
+
+def test_profile_quality_raises_404_for_unknown_person(db_session):
+    from fastapi import HTTPException
+    from app.services.person_service import get_profile_quality
+
+    with pytest.raises(HTTPException) as exc:
+        get_profile_quality(db_session, 9999)
+    assert exc.value.status_code == 404
+
+
 # ── merge_people ──────────────────────────────────────────────────────────────
 
 def test_merge_people_reassociates_appearances(db_session):

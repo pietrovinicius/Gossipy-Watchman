@@ -10,6 +10,7 @@ from app.schemas.person import (
     PersonStatsResponse,
     PersonUpdate,
     PrimaryPhotoRequest,
+    ProfileQualityResponse,
 )
 from app.services import person_service
 from app.services.auth_service import get_current_user
@@ -82,6 +83,16 @@ def get_person_frames(
         )
         for item in samples
     ]
+
+
+@router.get("/people/{person_id}/quality", response_model=ProfileQualityResponse)
+def get_person_quality(
+    person_id: int,
+    db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
+) -> ProfileQualityResponse:
+    quality = person_service.get_profile_quality(db, person_id)
+    return ProfileQualityResponse(**quality)
 
 
 @router.patch("/people/{person_id}/primary-photo", response_model=PersonResponse)
