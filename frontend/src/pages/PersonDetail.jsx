@@ -3,6 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, UserCircle, Pencil, Check, X, AlertCircle, Download, Loader2 } from 'lucide-react'
 import Layout from '../components/Layout'
 import CategoryBadge from '../components/CategoryBadge'
+import PhotoModal from '../components/PhotoModal'
+import PersonFrames from '../components/PersonFrames'
+import ProfileQuality from '../components/ProfileQuality'
 import api from '../services/api'
 import { useAuthImage } from '../hooks/useAuthImage'
 import { sanitizeFileName } from '../utils/sanitizeFileName'
@@ -45,6 +48,7 @@ export default function PersonDetail() {
   const [savingMeta, setSavingMeta] = useState(false)
   const [exportLoading, setExportLoading] = useState(false)
   const [exportErr, setExportErr] = useState('')
+  const [photoModalOpen, setPhotoModalOpen] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -166,7 +170,15 @@ export default function PersonDetail() {
         ) : (
           <div className="card flex items-start gap-6">
             {/* Avatar */}
-            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-surface border border-border flex-shrink-0">
+            <button
+              onClick={() => imgSrc && setPhotoModalOpen(true)}
+              aria-label={imgSrc ? `Ampliar foto de ${person.name}` : 'Sem foto de perfil'}
+              disabled={!imgSrc}
+              className="w-20 h-20 rounded-2xl overflow-hidden bg-surface border border-border flex-shrink-0
+                         transition-all duration-200 enabled:cursor-pointer enabled:hover:ring-2
+                         enabled:hover:ring-primary enabled:hover:ring-offset-2 enabled:hover:ring-offset-bg
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
               {imgSrc ? (
                 <img src={imgSrc} alt={`Foto de ${person.name}`} className="w-full h-full object-cover" />
               ) : (
@@ -174,7 +186,14 @@ export default function PersonDetail() {
                   <UserCircle className="w-10 h-10 text-text-muted" aria-hidden="true" />
                 </div>
               )}
-            </div>
+            </button>
+
+            <PhotoModal
+              isOpen={photoModalOpen}
+              onClose={() => setPhotoModalOpen(false)}
+              src={imgSrc}
+              alt={`Foto de ${person.name}`}
+            />
 
             {/* Name + meta */}
             <div className="flex-1 min-w-0 space-y-3">
@@ -291,6 +310,12 @@ export default function PersonDetail() {
             ))}
           </div>
         )}
+
+        {/* Qualidade do perfil */}
+        {person && <ProfileQuality personId={id} />}
+
+        {/* Galeria de frames detectados */}
+        {person && <PersonFrames personId={id} />}
 
         {/* Timeline */}
         <div className="card p-0 overflow-hidden">
