@@ -22,6 +22,7 @@ from app.api.v1.timeline import router as timeline_router
 from app.api.v1.alerts import router as alerts_router
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.search import router as search_router
+from app.api.v1.employees import router as employees_router
 from app.api.v1.ws import router as ws_router
 
 
@@ -77,6 +78,7 @@ app.include_router(upload_router, prefix=settings.API_V1_PREFIX)
 app.include_router(videos_router, prefix=settings.API_V1_PREFIX)
 app.include_router(people_router, prefix=settings.API_V1_PREFIX)
 app.include_router(timeline_router, prefix=settings.API_V1_PREFIX)
+app.include_router(employees_router, prefix=settings.API_V1_PREFIX)
 app.include_router(faces_router, prefix=settings.API_V1_PREFIX)
 app.include_router(alerts_router, prefix=settings.API_V1_PREFIX)
 app.include_router(analytics_router, prefix=settings.API_V1_PREFIX)
