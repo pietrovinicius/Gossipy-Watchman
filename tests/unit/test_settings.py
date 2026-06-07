@@ -26,7 +26,7 @@ def test_face_recognition_tolerance_default():
 
 def test_frames_per_second_sample_default():
     from app.core.settings import settings
-    assert settings.FRAMES_PER_SECOND_SAMPLE == 1
+    assert settings.FRAMES_PER_SECOND_SAMPLE == 2
     assert isinstance(settings.FRAMES_PER_SECOND_SAMPLE, int)
 
 
@@ -66,7 +66,7 @@ def test_admin_username_default():
 
 def test_max_upload_size_mb_default():
     from app.core.settings import settings
-    assert settings.MAX_UPLOAD_SIZE_MB == 500
+    assert settings.MAX_UPLOAD_SIZE_MB == 5120
 
 
 def test_max_upload_size_bytes_calculated():
