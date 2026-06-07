@@ -25,7 +25,7 @@ class Settings(BaseSettings):
 
     # App
     APP_NAME: str = "Gossipy Watchman"
-    APP_VERSION: str = "1.3.0"
+    APP_VERSION: str = "1.4.0"
     API_V1_PREFIX: str = "/api/v1"
     DOCS_ENABLED: bool = True
 

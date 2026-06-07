@@ -1,6 +1,6 @@
 ================================================================
 GOSSIPY WATCHMAN — ANOTAÇÕES E GUIA DE INICIALIZAÇÃO
-Versão: 1.3.0
+Versão: 1.4.0
 Última atualização: 2026-06-06
 ================================================================
 
@@ -205,7 +205,7 @@ RODAR OS TESTES
     pytest tests\integration\
     pytest -v --tb=short
 
-  Total esperado: 125 testes passando
+  Total esperado: 220 testes passando (pytest) + 58 vitest
 
 
 ================================================================
@@ -303,9 +303,22 @@ GET    | /videos/{id}                  | JWT  | Buscar vídeo por ID com status 
 GET    | /videos/{id}/status           | JWT  | Consultar status de processamento do vídeo
 GET    | /people                       | JWT  | Listar todas as pessoas identificadas
 GET    | /people/{id}                  | JWT  | Buscar pessoa por ID
-PATCH  | /people/{id}                  | JWT  | Renomear pessoa (body: {"name": "..."})
+PATCH  | /people/{id}                  | JWT  | Renomear/atualizar pessoa (name, notes, category)
+POST   | /people/merge                 | JWT  | Mesclar perfis duplicados
 GET    | /people/{id}/timeline         | JWT  | Timeline de aparições da pessoa em vídeos
 GET    | /faces/{filename}             | JWT  | Servir imagem de recorte facial (ex: 1.jpg)
+GET    | /export/people                | JWT  | Exportar pessoas como CSV (StreamingResponse)
+GET    | /export/timeline              | JWT  | Exportar timeline como CSV (StreamingResponse)
+GET    | /alerts                       | JWT  | Listar alertas (unseen_only, skip, limit)
+GET    | /alerts/count                 | JWT  | Contagem de alertas não vistos
+PATCH  | /alerts/seen                  | JWT  | Marcar alertas como vistos ({alert_ids: [...]})
+POST   | /search/by-face               | JWT  | Busca por similaridade facial (multipart JPEG/PNG)
+GET    | /analytics/overview           | JWT  | Totais de vídeos/pessoas/aparições
+GET    | /analytics/activity-timeline  | JWT  | Upload de vídeos por data (days param)
+GET    | /analytics/top-people         | JWT  | Top pessoas por aparições (limit param)
+GET    | /analytics/appearances-per-video | JWT | Aparições por vídeo DESC
+WS     | /ws/video/{id}?token=JWT      | JWT  | WebSocket: progresso de processamento do vídeo
+WS     | /ws/global?token=JWT          | JWT  | WebSocket: eventos globais (status, watchlist_alert)
 
 Documentação interativa (apenas com DOCS_ENABLED=true no .env):
   http://localhost:8000/docs     — Swagger UI
@@ -418,6 +431,18 @@ DECISÕES TÉCNICAS RELEVANTES
    O endpoint GET /export/timeline usa csv.DictWriter + io.StringIO
    da stdlib, sem dependências externas. Retorna StreamingResponse com
    media_type="text/csv" e Content-Disposition: attachment.
+
+9. Busca por similaridade carrega embeddings do disco a cada request (v1.32)
+   search_by_face() chama get_all_embeddings() — recarrega todos os .npy
+   do storage/faces a cada requisição. Custo deliberadamente exposto via
+   query_time_ms no response. Com poucos perfis é imperceptível; evolução
+   futura natural seria cache de embeddings em memória (ponto de discussão
+   técnica em entrevista).
+
+10. Alerta único por pessoa monitorada por vídeo (v1.31)
+    alerted_in_this_video: set[int] no escopo de process_video evita
+    duplicar alertas quando a mesma pessoa "Monitorado" aparece em
+    múltiplos frames do mesmo vídeo.
 
 
 ================================================================
