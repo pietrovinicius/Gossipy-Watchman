@@ -37,6 +37,12 @@ class PersonStatsResponse(BaseModel):
     last_seen: datetime | None
 
 
+class FaceFrameResponse(BaseModel):
+    filename: str
+    is_primary: bool
+    url: str
+
+
 class MergeRequest(BaseModel):
     primary_id: int
     secondary_ids: list[int]

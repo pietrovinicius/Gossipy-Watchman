@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -47,6 +48,52 @@ def save_new_person(
     db.commit()
 
     return person
+
+
+MAX_FACE_SAMPLES = 10
+
+
+def save_face_sample(
+    db: Session,
+    person_id: int,
+    appearance_id: int,
+    face_crop: np.ndarray,
+) -> str | None:
+    """Salva recorte facial como amostra adicional da pessoa, até MAX_FACE_SAMPLES por pessoa.
+
+    Nunca propaga exceção: falhas de I/O são logadas e retornam None,
+    pois a amostra é um complemento opcional ao fluxo principal do worker.
+    """
+    try:
+        existing = list(settings.STORAGE_FACES.glob(f"{person_id}_sample_*.jpg"))
+        if len(existing) >= MAX_FACE_SAMPLES:
+            return None
+
+        sample_path = settings.STORAGE_FACES / f"{person_id}_sample_{appearance_id}.jpg"
+        cv2.imwrite(str(sample_path), face_crop)
+        return str(sample_path)
+    except Exception:
+        logger.warning("Falha ao salvar amostra facial para pessoa id=%s", person_id, exc_info=True)
+        return None
+
+
+def list_face_samples(db: Session, person_id: int) -> list[dict]:
+    """Lista arquivos de imagem facial da pessoa (foto principal + amostras), marcando a principal."""
+    person = db.get(Person, person_id)
+    primary_filename = (
+        Path(person.profile_image_path).name
+        if person and person.profile_image_path
+        else None
+    )
+
+    files = sorted(settings.STORAGE_FACES.glob(f"{person_id}.jpg")) + sorted(
+        settings.STORAGE_FACES.glob(f"{person_id}_sample_*.jpg")
+    )
+
+    return [
+        {"filename": f.name, "is_primary": f.name == primary_filename}
+        for f in files
+    ]
 
 
 def list_people(db: Session, skip: int = 0, limit: int = 50) -> list[Person]:

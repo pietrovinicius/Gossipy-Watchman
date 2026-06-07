@@ -1,8 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.core.settings import settings
 from app.db.session import get_db
-from app.schemas.person import MergeRequest, PersonResponse, PersonStatsResponse, PersonUpdate
+from app.schemas.person import (
+    FaceFrameResponse,
+    MergeRequest,
+    PersonResponse,
+    PersonStatsResponse,
+    PersonUpdate,
+)
 from app.services import person_service
 from app.services.auth_service import get_current_user
 
@@ -54,6 +61,26 @@ def get_person_stats(
         raise HTTPException(status_code=404, detail="Pessoa não encontrada")
     stats = person_service.get_person_stats(db, person_id)
     return PersonStatsResponse(**stats)
+
+
+@router.get("/people/{person_id}/frames", response_model=list[FaceFrameResponse])
+def get_person_frames(
+    person_id: int,
+    db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
+) -> list[FaceFrameResponse]:
+    person = person_service.get_person_by_id(db, person_id)
+    if person is None:
+        raise HTTPException(status_code=404, detail="Pessoa não encontrada")
+    samples = person_service.list_face_samples(db, person_id)
+    return [
+        FaceFrameResponse(
+            filename=item["filename"],
+            is_primary=item["is_primary"],
+            url=f"{settings.API_V1_PREFIX}/faces/{item['filename']}",
+        )
+        for item in samples
+    ]
 
 
 @router.patch("/people/{person_id}", response_model=PersonResponse)

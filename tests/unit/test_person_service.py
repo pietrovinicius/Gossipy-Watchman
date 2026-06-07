@@ -246,6 +246,111 @@ def test_get_person_stats_ignores_open_appearance_without_timestamp_end(db_sessi
     assert stats["total_seconds"] == pytest.approx(5.0)
 
 
+# ── save_face_sample ──────────────────────────────────────────────────────────
+
+def test_save_face_sample_calls_imwrite_with_correct_path(db_session, tmp_path):
+    from app.services.person_service import save_face_sample
+
+    person = Person(name="Alguém")
+    db_session.add(person)
+    db_session.commit()
+
+    face_crop = np.zeros((64, 64, 3), dtype=np.uint8)
+
+    with patch("app.services.person_service.cv2.imwrite") as mock_imwrite, \
+         patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+        mock_imwrite.return_value = True
+
+        result = save_face_sample(db_session, person.id, appearance_id=42, face_crop=face_crop)
+
+    expected_path = str(tmp_path / f"{person.id}_sample_42.jpg")
+    mock_imwrite.assert_called_once_with(expected_path, face_crop)
+    assert result == expected_path
+
+
+def test_save_face_sample_returns_none_when_limit_reached(db_session, tmp_path):
+    from app.services.person_service import save_face_sample
+
+    person = Person(name="Alguém")
+    db_session.add(person)
+    db_session.commit()
+
+    for i in range(10):
+        (tmp_path / f"{person.id}_sample_{i}.jpg").write_bytes(b"x")
+
+    face_crop = np.zeros((64, 64, 3), dtype=np.uint8)
+
+    with patch("app.services.person_service.cv2.imwrite") as mock_imwrite, \
+         patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+
+        result = save_face_sample(db_session, person.id, appearance_id=99, face_crop=face_crop)
+
+    assert result is None
+    mock_imwrite.assert_not_called()
+
+
+def test_save_face_sample_returns_none_and_does_not_raise_on_error(db_session, tmp_path):
+    from app.services.person_service import save_face_sample
+
+    person = Person(name="Alguém")
+    db_session.add(person)
+    db_session.commit()
+
+    face_crop = np.zeros((64, 64, 3), dtype=np.uint8)
+
+    with patch("app.services.person_service.cv2.imwrite", side_effect=Exception("disco cheio")), \
+         patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+
+        result = save_face_sample(db_session, person.id, appearance_id=7, face_crop=face_crop)
+
+    assert result is None
+
+
+# ── list_face_samples ─────────────────────────────────────────────────────────
+
+def test_list_face_samples_returns_empty_when_no_files(db_session, tmp_path):
+    from app.services.person_service import list_face_samples
+
+    person = Person(name="Sem amostras", profile_image_path=None)
+    db_session.add(person)
+    db_session.commit()
+
+    with patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+        result = list_face_samples(db_session, person.id)
+
+    assert result == []
+
+
+def test_list_face_samples_includes_primary_and_samples(db_session, tmp_path):
+    from app.services.person_service import list_face_samples
+
+    person = Person(name="Com amostras", profile_image_path=None)
+    db_session.add(person)
+    db_session.commit()
+    pid = person.id
+    person.profile_image_path = str(tmp_path / f"{pid}.jpg")
+    db_session.commit()
+
+    (tmp_path / f"{pid}.jpg").write_bytes(b"x")
+    (tmp_path / f"{pid}_sample_10.jpg").write_bytes(b"x")
+    (tmp_path / f"{pid}_sample_11.jpg").write_bytes(b"x")
+    (tmp_path / f"{pid}_embedding.npy").write_bytes(b"x")
+
+    with patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+        result = list_face_samples(db_session, pid)
+
+    filenames = {item["filename"] for item in result}
+    assert filenames == {f"{pid}.jpg", f"{pid}_sample_10.jpg", f"{pid}_sample_11.jpg"}
+    primary = [item for item in result if item["is_primary"]]
+    assert len(primary) == 1
+    assert primary[0]["filename"] == f"{pid}.jpg"
+
+
 # ── merge_people ──────────────────────────────────────────────────────────────
 
 def test_merge_people_reassociates_appearances(db_session):

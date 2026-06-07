@@ -63,13 +63,14 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
                     face_crop = frame
                     person_service.save_new_person(db, embedding, face_crop, person_index=person_counter)
                 else:
-                    appearance_service.upsert_appearance(
+                    appearance = appearance_service.upsert_appearance(
                         db,
                         person_id=person_id,
                         video_id=video_id,
                         timestamp=float(segundo),
                         confidence=distance,
                     )
+                    person_service.save_face_sample(db, person_id, appearance.id, frame)
                     person = db.get(Person, person_id)
                     if person and person.category == PersonCategory.monitorado.value:
                         if person_id not in alerted_in_this_video:
