@@ -626,3 +626,85 @@ def test_merge_people_raises_400_for_self_merge(db_session):
     with pytest.raises(HTTPException) as exc:
         merge_people(db_session, p1.id, [p1.id])
     assert exc.value.status_code == 400
+
+
+# ── soft delete / restore ─────────────────────────────────────────────────────
+
+def test_soft_delete_person_sets_deleted_at(db_session):
+    from app.services.person_service import soft_delete_person
+
+    p = Person(name="Alvo")
+    db_session.add(p)
+    db_session.commit()
+
+    result = soft_delete_person(db_session, p.id)
+
+    assert result is not None
+    assert result.deleted_at is not None
+
+
+def test_soft_delete_person_returns_none_for_unknown_id(db_session):
+    from app.services.person_service import soft_delete_person
+
+    assert soft_delete_person(db_session, 9999) is None
+
+
+def test_soft_delete_person_is_idempotent(db_session):
+    from app.services.person_service import soft_delete_person
+
+    p = Person(name="Alvo")
+    db_session.add(p)
+    db_session.commit()
+
+    first = soft_delete_person(db_session, p.id)
+    second = soft_delete_person(db_session, p.id)
+
+    assert first.deleted_at == second.deleted_at
+
+
+def test_restore_person_clears_deleted_at(db_session):
+    from app.services.person_service import soft_delete_person, restore_person
+
+    p = Person(name="Alvo")
+    db_session.add(p)
+    db_session.commit()
+
+    soft_delete_person(db_session, p.id)
+    restored = restore_person(db_session, p.id)
+
+    assert restored is not None
+    assert restored.deleted_at is None
+
+
+def test_list_people_excludes_deleted_by_default(db_session):
+    from app.services.person_service import soft_delete_person, list_people
+
+    p1 = Person(name="Ativo")
+    p2 = Person(name="Removido")
+    db_session.add_all([p1, p2])
+    db_session.commit()
+
+    soft_delete_person(db_session, p2.id)
+
+    result = list_people(db_session)
+
+    ids = [p.id for p in result]
+    assert p1.id in ids
+    assert p2.id not in ids
+
+
+def test_list_people_include_deleted_returns_all(db_session):
+    from app.services.person_service import soft_delete_person, list_people
+
+    p1 = Person(name="Ativo")
+    p2 = Person(name="Removido")
+    db_session.add_all([p1, p2])
+    db_session.commit()
+
+    soft_delete_person(db_session, p2.id)
+
+    result = list_people(db_session, include_deleted=True)
+
+    ids = [p.id for p in result]
+    assert p1.id in ids
+    assert p2.id in ids

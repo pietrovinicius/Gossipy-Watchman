@@ -272,3 +272,63 @@ async def test_merge_people_self_merge_returns_422(client, auth_headers, test_en
         headers=auth_headers,
     )
     assert response.status_code == 422
+
+
+# ── soft delete / restore ─────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_delete_person_without_token_returns_401(client, test_engine):
+    pid = seed_person(test_engine, "Sem Token")
+    response = await client.delete(f"/api/v1/people/{pid}")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_delete_person_returns_200_with_deleted_at(client, auth_headers, test_engine):
+    pid = seed_person(test_engine, "Para Excluir")
+    response = await client.delete(f"/api/v1/people/{pid}", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == pid
+    assert data["deleted_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_delete_person_unknown_id_returns_404(client, auth_headers):
+    response = await client.delete("/api/v1/people/9999", headers=auth_headers)
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_list_people_excludes_deleted_by_default(client, auth_headers, test_engine):
+    p1 = seed_person(test_engine, "Ativo")
+    p2 = seed_person(test_engine, "Removido")
+    await client.delete(f"/api/v1/people/{p2}", headers=auth_headers)
+
+    response = await client.get("/api/v1/people", headers=auth_headers)
+    ids = [item["id"] for item in response.json()]
+    assert p1 in ids
+    assert p2 not in ids
+
+
+@pytest.mark.asyncio
+async def test_list_people_include_deleted_true_returns_all(client, auth_headers, test_engine):
+    p1 = seed_person(test_engine, "Ativo")
+    p2 = seed_person(test_engine, "Removido")
+    await client.delete(f"/api/v1/people/{p2}", headers=auth_headers)
+
+    response = await client.get("/api/v1/people?include_deleted=true", headers=auth_headers)
+    ids = [item["id"] for item in response.json()]
+    assert p1 in ids
+    assert p2 in ids
+
+
+@pytest.mark.asyncio
+async def test_restore_person_resets_deleted_at(client, auth_headers, test_engine):
+    pid = seed_person(test_engine, "Para Restaurar")
+    await client.delete(f"/api/v1/people/{pid}", headers=auth_headers)
+
+    response = await client.post(f"/api/v1/people/{pid}/restore", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["deleted_at"] is None

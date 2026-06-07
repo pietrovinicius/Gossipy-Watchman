@@ -132,9 +132,14 @@ def set_primary_photo(db: Session, person_id: int, source_filename: str) -> Pers
     return person
 
 
-def list_people(db: Session, skip: int = 0, limit: int = 50) -> list[Person]:
+def list_people(
+    db: Session, skip: int = 0, limit: int = 50, include_deleted: bool = False
+) -> list[Person]:
+    query = db.query(Person)
+    if not include_deleted:
+        query = query.filter(Person.deleted_at.is_(None))
     return (
-        db.query(Person)
+        query
         .order_by(Person.created_at.desc())
         .offset(skip)
         .limit(limit)
@@ -144,6 +149,27 @@ def list_people(db: Session, skip: int = 0, limit: int = 50) -> list[Person]:
 
 def get_person_by_id(db: Session, person_id: int) -> Person | None:
     return db.get(Person, person_id)
+
+
+def soft_delete_person(db: Session, person_id: int) -> Person | None:
+    person = db.get(Person, person_id)
+    if person is None:
+        return None
+    if person.deleted_at is None:
+        person.deleted_at = datetime.utcnow()
+        db.commit()
+        db.refresh(person)
+    return person
+
+
+def restore_person(db: Session, person_id: int) -> Person | None:
+    person = db.get(Person, person_id)
+    if person is None:
+        return None
+    person.deleted_at = None
+    db.commit()
+    db.refresh(person)
+    return person
 
 
 def update_person_name(db: Session, person_id: int, name: str) -> Person | None:
