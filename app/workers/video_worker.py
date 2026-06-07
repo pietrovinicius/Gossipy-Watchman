@@ -12,8 +12,44 @@ from app.core.ws_manager import ws_manager
 from app.models.person import Person, PersonCategory
 from app.models.video import Video, VideoStatus
 from app.services import alert_service, face_service, frame_service, person_service, appearance_service
+from app.services.conversion_service import get_video_duration_seconds
 
 logger = logging.getLogger(__name__)
+
+
+def get_adaptive_params(video_path: Path) -> dict:
+    """Retorna parâmetros CNN otimizados por duração."""
+    duration = get_video_duration_seconds(video_path)
+
+    if duration is None:
+        return {
+            "model": settings.FACE_DETECTION_MODEL,
+            "upsample": settings.FACE_UPSAMPLE,
+            "fps_sample": settings.FRAMES_PER_SECOND_SAMPLE,
+            "duration": None,
+            "mode": "padrão (ffprobe indisponível)"
+        }
+
+    if duration <= settings.CNN_ADAPTIVE_SHORT_MAX:
+        mode = f"preciso (vídeo curto: {duration:.0f}s)"
+        upsample = settings.CNN_SHORT_UPSAMPLE
+        fps_sample = settings.CNN_SHORT_FPS_SAMPLE
+    elif duration <= settings.CNN_ADAPTIVE_MEDIUM_MAX:
+        mode = f"equilibrado (vídeo médio: {duration/60:.1f}min)"
+        upsample = settings.CNN_MEDIUM_UPSAMPLE
+        fps_sample = settings.CNN_MEDIUM_FPS_SAMPLE
+    else:
+        mode = f"eficiente (vídeo longo: {duration/3600:.1f}h)"
+        upsample = settings.CNN_LONG_UPSAMPLE
+        fps_sample = settings.CNN_LONG_FPS_SAMPLE
+
+    return {
+        "model": settings.FACE_DETECTION_MODEL,
+        "upsample": upsample,
+        "fps_sample": fps_sample,
+        "duration": duration,
+        "mode": mode
+    }
 
 
 def _broadcast_sync(video_id: int, payload: dict) -> None:
