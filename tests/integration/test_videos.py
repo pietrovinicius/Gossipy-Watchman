@@ -325,3 +325,95 @@ async def test_catalog_excludes_deleted_by_default(client, auth_headers, test_en
     ids = [item["id"] for item in data["items"]]
     assert v1 in ids
     assert v2 not in ids
+
+
+# ── GET /videos/{id}/stream (streaming com Range requests) ────────────────────
+
+@pytest.mark.asyncio
+async def test_stream_without_token_returns_401(client, test_engine):
+    vid = seed_video(test_engine, "stream.mp4")
+    response = await client.get(f"/api/v1/videos/{vid}/stream")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_stream_with_invalid_token_returns_401(client, test_engine):
+    vid = seed_video(test_engine, "stream.mp4")
+    response = await client.get(f"/api/v1/videos/{vid}/stream?token=invalid_token_xyz")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_stream_with_nonexistent_video_returns_404(client, auth_headers):
+    token = auth_headers['Authorization'].replace('Bearer ', '')
+    response = await client.get(f"/api/v1/videos/9999/stream?token={token}", headers=auth_headers)
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_stream_with_deleted_video_returns_410(client, auth_headers, test_engine):
+    vid = seed_video(test_engine, "deleted_video.mp4")
+    await client.delete(f"/api/v1/videos/{vid}", headers=auth_headers)
+    token = auth_headers['Authorization'].replace('Bearer ', '')
+    response = await client.get(f"/api/v1/videos/{vid}/stream?token={token}")
+    assert response.status_code == 410
+
+
+@pytest.mark.asyncio
+async def test_stream_without_range_returns_200_with_accept_ranges(client, auth_headers, test_engine, tmp_path):
+    file_path = tmp_path / "stream.mp4"
+    file_path.write_bytes(b"x" * 1000)
+    vid = seed_video(test_engine, "stream.mp4")
+
+    Session = sessionmaker(bind=test_engine)
+    session = Session()
+    video = session.get(Video, vid)
+    video.file_path = str(file_path)
+    session.commit()
+    session.close()
+
+    token = auth_headers['Authorization'].replace('Bearer ', '')
+    response = await client.get(f"/api/v1/videos/{vid}/stream?token={token}")
+    assert response.status_code == 200
+    assert response.headers.get("Accept-Ranges") == "bytes"
+
+
+@pytest.mark.asyncio
+async def test_stream_with_range_returns_206(client, auth_headers, test_engine, tmp_path):
+    file_path = tmp_path / "stream.mp4"
+    file_path.write_bytes(b"x" * 1000)
+    vid = seed_video(test_engine, "stream.mp4")
+
+    Session = sessionmaker(bind=test_engine)
+    session = Session()
+    video = session.get(Video, vid)
+    video.file_path = str(file_path)
+    session.commit()
+    session.close()
+
+    token = auth_headers['Authorization'].replace('Bearer ', '')
+    headers = {"Range": "bytes=0-99"}
+    response = await client.get(f"/api/v1/videos/{vid}/stream?token={token}", headers=headers)
+    assert response.status_code == 206
+    assert "Content-Range" in response.headers
+    assert response.headers.get("Content-Range") == "bytes 0-99/1000"
+
+
+@pytest.mark.asyncio
+async def test_stream_range_partial_returns_correct_length(client, auth_headers, test_engine, tmp_path):
+    file_path = tmp_path / "stream.mp4"
+    file_path.write_bytes(b"x" * 1000)
+    vid = seed_video(test_engine, "stream.mp4")
+
+    Session = sessionmaker(bind=test_engine)
+    session = Session()
+    video = session.get(Video, vid)
+    video.file_path = str(file_path)
+    session.commit()
+    session.close()
+
+    token = auth_headers['Authorization'].replace('Bearer ', '')
+    headers = {"Range": "bytes=100-199"}
+    response = await client.get(f"/api/v1/videos/{vid}/stream?token={token}", headers=headers)
+    assert response.status_code == 206
+    assert int(response.headers.get("Content-Length")) == 100

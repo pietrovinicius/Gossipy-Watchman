@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -11,10 +12,73 @@ from app.schemas.video import (
     VideoStatusResponse,
 )
 from app.services import video_service
-from app.services.auth_service import get_current_user
+from app.services.auth_service import get_current_user, verify_token
 from app.workers.video_worker import process_video
 
 router = APIRouter()
+
+
+def iterfile(path: Path, start: int, length: int, chunk: int = 65536):
+    with open(path, "rb") as f:
+        f.seek(start)
+        remaining = length
+        while remaining > 0:
+            data = f.read(min(chunk, remaining))
+            if not data:
+                break
+            remaining -= len(data)
+            yield data
+
+
+@router.get("/videos/{video_id}/stream", response_model=None)
+async def stream_video(
+    video_id: int,
+    token: str | None = Query(default=None),
+    request: Request = None,
+    db: Session = Depends(get_db),
+):
+    if not token:
+        raise HTTPException(status_code=401, detail="Token não fornecido")
+    verify_token(token)
+
+    video = video_service.get_video_by_id(db, video_id)
+    if video is None:
+        raise HTTPException(status_code=404, detail="Vídeo não encontrado")
+
+    if video.deleted_at is not None:
+        raise HTTPException(status_code=410, detail="Vídeo foi excluído")
+
+    file_path = Path(video.file_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Arquivo de vídeo não encontrado em disco")
+
+    file_size = file_path.stat().st_size
+    range_header = request.headers.get("Range")
+
+    if range_header:
+        range_str = range_header.replace("bytes=", "")
+        parts = range_str.split("-")
+        start = int(parts[0])
+        end = int(parts[1]) if parts[1] else file_size - 1
+        end = min(end, file_size - 1)
+        content_length = end - start + 1
+
+        return StreamingResponse(
+            iterfile(file_path, start, content_length),
+            status_code=206,
+            headers={
+                "Content-Range": f"bytes {start}-{end}/{file_size}",
+                "Accept-Ranges": "bytes",
+                "Content-Length": str(content_length),
+                "Content-Type": "video/mp4",
+            },
+        )
+    else:
+        return FileResponse(
+            file_path,
+            media_type="video/mp4",
+            headers={"Accept-Ranges": "bytes"},
+        )
 
 
 @router.get("/videos/catalog", response_model=CatalogResponse)
