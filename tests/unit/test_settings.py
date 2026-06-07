@@ -78,3 +78,22 @@ def test_docs_enabled_default():
     from app.core.settings import settings
     assert isinstance(settings.DOCS_ENABLED, bool)
     assert settings.DOCS_ENABLED is True
+
+
+# ── Novos testes Sprint — detecção facial CNN ───────────────────────────────
+
+def test_face_detection_model_default():
+    from app.core.settings import settings
+    assert settings.FACE_DETECTION_MODEL == "cnn"
+
+
+def test_face_upsample_default():
+    from app.core.settings import settings
+    assert settings.FACE_UPSAMPLE == 1
+    assert isinstance(settings.FACE_UPSAMPLE, int)
+
+
+def test_face_detection_model_accepts_hog():
+    from app.core.settings import Settings
+    s = Settings(FACE_DETECTION_MODEL="hog")
+    assert s.FACE_DETECTION_MODEL == "hog"

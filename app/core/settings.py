@@ -22,10 +22,12 @@ class Settings(BaseSettings):
     # Visão computacional
     FACE_RECOGNITION_TOLERANCE: float = 0.6
     FRAMES_PER_SECOND_SAMPLE: int = 1
+    FACE_DETECTION_MODEL: str = "cnn"
+    FACE_UPSAMPLE: int = 1
 
     # App
     APP_NAME: str = "Gossipy Watchman"
-    APP_VERSION: str = "1.5.3"
+    APP_VERSION: str = "1.5.4"
     API_V1_PREFIX: str = "/api/v1"
     DOCS_ENABLED: bool = True
 
