@@ -1,3 +1,7 @@
+from datetime import datetime
+from pathlib import Path
+
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.appearance import Appearance
@@ -17,14 +21,61 @@ def get_video_by_id(db: Session, video_id: int) -> Video | None:
     return db.get(Video, video_id)
 
 
-def list_videos(db: Session, skip: int = 0, limit: int = 50) -> list[Video]:
+def list_videos(
+    db: Session,
+    skip: int = 0,
+    limit: int = 50,
+    include_deleted: bool = False,
+    status_filter: str | None = None,
+) -> list[Video]:
+    query = db.query(Video)
+    if not include_deleted:
+        query = query.filter(Video.deleted_at.is_(None))
+    if status_filter is not None:
+        query = query.filter(Video.status == status_filter)
     return (
-        db.query(Video)
+        query
         .order_by(Video.uploaded_at.desc())
         .offset(skip)
         .limit(limit)
         .all()
     )
+
+
+def soft_delete_video(db: Session, video_id: int) -> Video | None:
+    video = db.get(Video, video_id)
+    if video is None:
+        return None
+    if video.deleted_at is None:
+        video.deleted_at = datetime.utcnow()
+        db.commit()
+        db.refresh(video)
+    return video
+
+
+def restore_video(db: Session, video_id: int) -> Video | None:
+    video = db.get(Video, video_id)
+    if video is None:
+        return None
+    video.deleted_at = None
+    db.commit()
+    db.refresh(video)
+    return video
+
+
+def reprocess_video(db: Session, video_id: int) -> Video | None:
+    video = db.get(Video, video_id)
+    if video is None:
+        return None
+    if not Path(video.file_path).exists():
+        raise HTTPException(
+            status_code=409,
+            detail="Arquivo de vídeo não encontrado em disco. Impossível reprocessar.",
+        )
+    video.status = VideoStatus.PENDENTE
+    db.commit()
+    db.refresh(video)
+    return video
 
 
 def update_file_path(db: Session, video_id: int, file_path: str) -> Video | None:

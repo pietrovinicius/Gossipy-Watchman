@@ -133,3 +133,111 @@ async def test_get_video_detail_people_have_required_fields(client, auth_headers
     assert person["person_name"] == "Beltrano"
     assert "appearances" in person
     assert person["appearances"][0]["confidence"] == pytest.approx(0.3)
+
+
+# ── soft delete / restore / reprocess / filtros ───────────────────────────────
+
+@pytest.mark.asyncio
+async def test_delete_video_without_token_returns_401(client, test_engine):
+    vid = seed_video(test_engine, "sem_token.mp4")
+    response = await client.delete(f"/api/v1/videos/{vid}")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_delete_video_returns_200_with_deleted_at(client, auth_headers, test_engine):
+    vid = seed_video(test_engine, "para_excluir.mp4")
+    response = await client.delete(f"/api/v1/videos/{vid}", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == vid
+    assert data["deleted_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_delete_video_unknown_id_returns_404(client, auth_headers):
+    response = await client.delete("/api/v1/videos/9999", headers=auth_headers)
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_restore_video_resets_deleted_at(client, auth_headers, test_engine):
+    vid = seed_video(test_engine, "para_restaurar.mp4")
+    await client.delete(f"/api/v1/videos/{vid}", headers=auth_headers)
+
+    response = await client.post(f"/api/v1/videos/{vid}/restore", headers=auth_headers)
+    assert response.status_code == 200
+    assert response.json()["deleted_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_list_videos_excludes_deleted_by_default(client, auth_headers, test_engine):
+    v1 = seed_video(test_engine, "ativo.mp4")
+    v2 = seed_video(test_engine, "removido.mp4")
+    await client.delete(f"/api/v1/videos/{v2}", headers=auth_headers)
+
+    response = await client.get("/api/v1/videos", headers=auth_headers)
+    ids = [item["id"] for item in response.json()]
+    assert v1 in ids
+    assert v2 not in ids
+
+
+@pytest.mark.asyncio
+async def test_list_videos_include_deleted_true_returns_all(client, auth_headers, test_engine):
+    v1 = seed_video(test_engine, "ativo.mp4")
+    v2 = seed_video(test_engine, "removido.mp4")
+    await client.delete(f"/api/v1/videos/{v2}", headers=auth_headers)
+
+    response = await client.get("/api/v1/videos?include_deleted=true", headers=auth_headers)
+    ids = [item["id"] for item in response.json()]
+    assert v1 in ids
+    assert v2 in ids
+
+
+@pytest.mark.asyncio
+async def test_list_videos_filters_by_status(client, auth_headers, test_engine):
+    from sqlalchemy.orm import sessionmaker
+
+    v1 = seed_video(test_engine, "pendente.mp4")
+    v2 = seed_video(test_engine, "concluido.mp4")
+    Session = sessionmaker(bind=test_engine)
+    session = Session()
+    video = session.get(Video, v2)
+    video.status = VideoStatus.CONCLUIDO
+    session.commit()
+    session.close()
+
+    response = await client.get("/api/v1/videos?status=Concluído", headers=auth_headers)
+    ids = [item["id"] for item in response.json()]
+    assert v2 in ids
+    assert v1 not in ids
+
+
+@pytest.mark.asyncio
+async def test_reprocess_video_returns_pendente_status(client, auth_headers, test_engine, tmp_path, monkeypatch):
+    from sqlalchemy.orm import sessionmaker
+    from unittest.mock import MagicMock
+
+    monkeypatch.setattr("app.api.v1.videos.process_video", MagicMock())
+
+    file_path = tmp_path / "reprocessar.mp4"
+    file_path.write_bytes(b"x")
+    vid = seed_video(test_engine, "reprocessar.mp4")
+    Session = sessionmaker(bind=test_engine)
+    session = Session()
+    video = session.get(Video, vid)
+    video.file_path = str(file_path)
+    video.status = VideoStatus.ERRO
+    session.commit()
+    session.close()
+
+    response = await client.post(f"/api/v1/videos/{vid}/reprocess", headers=auth_headers)
+    assert response.status_code == 200
+    assert response.json()["status"] == "Pendente"
+
+
+@pytest.mark.asyncio
+async def test_reprocess_video_missing_file_returns_409(client, auth_headers, test_engine):
+    vid = seed_video(test_engine, "sem_arquivo.mp4")
+    response = await client.post(f"/api/v1/videos/{vid}/reprocess", headers=auth_headers)
+    assert response.status_code == 409

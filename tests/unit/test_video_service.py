@@ -186,3 +186,111 @@ def test_get_video_detail_summary_counts_distinct_people(db):
     assert detail["summary"]["total_people"] == 2
     assert detail["summary"]["total_appearances"] == 3
     assert detail["summary"]["duration_covered"] == 3.0
+
+
+# ── soft delete / restore / reprocess ─────────────────────────────────────────
+
+def test_soft_delete_video_sets_deleted_at(db):
+    from app.services.video_service import create_video_record, soft_delete_video
+
+    video = create_video_record(db, "clip.mp4", "storage/videos/clip.mp4")
+    result = soft_delete_video(db, video.id)
+
+    assert result is not None
+    assert result.deleted_at is not None
+
+
+def test_soft_delete_video_returns_none_for_unknown_id(db):
+    from app.services.video_service import soft_delete_video
+
+    assert soft_delete_video(db, 9999) is None
+
+
+def test_soft_delete_video_is_idempotent(db):
+    from app.services.video_service import create_video_record, soft_delete_video
+
+    video = create_video_record(db, "clip.mp4", "storage/videos/clip.mp4")
+    first = soft_delete_video(db, video.id)
+    second = soft_delete_video(db, video.id)
+
+    assert first.deleted_at == second.deleted_at
+
+
+def test_restore_video_clears_deleted_at(db):
+    from app.services.video_service import create_video_record, soft_delete_video, restore_video
+
+    video = create_video_record(db, "clip.mp4", "storage/videos/clip.mp4")
+    soft_delete_video(db, video.id)
+    restored = restore_video(db, video.id)
+
+    assert restored is not None
+    assert restored.deleted_at is None
+
+
+def test_list_videos_excludes_deleted_by_default(db):
+    from app.services.video_service import create_video_record, soft_delete_video, list_videos
+
+    v1 = create_video_record(db, "ativo.mp4", "storage/videos/ativo.mp4")
+    v2 = create_video_record(db, "removido.mp4", "storage/videos/removido.mp4")
+    soft_delete_video(db, v2.id)
+
+    ids = [v.id for v in list_videos(db)]
+    assert v1.id in ids
+    assert v2.id not in ids
+
+
+def test_list_videos_include_deleted_returns_all(db):
+    from app.services.video_service import create_video_record, soft_delete_video, list_videos
+
+    v1 = create_video_record(db, "ativo.mp4", "storage/videos/ativo.mp4")
+    v2 = create_video_record(db, "removido.mp4", "storage/videos/removido.mp4")
+    soft_delete_video(db, v2.id)
+
+    ids = [v.id for v in list_videos(db, include_deleted=True)]
+    assert v1.id in ids
+    assert v2.id in ids
+
+
+def test_list_videos_filters_by_status(db):
+    from app.services.video_service import create_video_record, update_video_status, list_videos
+
+    v1 = create_video_record(db, "a.mp4", "storage/videos/a.mp4")
+    v2 = create_video_record(db, "b.mp4", "storage/videos/b.mp4")
+    update_video_status(db, v2.id, VideoStatus.CONCLUIDO)
+
+    result = list_videos(db, status_filter=VideoStatus.CONCLUIDO.value)
+
+    ids = [v.id for v in result]
+    assert v2.id in ids
+    assert v1.id not in ids
+
+
+def test_reprocess_video_resets_status_to_pendente(db, tmp_path):
+    from app.services.video_service import create_video_record, update_video_status, reprocess_video
+
+    file_path = tmp_path / "clip.mp4"
+    file_path.write_bytes(b"x")
+    video = create_video_record(db, "clip.mp4", str(file_path))
+    update_video_status(db, video.id, VideoStatus.ERRO)
+
+    result = reprocess_video(db, video.id)
+
+    assert result is not None
+    assert result.status == VideoStatus.PENDENTE
+
+
+def test_reprocess_video_raises_409_when_file_missing(db):
+    from fastapi import HTTPException
+    from app.services.video_service import create_video_record, reprocess_video
+
+    video = create_video_record(db, "clip.mp4", "storage/videos/inexistente_xyz.mp4")
+
+    with pytest.raises(HTTPException) as exc:
+        reprocess_video(db, video.id)
+    assert exc.value.status_code == 409
+
+
+def test_reprocess_video_returns_none_for_unknown_id(db):
+    from app.services.video_service import reprocess_video
+
+    assert reprocess_video(db, 9999) is None

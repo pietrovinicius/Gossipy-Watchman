@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from pathlib import Path
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.schemas.video import VideoDetailResponse, VideoResponse, VideoStatusResponse
 from app.services import video_service
 from app.services.auth_service import get_current_user
+from app.workers.video_worker import process_video
 
 router = APIRouter()
 
@@ -13,10 +16,53 @@ router = APIRouter()
 def list_videos(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
+    include_deleted: bool = Query(default=False),
+    status: str | None = Query(default=None),
     db: Session = Depends(get_db),
     _current_user: dict = Depends(get_current_user),
 ) -> list[VideoResponse]:
-    return video_service.list_videos(db, skip=skip, limit=limit)
+    return video_service.list_videos(
+        db, skip=skip, limit=limit, include_deleted=include_deleted, status_filter=status
+    )
+
+
+@router.post("/videos/{video_id}/restore", response_model=VideoResponse)
+def restore_video(
+    video_id: int,
+    db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
+) -> VideoResponse:
+    video = video_service.restore_video(db, video_id)
+    if video is None:
+        raise HTTPException(status_code=404, detail="Vídeo não encontrado")
+    return VideoResponse.model_validate(video)
+
+
+@router.post("/videos/{video_id}/reprocess", response_model=VideoStatusResponse)
+def reprocess_video(
+    video_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
+) -> VideoStatusResponse:
+    video = video_service.get_video_by_id(db, video_id)
+    if video is None or video.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Vídeo não encontrado")
+    video = video_service.reprocess_video(db, video_id)
+    background_tasks.add_task(process_video, video.id, Path(video.file_path))
+    return VideoStatusResponse.model_validate(video)
+
+
+@router.delete("/videos/{video_id}", response_model=VideoResponse)
+def delete_video(
+    video_id: int,
+    db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
+) -> VideoResponse:
+    video = video_service.soft_delete_video(db, video_id)
+    if video is None:
+        raise HTTPException(status_code=404, detail="Vídeo não encontrado")
+    return VideoResponse.model_validate(video)
 
 
 @router.get("/videos/{video_id}/detail", response_model=VideoDetailResponse)
