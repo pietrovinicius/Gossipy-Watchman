@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     # Visão computacional
     FACE_RECOGNITION_TOLERANCE: float = 0.6
-    FRAMES_PER_SECOND_SAMPLE: int = 1
+    FRAMES_PER_SECOND_SAMPLE: int = 2
     FACE_DETECTION_MODEL: str = "cnn"
     FACE_UPSAMPLE: int = 1
 
@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD_HASH: str = ""
 
     # Upload
-    MAX_UPLOAD_SIZE_MB: int = 500
+    MAX_UPLOAD_SIZE_MB: int = 5120
     MAX_UPLOAD_SIZE_BYTES: int = 0
 
     @model_validator(mode="after")
