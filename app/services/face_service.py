@@ -7,7 +7,11 @@ from app.core.settings import settings
 
 def extract_embeddings(frame: np.ndarray) -> list[np.ndarray]:
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    locations = face_recognition.face_locations(rgb)
+    locations = face_recognition.face_locations(
+        rgb,
+        number_of_times_to_upsample=settings.FACE_UPSAMPLE,
+        model=settings.FACE_DETECTION_MODEL,
+    )
     encodings = face_recognition.face_encodings(rgb, locations)
     return list(encodings)
 

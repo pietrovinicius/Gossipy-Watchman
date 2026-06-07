@@ -1,7 +1,9 @@
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 import numpy as np
 import pytest
+
+from app.core.settings import settings
 
 
 def make_bgr_frame() -> np.ndarray:
@@ -55,6 +57,20 @@ def test_extract_embeddings_converts_bgr_to_rgb():
     # pixel [0,0] deve ter R=10, G=20, B=30 (invertido)
     assert captured["frame"][0, 0, 0] == 30  # R channel
     assert captured["frame"][0, 0, 2] == 10  # B channel
+
+
+def test_extract_embeddings_calls_face_locations_with_settings_model_and_upsample():
+    from app.services.face_service import extract_embeddings
+
+    with patch("app.services.face_service.face_recognition.face_locations", return_value=[]) as mock_locations, \
+         patch("app.services.face_service.face_recognition.face_encodings", return_value=[]):
+        extract_embeddings(make_bgr_frame())
+
+    mock_locations.assert_called_with(
+        ANY,
+        number_of_times_to_upsample=settings.FACE_UPSAMPLE,
+        model=settings.FACE_DETECTION_MODEL,
+    )
 
 
 # ── find_matching_person ──────────────────────────────────────────────────────
