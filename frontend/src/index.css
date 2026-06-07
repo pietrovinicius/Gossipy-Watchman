@@ -4,6 +4,42 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tokens de tema — canais RGB para suporte a <alpha-value> do Tailwind.
+   .dark = paleta original do projeto; .light = tokens do design system claro. */
+:root.dark {
+  --color-bg: 10 10 15;            /* #0A0A0F */
+  --color-surface: 17 24 39;       /* #111827 */
+  --color-card: 31 41 55;          /* #1F2937 */
+  --color-border: 55 65 81;        /* #374151 */
+  --color-text-base: 249 250 251;  /* #F9FAFB */
+  --color-text-muted: 156 163 175; /* #9CA3AF */
+  --chart-grid: #1F2937;
+  --chart-text: #94A3B8;
+}
+
+:root.light {
+  --color-bg: 248 250 252;         /* #F8FAFC slate-50 */
+  --color-surface: 255 255 255;    /* #FFFFFF white */
+  --color-card: 241 245 249;       /* #F1F5F9 slate-100 */
+  --color-border: 226 232 240;     /* #E2E8F0 slate-200 */
+  --color-text-base: 15 23 42;     /* #0F172A slate-900 */
+  --color-text-muted: 71 85 105;   /* #475569 slate-600 */
+  --chart-grid: #E2E8F0;
+  --chart-text: #475569;
+}
+
+/* Transições suaves na troca de tema */
+* {
+  transition-property: background-color, border-color, color;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+
+button, a, [role="button"] {
+  transition-property: background-color, border-color, color, opacity, transform, box-shadow;
+  transition-duration: 150ms;
+}
+
 @layer base {
   *, *::before, *::after {
     box-sizing: border-box;

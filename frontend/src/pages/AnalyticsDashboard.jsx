@@ -90,9 +90,9 @@ export default function AnalyticsDashboard() {
           <h2 className="text-sm font-semibold text-text-base mb-4">Atividade — últimos 30 dias</h2>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={timeline}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border, #333)" />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--chart-text)" }} />
+              <YAxis tick={{ fontSize: 10, fill: "var(--chart-text)" }} allowDecimals={false} />
               <Tooltip />
               <Line type="monotone" dataKey="count" name="Vídeos" stroke="#6366f1" strokeWidth={2} dot={false} />
             </LineChart>
@@ -105,9 +105,9 @@ export default function AnalyticsDashboard() {
             <h2 className="text-sm font-semibold text-text-base mb-4">Top pessoas por aparições</h2>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={topPeople} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border, #333)" />
-                <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
-                <YAxis dataKey="person_name" type="category" tick={{ fontSize: 10 }} width={80} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                <XAxis type="number" tick={{ fontSize: 10, fill: "var(--chart-text)" }} allowDecimals={false} />
+                <YAxis dataKey="person_name" type="category" tick={{ fontSize: 10, fill: "var(--chart-text)" }} width={80} />
                 <Tooltip />
                 <Bar dataKey="appearance_count" name="Aparições" fill="#6366f1" radius={[0, 4, 4, 0]} />
               </BarChart>
@@ -127,9 +127,9 @@ export default function AnalyticsDashboard() {
             <h2 className="text-sm font-semibold text-text-base mb-4">Aparições por vídeo (top 10)</h2>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={perVideo}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border, #333)" />
-                <XAxis dataKey="file_name" tick={{ fontSize: 9 }} />
-                <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                <XAxis dataKey="file_name" tick={{ fontSize: 9, fill: "var(--chart-text)" }} />
+                <YAxis tick={{ fontSize: 10, fill: "var(--chart-text)" }} allowDecimals={false} />
                 <Tooltip />
                 <Bar dataKey="count" name="Aparições" fill="#22d3ee" radius={[4, 4, 0, 0]} />
               </BarChart>

@@ -10,8 +10,36 @@ import {
   Shield,
   Menu,
   X,
+  Sun,
+  Moon,
 } from 'lucide-react'
 import api from '../services/api'
+import { useTheme } from '../contexts/ThemeContext'
+
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme()
+  const isDark = theme === 'dark'
+  const label = isDark ? 'Modo claro' : 'Modo escuro'
+
+  return (
+    <button
+      onClick={toggleTheme}
+      title={label}
+      aria-label={label}
+      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium
+                 text-text-muted hover:bg-card hover:text-text-base
+                 transition-colors duration-200 cursor-pointer
+                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
+      {isDark ? (
+        <Sun className="w-5 h-5 flex-shrink-0 rotate-180 transition-transform duration-300" aria-hidden="true" />
+      ) : (
+        <Moon className="w-5 h-5 flex-shrink-0 rotate-0 transition-transform duration-300" aria-hidden="true" />
+      )}
+      <span className="flex-1 text-left">{label}</span>
+    </button>
+  )
+}
 
 function NavItem({ to, label, Icon, badge, onClick }) {
   return (
@@ -78,8 +106,9 @@ export default function Layout({ children }) {
         ))}
       </nav>
 
-      {/* Logout */}
-      <div className="px-2 pb-4 border-t border-border pt-4">
+      {/* Tema + Logout */}
+      <div className="px-2 pb-4 border-t border-border pt-4 space-y-1">
+        <ThemeToggle />
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium
