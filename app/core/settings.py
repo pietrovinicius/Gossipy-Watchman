@@ -49,6 +49,19 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE_MB: int = 5120
     MAX_UPLOAD_SIZE_BYTES: int = 0
 
+    # ffmpeg
+    FFMPEG_PATH: str = "ffmpeg"
+
+    # CNN adaptativo por duração (segundos)
+    CNN_ADAPTIVE_SHORT_MAX: int = 600
+    CNN_ADAPTIVE_MEDIUM_MAX: int = 3600
+    CNN_SHORT_UPSAMPLE: int = 2
+    CNN_SHORT_FPS_SAMPLE: int = 2
+    CNN_MEDIUM_UPSAMPLE: int = 1
+    CNN_MEDIUM_FPS_SAMPLE: int = 2
+    CNN_LONG_UPSAMPLE: int = 1
+    CNN_LONG_FPS_SAMPLE: int = 1
+
     @model_validator(mode="after")
     def _compute_derived(self) -> "Settings":
         self.MAX_UPLOAD_SIZE_BYTES = self.MAX_UPLOAD_SIZE_MB * 1024 * 1024
