@@ -1,12 +1,13 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft, Download, Loader2, AlertCircle, UserCircle, ExternalLink,
-  Users, Film, Clock, Activity, Trash2, RotateCcw, RotateCw,
+  Users, Film, Clock, Activity, Trash2, RotateCcw, RotateCw, PlayCircle,
 } from 'lucide-react'
 import Layout from '../components/Layout'
 import CategoryBadge from '../components/CategoryBadge'
 import ConfirmModal from '../components/ConfirmModal'
+import { VideoPlayer } from '../components/VideoPlayer'
 import api from '../services/api'
 import { useAuthImage } from '../hooks/useAuthImage'
 import { sanitizeFileName } from '../utils/sanitizeFileName'
@@ -58,7 +59,7 @@ function SummaryCard({ icon: Icon, label, value, color }) {
   )
 }
 
-function PersonCard({ person }) {
+function PersonCard({ person, isOnScreen, onSeekTo }) {
   const filename = person.profile_image_path
     ? person.profile_image_path.split('/').pop()
     : null
@@ -71,7 +72,7 @@ function PersonCard({ person }) {
     : person.appearances.slice(0, TIMELINE_PREVIEW_COUNT)
 
   return (
-    <div className="card space-y-4">
+    <div className={`card space-y-4 transition-all ${isOnScreen ? 'border-2 border-primary' : ''}`}>
       <div className="flex items-start gap-4">
         <div className="w-16 h-16 rounded-2xl overflow-hidden bg-surface border border-border flex-shrink-0">
           {imgSrc ? (
@@ -87,6 +88,11 @@ function PersonCard({ person }) {
           <div className="flex items-center gap-2">
             <h3 className="text-base font-semibold text-text-base truncate">{person.person_name}</h3>
             <CategoryBadge category={person.person_category} />
+            {isOnScreen && (
+              <span className="text-xs bg-primary text-white px-2 py-0.5 rounded-full animate-pulse">
+                EM CENA
+              </span>
+            )}
           </div>
           <p className="text-xs text-text-muted">
             ID #{person.person_id} · {person.appearance_count} aparição{person.appearance_count === 1 ? '' : 'ões'}
@@ -108,7 +114,11 @@ function PersonCard({ person }) {
           </thead>
           <tbody>
             {visibleAppearances.map((a) => (
-              <tr key={a.id} className="border-b border-border/50 last:border-b-0">
+              <tr
+                key={a.id}
+                onClick={() => onSeekTo?.(a.timestamp_start)}
+                className="border-b border-border/50 last:border-b-0 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+              >
                 <td className="px-3 py-2 font-mono text-xs text-text-muted">{fmtSec(a.timestamp_start)}</td>
                 <td className="px-3 py-2 font-mono text-xs text-text-muted">
                   {a.timestamp_end != null ? fmtSec(a.timestamp_end) : '—'}
@@ -128,7 +138,14 @@ function PersonCard({ person }) {
         )}
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-between">
+        <button
+          onClick={() => onSeekTo?.(person.first_seen_at)}
+          className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+        >
+          <PlayCircle className="w-3.5 h-3.5" aria-hidden="true" />
+          {fmtSec(person.first_seen_at)}
+        </button>
         <Link
           to={`/people/${person.person_id}`}
           className="flex items-center gap-1.5 text-xs text-primary hover:underline"
@@ -151,6 +168,22 @@ export default function VideoDetail() {
   const [actionErr, setActionErr] = useState('')
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [reprocessModalOpen, setReprocessModalOpen] = useState(false)
+  const [seekTo, setSeekTo] = useState(null)
+  const [currentTime, setCurrentTime] = useState(0)
+
+  const token = sessionStorage.getItem('token')
+
+  const getPeopleOnScreen = (time, people) =>
+    people?.filter(p =>
+      p.appearances?.some(a =>
+        a.timestamp_start <= time && (!a.timestamp_end || a.timestamp_end >= time)
+      )
+    ) || []
+
+  const peopleOnScreen = useMemo(
+    () => getPeopleOnScreen(currentTime, detail?.people),
+    [currentTime, detail?.people]
+  )
 
   const fetchDetail = useCallback(() => {
     setError('')
@@ -237,6 +270,16 @@ export default function VideoDetail() {
   return (
     <Layout>
       <div className="max-w-4xl mx-auto space-y-6">
+        {/* Player */}
+        {detail && token && (
+          <VideoPlayer
+            videoId={parseInt(id)}
+            token={token}
+            onTimeUpdate={setCurrentTime}
+            seekTo={seekTo}
+          />
+        )}
+
         {/* Header */}
         <div>
           <button
@@ -372,7 +415,12 @@ export default function VideoDetail() {
           ) : (
             <div className="space-y-4">
               {detail.people.map((person) => (
-                <PersonCard key={person.person_id} person={person} />
+                <PersonCard
+                  key={person.person_id}
+                  person={person}
+                  isOnScreen={peopleOnScreen?.some(p => p.person_id === person.person_id)}
+                  onSeekTo={setSeekTo}
+                />
               ))}
             </div>
           )}
