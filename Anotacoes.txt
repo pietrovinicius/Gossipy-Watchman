@@ -487,6 +487,67 @@ SPRINT 10 — FUNCIONALIDADES ADICIONADAS
    entre pessoas e vídeos.
 
 ================================================================
+SPRINT 12 — CATÁLOGO DE VÍDEOS
+================================================================
+
+Backend (v1.65):
+1. Endpoint GET /api/v1/videos/catalog (autenticado)
+   Busca paginada com filtros e ordenação:
+   - Query params: q (busca no nome), status (filtro exato),
+     sort_by (uploaded_at_desc|asc, name_asc|desc, people_desc),
+     page, page_size (1-48), include_deleted
+   - Response: {items[], total, page, page_size, total_pages, has_next, has_prev}
+   - Cada item inclui people_count (contagem de pessoas distintas)
+     e people_previews[] (até 4 pessoas com profile_image_path)
+   - Testes: 9 unitários + 6 integração
+
+2. Schemas VideoCardResponse, PersonPreview, CatalogResponse
+   Estrutura para representar cards de vídeo com galeria de pessoas.
+
+Frontend (v1.66):
+3. Rota /videos protegida (VideosCatalog)
+   Página com:
+   - Grid 3 cols desktop / 2 tablet / 1 mobile (layout persistido em localStorage)
+   - Cards com placeholder 16:9 (ícone Film), badge de status, metadados
+   - Overlay ao hover com ícone Play + "Ver detalhes"
+   - Mini galeria de 4 avatares com overlap + badge "+N"
+   - Ações inline: exportar CSV, reprocessar (se Concluído/Erro), excluir
+   - Busca com debounce 400ms (case-insensitive no nome do arquivo)
+   - Dropdown status, ordenação, toggle layout, toggle deletados
+   - Paginação com até 7 números de página visíveis
+   - Loading skeleton, estado vazio com sugestões
+   - Testes: 15 unitários
+
+4. Sidebar item "Vídeos" (ícone Film)
+   Adicionado entre Upload e Pessoas na navegação principal.
+
+5. Hook useVideoActions({ onSuccess, onError })
+   Centraliza lógica de ações compartilhadas:
+   - exportCsv(videoId, fileName) — GET /export/timeline/video/{id}
+   - reprocess(videoId) — POST /videos/{id}/reprocess
+   - softDelete(videoId) — DELETE /videos/{id}
+   - restore(videoId) — POST /videos/{id}/restore
+   - Retorna loadingId e loadingAction para UI feedback
+   - Testes: 10 unitários
+
+Testes totais:
+- Backend: 325 passando
+- Frontend: 168 passando
+
+Commits:
+- v1.65: feat(api): endpoint /videos/catalog com busca, filtros e paginação
+- v1.66: feat(frontend): página VideosCatalog com grid, busca, filtros e paginação
+- v1.67: refactor(hooks): cria useVideoActions hook reutilizável para ações de vídeo
+
+Decisões:
+- sort_by="people_desc" usa subquery COUNT(DISTINCT person_id) para ordenar
+  por número de pessoas identificadas (mais pessoa primeiro)
+- people_previews limitado a 4 para não inflacionar payload da API
+- Layout preference persistido em localStorage (chave: gw-videos-layout)
+- Busca com debounce evita requisições excessivas
+- Hook reutilizável permite consolidar lógica de ações no futuro (refactor Dashboard)
+
+================================================================
 CONTATO E REPOSITÓRIO
 ================================================================
 Desenvolvido por: Pietro Vinicius Lima
