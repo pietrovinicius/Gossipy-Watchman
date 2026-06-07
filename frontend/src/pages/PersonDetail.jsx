@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, UserCircle, Pencil, Check, X, AlertCircle, Download, Loader2 } from 'lucide-react'
+import { ArrowLeft, UserCircle, Pencil, Check, X, AlertCircle, Download, Loader2, ExternalLink } from 'lucide-react'
 import Layout from '../components/Layout'
 import CategoryBadge from '../components/CategoryBadge'
 import PhotoModal from '../components/PhotoModal'
@@ -352,7 +352,17 @@ export default function PersonDetail() {
                 ) : (
                   timeline.map((a) => (
                     <tr key={a.id} className="border-b border-border/50 hover:bg-surface/60 transition-colors duration-150">
-                      <td className="px-4 py-3 font-mono text-xs text-text-base truncate max-w-[180px]">{sanitizeFileName(a.file_name)}</td>
+                      <td className="px-4 py-3 font-mono text-xs truncate max-w-[180px]">
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/videos/${a.video_id}`)}
+                          title="Ver detalhes do vídeo"
+                          className="inline-flex items-center gap-1 text-primary hover:underline cursor-pointer"
+                        >
+                          {sanitizeFileName(a.file_name)}
+                          <ExternalLink className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
+                        </button>
+                      </td>
                       <td className="px-4 py-3 text-text-muted font-mono text-xs">{fmtSec(a.timestamp_start)}</td>
                       <td className="px-4 py-3 text-text-muted font-mono text-xs">{fmtSec(a.timestamp_end)}</td>
                       <td className="px-4 py-3 text-text-muted font-mono text-xs">{fmt3(a.confidence)}</td>
