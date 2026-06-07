@@ -2,10 +2,11 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft, Download, Loader2, AlertCircle, UserCircle, ExternalLink,
-  Users, Film, Clock, Activity,
+  Users, Film, Clock, Activity, Trash2, RotateCcw, RotateCw,
 } from 'lucide-react'
 import Layout from '../components/Layout'
 import CategoryBadge from '../components/CategoryBadge'
+import ConfirmModal from '../components/ConfirmModal'
 import api from '../services/api'
 import { useAuthImage } from '../hooks/useAuthImage'
 import { sanitizeFileName } from '../utils/sanitizeFileName'
@@ -19,6 +20,7 @@ const STATUS_BADGE = {
   Erro:        { cls: 'bg-error-color/20 text-error-color', label: 'Erro' },
 }
 
+const REPROCESSABLE_STATUSES = ['Concluído', 'Erro']
 const REFRESH_INTERVAL_MS = 10000
 const TIMELINE_PREVIEW_COUNT = 3
 
@@ -146,6 +148,9 @@ export default function VideoDetail() {
   const [error, setError] = useState('')
   const [exportLoading, setExportLoading] = useState(false)
   const [exportErr, setExportErr] = useState('')
+  const [actionErr, setActionErr] = useState('')
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [reprocessModalOpen, setReprocessModalOpen] = useState(false)
 
   const fetchDetail = useCallback(() => {
     setError('')
@@ -178,6 +183,40 @@ export default function VideoDetail() {
       setExportErr('Erro ao exportar CSV.')
     } finally {
       setExportLoading(false)
+    }
+  }
+
+  async function handleDeleteVideo() {
+    setActionErr('')
+    try {
+      const res = await api.delete(`/videos/${id}`)
+      setDetail((prev) => ({ ...prev, video: res.data }))
+      setDeleteModalOpen(false)
+    } catch (err) {
+      setActionErr(err.response?.data?.detail ?? err.message)
+      setDeleteModalOpen(false)
+    }
+  }
+
+  async function handleRestoreVideo() {
+    setActionErr('')
+    try {
+      await api.post(`/videos/${id}/restore`)
+      fetchDetail()
+    } catch (err) {
+      setActionErr(err.response?.data?.detail ?? err.message)
+    }
+  }
+
+  async function handleReprocessVideo() {
+    setActionErr('')
+    try {
+      await api.post(`/videos/${id}/reprocess`)
+      setReprocessModalOpen(false)
+      fetchDetail()
+    } catch (err) {
+      setActionErr(err.response?.data?.detail ?? err.message)
+      setReprocessModalOpen(false)
     }
   }
 
@@ -222,22 +261,75 @@ export default function VideoDetail() {
                 </div>
                 <p className="text-xs text-text-muted">Enviado em {formatDateTime(detail.video.uploaded_at)}</p>
               </div>
-              <button
-                onClick={handleExportCsv}
-                disabled={exportLoading}
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
-                           border-border text-text-muted hover:text-text-base transition-colors
-                           disabled:opacity-50"
-              >
-                {exportLoading
-                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
-                  : <Download className="w-3.5 h-3.5" aria-hidden="true" />}
-                Exportar CSV
-              </button>
+              <div className="flex items-center gap-2">
+                {!detail.video.deleted_at && REPROCESSABLE_STATUSES.includes(detail.video.status) && (
+                  <button
+                    onClick={() => setReprocessModalOpen(true)}
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
+                               border-border text-text-muted hover:text-text-base transition-colors"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" aria-hidden="true" />
+                    Reprocessar
+                  </button>
+                )}
+                <button
+                  onClick={handleExportCsv}
+                  disabled={exportLoading}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
+                             border-border text-text-muted hover:text-text-base transition-colors
+                             disabled:opacity-50"
+                >
+                  {exportLoading
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                    : <Download className="w-3.5 h-3.5" aria-hidden="true" />}
+                  Exportar CSV
+                </button>
+                {detail.video.deleted_at ? (
+                  <button
+                    onClick={handleRestoreVideo}
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
+                               border-border text-text-muted hover:text-text-base transition-colors"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+                    Restaurar vídeo
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setDeleteModalOpen(true)}
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
+                               border-border text-error-color hover:bg-error-color/10 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                    Excluir vídeo
+                  </button>
+                )}
+              </div>
             </div>
           )}
           {exportErr && <p className="text-xs text-error-color mt-1">{exportErr}</p>}
+          {actionErr && <p role="alert" className="text-xs text-error-color mt-1">{actionErr}</p>}
         </div>
+
+        <ConfirmModal
+          isOpen={deleteModalOpen}
+          title="Excluir vídeo"
+          message={detail ? `Esta ação excluirá o vídeo "${sanitizeFileName(detail.video.file_name)}". Digite "excluir" para confirmar. O vídeo pode ser restaurado posteriormente.` : ''}
+          variant="danger"
+          requireTyping
+          confirmWord="excluir"
+          onConfirm={handleDeleteVideo}
+          onCancel={() => setDeleteModalOpen(false)}
+        />
+
+        <ConfirmModal
+          isOpen={reprocessModalOpen}
+          title="Reprocessar vídeo"
+          message={detail ? `O status de "${sanitizeFileName(detail.video.file_name)}" voltará para Pendente e o worker de visão computacional será disparado novamente. Aparições anteriores serão substituídas.` : ''}
+          variant="warning"
+          confirmLabel="Reprocessar"
+          onConfirm={handleReprocessVideo}
+          onCancel={() => setReprocessModalOpen(false)}
+        />
 
         {/* Summary cards */}
         {detail === null ? (

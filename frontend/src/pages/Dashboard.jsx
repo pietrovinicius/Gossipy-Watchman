@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Film, Clock, Users, UserX, RefreshCw, Download, Loader2, ChevronRight } from 'lucide-react'
+import { Film, Clock, Users, UserX, RefreshCw, Download, Loader2, ChevronRight, Eye, Trash2, RotateCcw, RotateCw } from 'lucide-react'
 import Layout from '../components/Layout'
+import ConfirmModal from '../components/ConfirmModal'
 import api from '../services/api'
 import { sanitizeFileName } from '../utils/sanitizeFileName'
 import { downloadCsv } from '../utils/downloadCsv'
@@ -36,6 +37,9 @@ function MetricCard({ icon: Icon, label, value, color }) {
   )
 }
 
+const STATUS_FILTERS = ['Todos', 'Pendente', 'Processando', 'Concluído', 'Erro']
+const REPROCESSABLE_STATUSES = ['Concluído', 'Erro']
+
 function SkeletonRow() {
   return (
     <tr>
@@ -56,6 +60,10 @@ export default function Dashboard() {
   const [lastRefresh, setLastRefresh] = useState(null)
   const [exportingId, setExportingId] = useState(null)
   const [wsConnected, setWsConnected] = useState(false)
+  const [statusFilter, setStatusFilter] = useState('Todos')
+  const [showDeleted, setShowDeleted] = useState(false)
+  const [videoToDelete, setVideoToDelete] = useState(null)
+  const [videoToReprocess, setVideoToReprocess] = useState(null)
   const fetchRef = useRef(null)
 
   async function handleExportVideo(videoId, fileName) {
@@ -73,8 +81,12 @@ export default function Dashboard() {
   const fetchData = useCallback(async () => {
     setError('')
     try {
+      let videosUrl = '/videos?limit=200'
+      if (statusFilter !== 'Todos') videosUrl += `&status=${encodeURIComponent(statusFilter)}`
+      if (showDeleted) videosUrl += '&include_deleted=true'
+
       const [vRes, pRes] = await Promise.all([
-        api.get('/videos?limit=200'),
+        api.get(videosUrl),
         api.get('/people?limit=200'),
       ])
       setVideos(vRes.data)
@@ -83,10 +95,41 @@ export default function Dashboard() {
     } catch (err) {
       setError(err.message)
     }
-  }, [])
+  }, [statusFilter, showDeleted])
 
   // mantém ref atualizada para uso no callback WS sem re-criar o hook
   fetchRef.current = fetchData
+
+  const handleDeleteVideo = async (video) => {
+    try {
+      await api.delete(`/videos/${video.id}`)
+      setVideoToDelete(null)
+      fetchData()
+    } catch (err) {
+      setError(err.response?.data?.detail ?? err.message)
+      setVideoToDelete(null)
+    }
+  }
+
+  const handleRestoreVideo = async (video) => {
+    try {
+      await api.post(`/videos/${video.id}/restore`)
+      fetchData()
+    } catch (err) {
+      setError(err.response?.data?.detail ?? err.message)
+    }
+  }
+
+  const handleReprocessVideo = async (video) => {
+    try {
+      await api.post(`/videos/${video.id}/reprocess`)
+      setVideoToReprocess(null)
+      fetchData()
+    } catch (err) {
+      setError(err.response?.data?.detail ?? err.message)
+      setVideoToReprocess(null)
+    }
+  }
 
   useGlobalWebSocket({
     onEvent: useCallback((payload) => {
@@ -145,6 +188,36 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Filtros */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {STATUS_FILTERS.map((s) => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                aria-pressed={statusFilter === s}
+                className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                  statusFilter === s
+                    ? 'bg-primary/10 border-primary text-primary'
+                    : 'border-border text-text-muted hover:text-text-base'}`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setShowDeleted((s) => !s)}
+            aria-pressed={showDeleted}
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
+                        transition-colors ${showDeleted
+                          ? 'bg-primary/10 border-primary text-primary'
+                          : 'border-border text-text-muted hover:text-text-base'}`}
+          >
+            <Eye className="w-3.5 h-3.5" aria-hidden="true" />
+            Mostrar excluídos
+          </button>
+        </div>
+
         {error && (
           <div role="alert" className="p-4 rounded-xl bg-red-950/40 border border-red-800/50 text-error-color text-sm">
             API inacessível: {error}
@@ -172,6 +245,7 @@ export default function Dashboard() {
                   <th className="text-left px-4 py-2.5 text-text-muted font-medium">Status</th>
                   <th className="text-left px-4 py-2.5 text-text-muted font-medium">Enviado em</th>
                   <th className="text-left px-4 py-2.5 text-text-muted font-medium">Exportar</th>
+                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">Ações</th>
                   <th className="px-4 py-2.5" aria-hidden="true" />
                 </tr>
               </thead>
@@ -185,40 +259,106 @@ export default function Dashboard() {
                     </td>
                   </tr>
                 ) : (
-                  recent.map((v) => (
-                    <tr
-                      key={v.id}
-                      onClick={() => navigate(`/videos/${v.id}`)}
-                      title="Ver detalhes do vídeo"
-                      className="border-b border-border/50 cursor-pointer hover:bg-slate-50
-                                 dark:hover:bg-[#1F2937] transition-colors duration-150"
-                    >
-                      <td className="px-4 py-3 font-mono text-xs text-text-base truncate max-w-[220px]">{sanitizeFileName(v.file_name)}</td>
-                      <td className="px-4 py-3"><StatusBadge status={v.status} /></td>
-                      <td className="px-4 py-3 text-text-muted">{fmt(v.uploaded_at)}</td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleExportVideo(v.id, v.file_name) }}
-                          disabled={exportingId === v.id}
-                          aria-label={`Exportar CSV do vídeo ${sanitizeFileName(v.file_name)}`}
-                          className="text-text-muted hover:text-primary transition-colors disabled:opacity-40"
-                        >
-                          {exportingId === v.id
-                            ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                            : <Download className="w-4 h-4" aria-hidden="true" />}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3">
-                        <ChevronRight className="w-4 h-4 text-slate-400" aria-hidden="true" />
-                      </td>
-                    </tr>
-                  ))
+                  recent.map((v) => {
+                    const name = sanitizeFileName(v.file_name)
+                    const isDeleted = Boolean(v.deleted_at)
+                    const canReprocess = REPROCESSABLE_STATUSES.includes(v.status)
+                    return (
+                      <tr
+                        key={v.id}
+                        onClick={() => navigate(`/videos/${v.id}`)}
+                        title="Ver detalhes do vídeo"
+                        className={`border-b border-border/50 cursor-pointer hover:bg-slate-50
+                                   dark:hover:bg-[#1F2937] transition-colors duration-150 ${isDeleted ? 'opacity-50' : ''}`}
+                      >
+                        <td className="px-4 py-3 font-mono text-xs text-text-base truncate max-w-[220px]">
+                          <div className="flex items-center gap-2">
+                            {name}
+                            {isDeleted && (
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full
+                                               bg-error-color/20 text-error-color">
+                                Excluído
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3"><StatusBadge status={v.status} /></td>
+                        <td className="px-4 py-3 text-text-muted">{fmt(v.uploaded_at)}</td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleExportVideo(v.id, v.file_name) }}
+                            disabled={exportingId === v.id}
+                            aria-label={`Exportar CSV do vídeo ${name}`}
+                            className="text-text-muted hover:text-primary transition-colors disabled:opacity-40"
+                          >
+                            {exportingId === v.id
+                              ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                              : <Download className="w-4 h-4" aria-hidden="true" />}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            {!isDeleted && canReprocess && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setVideoToReprocess(v) }}
+                                aria-label={`Reprocessar vídeo ${name}`}
+                                className="text-text-muted hover:text-primary transition-colors"
+                              >
+                                <RotateCw className="w-4 h-4" aria-hidden="true" />
+                              </button>
+                            )}
+                            {!isDeleted && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setVideoToDelete(v) }}
+                                aria-label={`Excluir vídeo ${name}`}
+                                className="text-text-muted hover:text-error-color transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" aria-hidden="true" />
+                              </button>
+                            )}
+                            {isDeleted && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleRestoreVideo(v) }}
+                                aria-label={`Restaurar vídeo ${name}`}
+                                className="text-text-muted hover:text-primary transition-colors"
+                              >
+                                <RotateCcw className="w-4 h-4" aria-hidden="true" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <ChevronRight className="w-4 h-4 text-slate-400" aria-hidden="true" />
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={videoToDelete !== null}
+        title="Excluir vídeo"
+        message={videoToDelete ? `Tem certeza que deseja excluir "${sanitizeFileName(videoToDelete.file_name)}"? Esta ação pode ser desfeita restaurando o vídeo.` : ''}
+        variant="danger"
+        confirmLabel="Excluir"
+        onConfirm={() => handleDeleteVideo(videoToDelete)}
+        onCancel={() => setVideoToDelete(null)}
+      />
+
+      <ConfirmModal
+        isOpen={videoToReprocess !== null}
+        title="Reprocessar vídeo"
+        message={videoToReprocess ? `O status de "${sanitizeFileName(videoToReprocess.file_name)}" voltará para Pendente e o worker de visão computacional será disparado novamente. Aparições anteriores serão substituídas.` : ''}
+        variant="warning"
+        confirmLabel="Reprocessar"
+        onConfirm={() => handleReprocessVideo(videoToReprocess)}
+        onCancel={() => setVideoToReprocess(null)}
+      />
     </Layout>
   )
 }
