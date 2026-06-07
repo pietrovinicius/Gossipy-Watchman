@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { UploadCloud, FileVideo, CheckCircle, AlertCircle, X } from 'lucide-react'
 import Layout from '../components/Layout'
 import api from '../services/api'
+import { useUploadProgress } from '../hooks/useUploadProgress'
+import { formatBytes, formatEta, formatSpeed } from '../utils/formatBytes'
 
 const ALLOWED = ['.mp4', '.avi', '.mkv', '.mov', '.ts']
 const MAX_SIZE_GB = 5
@@ -17,10 +19,10 @@ export default function Upload() {
   const [file, setFile] = useState(null)
   const [extError, setExtError] = useState('')
   const [uploading, setUploading] = useState(false)
-  const [progress, setProgress] = useState(0)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
   const [dragging, setDragging] = useState(false)
+  const { progress, speed, loaded, total, eta, onUploadProgress, reset: resetProgress } = useUploadProgress()
 
   function selectFile(f) {
     setResult(null)
@@ -46,7 +48,7 @@ export default function Upload() {
     if (!file) return
     setUploading(true)
     setError('')
-    setProgress(0)
+    resetProgress()
 
     const form = new FormData()
     form.append('file', file)
@@ -54,9 +56,7 @@ export default function Upload() {
     try {
       const res = await api.post('/videos/upload', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (e) => {
-          if (e.total) setProgress(Math.round((e.loaded / e.total) * 100))
-        },
+        onUploadProgress,
       })
       setResult(res.data)
       setFile(null)
@@ -165,7 +165,7 @@ export default function Upload() {
 
             {/* Progress bar */}
             {uploading && (
-              <div aria-label={`Upload ${progress}%`} className="space-y-1">
+              <div aria-label={`Upload ${progress}%`} className="space-y-2">
                 <div className="flex justify-between text-xs text-text-muted">
                   <span>Enviando...</span>
                   <span>{progress}%</span>
@@ -175,6 +175,11 @@ export default function Upload() {
                     className="h-full bg-primary transition-all duration-300 rounded-full"
                     style={{ width: `${progress}%` }}
                   />
+                </div>
+                <div className="text-xs text-text-muted space-y-0.5">
+                  <div>📤 {formatBytes(loaded)} de {formatBytes(total)}</div>
+                  <div>⚡ {formatSpeed(speed)}</div>
+                  <div>⏱ Tempo restante: {formatEta(eta)}</div>
                 </div>
               </div>
             )}
