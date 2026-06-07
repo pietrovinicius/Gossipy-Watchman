@@ -218,6 +218,34 @@ def test_get_person_stats_calculates_total_seconds(db_session):
     assert stats["first_seen"] is not None
 
 
+def test_get_person_stats_ignores_open_appearance_without_timestamp_end(db_session):
+    """Aparição "aberta" (timestamp_end=None) não deve quebrar o cálculo de total_seconds."""
+    from datetime import datetime, timezone
+    from app.models.video import Video, VideoStatus
+    from app.models.appearance import Appearance
+    from app.services.person_service import get_person_stats
+
+    person = Person(name="Com Aparição Aberta")
+    db_session.add(person)
+    video = Video(
+        file_name="v2.mp4",
+        file_path="storage/videos/v2.mp4",
+        status=VideoStatus.CONCLUIDO,
+        uploaded_at=datetime(2026, 6, 1, tzinfo=timezone.utc),
+    )
+    db_session.add(video)
+    db_session.commit()
+
+    fechada = Appearance(person_id=person.id, video_id=video.id, timestamp_start=0.0, timestamp_end=5.0, confidence=0.3)
+    aberta = Appearance(person_id=person.id, video_id=video.id, timestamp_start=10.0, timestamp_end=None, confidence=0.4)
+    db_session.add_all([fechada, aberta])
+    db_session.commit()
+
+    stats = get_person_stats(db_session, person.id)
+    assert stats["video_count"] == 1
+    assert stats["total_seconds"] == pytest.approx(5.0)
+
+
 # ── merge_people ──────────────────────────────────────────────────────────────
 
 def test_merge_people_reassociates_appearances(db_session):

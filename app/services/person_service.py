@@ -108,7 +108,9 @@ def get_person_stats(db: Session, person_id: int) -> dict:
 
     video_ids = {a.video_id for a in appearances}
     total_seconds = sum(
-        (a.timestamp_end - a.timestamp_start) for a in appearances
+        (a.timestamp_end - a.timestamp_start)
+        for a in appearances
+        if a.timestamp_end is not None
     )
 
     # first_seen / last_seen via video.uploaded_at
