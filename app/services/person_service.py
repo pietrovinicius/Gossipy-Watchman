@@ -1,4 +1,5 @@
 import logging
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -94,6 +95,41 @@ def list_face_samples(db: Session, person_id: int) -> list[dict]:
         {"filename": f.name, "is_primary": f.name == primary_filename}
         for f in files
     ]
+
+
+def _is_safe_face_filename(filename: str) -> bool:
+    return ".." not in filename and "/" not in filename and "\\" not in filename
+
+
+def set_primary_photo(db: Session, person_id: int, source_filename: str) -> Person:
+    """Define uma amostra facial existente como foto principal da pessoa.
+
+    Cadeia de validação: 400 (caminho inseguro) → 404 (arquivo inexistente)
+    → 403 (arquivo pertence a outra pessoa). Copia preservando o original
+    (shutil.copy2) para {person_id}.jpg.
+    """
+    if not _is_safe_face_filename(source_filename):
+        raise HTTPException(status_code=400, detail="Nome de arquivo inválido")
+
+    source_path = settings.STORAGE_FACES / source_filename
+    if not source_path.exists():
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+
+    owner_prefix = f"{person_id}_"
+    if source_filename != f"{person_id}.jpg" and not source_filename.startswith(owner_prefix):
+        raise HTTPException(status_code=403, detail="Arquivo não pertence a esta pessoa")
+
+    person = db.get(Person, person_id)
+    if person is None:
+        raise HTTPException(status_code=404, detail="Pessoa não encontrada")
+
+    primary_path = settings.STORAGE_FACES / f"{person_id}.jpg"
+    shutil.copy2(str(source_path), str(primary_path))
+
+    person.profile_image_path = str(primary_path)
+    db.commit()
+    db.refresh(person)
+    return person
 
 
 def list_people(db: Session, skip: int = 0, limit: int = 50) -> list[Person]:

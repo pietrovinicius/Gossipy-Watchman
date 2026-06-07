@@ -351,6 +351,81 @@ def test_list_face_samples_includes_primary_and_samples(db_session, tmp_path):
     assert primary[0]["filename"] == f"{pid}.jpg"
 
 
+# ── set_primary_photo ─────────────────────────────────────────────────────────
+
+def test_set_primary_photo_raises_400_for_path_traversal(db_session, tmp_path):
+    from fastapi import HTTPException
+    from app.services.person_service import set_primary_photo
+
+    person = Person(name="Alguém", profile_image_path=None)
+    db_session.add(person)
+    db_session.commit()
+
+    with patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+        with pytest.raises(HTTPException) as exc:
+            set_primary_photo(db_session, person.id, "../../etc/passwd")
+
+    assert exc.value.status_code == 400
+
+
+def test_set_primary_photo_raises_404_for_missing_file(db_session, tmp_path):
+    from fastapi import HTTPException
+    from app.services.person_service import set_primary_photo
+
+    person = Person(name="Alguém", profile_image_path=None)
+    db_session.add(person)
+    db_session.commit()
+
+    with patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+        with pytest.raises(HTTPException) as exc:
+            set_primary_photo(db_session, person.id, f"{person.id}_sample_999.jpg")
+
+    assert exc.value.status_code == 404
+
+
+def test_set_primary_photo_raises_403_for_other_persons_file(db_session, tmp_path):
+    from fastapi import HTTPException
+    from app.services.person_service import set_primary_photo
+
+    p1 = Person(name="Dono", profile_image_path=None)
+    p2 = Person(name="Outro", profile_image_path=None)
+    db_session.add_all([p1, p2])
+    db_session.commit()
+
+    (tmp_path / f"{p2.id}_sample_1.jpg").write_bytes(b"x")
+
+    with patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+        with pytest.raises(HTTPException) as exc:
+            set_primary_photo(db_session, p1.id, f"{p2.id}_sample_1.jpg")
+
+    assert exc.value.status_code == 403
+
+
+def test_set_primary_photo_copies_and_updates_profile_image_path(db_session, tmp_path):
+    from app.services.person_service import set_primary_photo
+
+    person = Person(name="Alguém", profile_image_path=str(tmp_path / "old.jpg"))
+    db_session.add(person)
+    db_session.commit()
+    pid = person.id
+
+    sample = tmp_path / f"{pid}_sample_3.jpg"
+    sample.write_bytes(b"conteudo-da-amostra")
+
+    with patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+        result = set_primary_photo(db_session, pid, f"{pid}_sample_3.jpg")
+
+    primary_path = tmp_path / f"{pid}.jpg"
+    assert primary_path.exists()
+    assert primary_path.read_bytes() == b"conteudo-da-amostra"
+    assert sample.exists()  # shutil.copy2 preserva o original
+    assert result.profile_image_path == str(primary_path)
+
+
 # ── merge_people ──────────────────────────────────────────────────────────────
 
 def test_merge_people_reassociates_appearances(db_session):

@@ -9,6 +9,7 @@ from app.schemas.person import (
     PersonResponse,
     PersonStatsResponse,
     PersonUpdate,
+    PrimaryPhotoRequest,
 )
 from app.services import person_service
 from app.services.auth_service import get_current_user
@@ -81,6 +82,17 @@ def get_person_frames(
         )
         for item in samples
     ]
+
+
+@router.patch("/people/{person_id}/primary-photo", response_model=PersonResponse)
+def set_primary_photo(
+    person_id: int,
+    body: PrimaryPhotoRequest,
+    db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
+) -> PersonResponse:
+    person = person_service.set_primary_photo(db, person_id, body.filename)
+    return PersonResponse.model_validate(person)
 
 
 @router.patch("/people/{person_id}", response_model=PersonResponse)

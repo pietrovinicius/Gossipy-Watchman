@@ -144,6 +144,80 @@ async def test_get_person_frames_not_found(client, auth_headers):
 
 
 @pytest.mark.asyncio
+async def test_patch_primary_photo_updates_profile_image(client, auth_headers, test_engine, tmp_path):
+    from unittest.mock import patch
+
+    pid = seed_person(test_engine, "Foto Principal")
+    (tmp_path / f"{pid}_sample_8.jpg").write_bytes(b"nova-foto")
+
+    with patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+        response = await client.patch(
+            f"/api/v1/people/{pid}/primary-photo",
+            json={"filename": f"{pid}_sample_8.jpg"},
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["profile_image_path"] == str(tmp_path / f"{pid}.jpg")
+    assert (tmp_path / f"{pid}.jpg").read_bytes() == b"nova-foto"
+
+
+@pytest.mark.asyncio
+async def test_patch_primary_photo_path_traversal_returns_400(client, auth_headers, test_engine, tmp_path):
+    from unittest.mock import patch
+
+    pid = seed_person(test_engine, "Path Traversal")
+
+    with patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+        response = await client.patch(
+            f"/api/v1/people/{pid}/primary-photo",
+            json={"filename": "../../etc/passwd"},
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_patch_primary_photo_missing_file_returns_404(client, auth_headers, test_engine, tmp_path):
+    from unittest.mock import patch
+
+    pid = seed_person(test_engine, "Sem Arquivo")
+
+    with patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+        response = await client.patch(
+            f"/api/v1/people/{pid}/primary-photo",
+            json={"filename": f"{pid}_sample_404.jpg"},
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_patch_primary_photo_other_persons_file_returns_403(client, auth_headers, test_engine, tmp_path):
+    from unittest.mock import patch
+
+    p1 = seed_person(test_engine, "Dono")
+    p2 = seed_person(test_engine, "Outro")
+    (tmp_path / f"{p2}_sample_1.jpg").write_bytes(b"x")
+
+    with patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+        response = await client.patch(
+            f"/api/v1/people/{p1}/primary-photo",
+            json={"filename": f"{p2}_sample_1.jpg"},
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_merge_people_returns_primary(client, auth_headers, test_engine):
     p1_id = seed_person(test_engine, "Principal")
     p2_id = seed_person(test_engine, "Secundário")

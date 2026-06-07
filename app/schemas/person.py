@@ -43,6 +43,17 @@ class FaceFrameResponse(BaseModel):
     url: str
 
 
+class PrimaryPhotoRequest(BaseModel):
+    filename: str
+
+    @field_validator("filename")
+    @classmethod
+    def filename_must_not_be_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("filename não pode ser vazio")
+        return v
+
+
 class MergeRequest(BaseModel):
     primary_id: int
     secondary_ids: list[int]
