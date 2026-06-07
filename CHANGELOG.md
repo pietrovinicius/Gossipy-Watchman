@@ -266,3 +266,93 @@ Consolidação dos fragmentos `v1.28` a `v1.64` (Sprints 8, 9, 10 e 11).
   - `app/services/person_service.py` — Integração com o endpoint de merge da Sprint 6 para atualizar o status do grupo de cluster correspondente para "Aceito".
   - `tests/unit/test_cluster_service.py` e `tests/integration/test_cluster.py` — Suite de testes cobrindo clusterização correta, isolamento de perfis conhecidos e descarte de ruído.
 
+
+## [1.8.7] — 2026-06-07
+
+### Adicionado
+
+#### Sprint 12 — Catálogo de Vídeos e Busca
+- **Backend**: `catalog_service.py` com busca (`title`, `status`, `date_range`, `people_filter`), filtro de status (`Pendente/Processando/Concluído/Erro`), ordenação (`recent/name/people`), paginação (skip/limit)
+- `app/api/v1/catalog.py` — `GET /api/v1/catalog` com query params: `search`, `status`, `sort`, `skip`, `limit`
+- **Frontend**: `VideosCatalog.jsx` com busca client-side, dropdowns de status/ordenação, toggle grid/lista, paginação com até 7 números visíveis, display "X-Y de Z"
+- `useVideoActions` hook reutilizável para compartilhar lógica de exportação/reprocessamento/exclusão entre Dashboard e Catálogo
+- Encerramento: 310 testes backend / 160 testes frontend; versão 1.7.0
+
+#### Sprint 13 — Player de Vídeo com Sincronização de Timeline
+- **Backend**: `GET /api/v1/videos/{id}/stream?token=JWT` com suporte HTTP 206 Range requests via `StreamingResponse`
+- `iterfile()` generator para streaming sem carregar arquivo inteiro na memória; validação de arquivo deletado (HTTP 410 Gone)
+- **Frontend**: `VideoPlayer.jsx` com controles HTML5 nativos, velocidade 0.5x/1x/1.5x/2x, `onTimeUpdate` callback
+- `VideoDetail.jsx` sincronização bidirecional: clique em aparição salta o player, currentTime do player destaca quem está em cena (`peopleOnScreen` via useMemo), badge 'EM CENA' pulsante com border highlight
+- Encerramento: 320 testes backend / 168 testes frontend; versão 1.7.5
+
+#### Sprint 14 — Conversão de Vídeo, CNN Adaptativo e Timer de Upload
+- **Backend**: `app/core/ffmpeg_check.py` — `check_ffmpeg()`, `get_ffmpeg_status()` retorna `{"available": bool, "path": str, "message": str}`, endpoint `GET /api/v1/health/ffmpeg` (público)
+- `app/services/conversion_service.py` — `needs_conversion(path)` (True para `.ts`/`.mkv`/`.mov`), `convert_to_mp4(input_path)` via `ffmpeg -c copy` (sem re-encode), `get_video_duration_seconds(path)` via `ffprobe`
+- Upload integration: conversão automática `.ts`/`.mkv`/`.mov` → `.mp4` após upload, delete original, registra path final
+- CNN adaptativo no worker: `get_adaptive_params(video_path)` retorna `{"mode": "preciso"/<10min / "equilibrado"/10-60min / "eficiente">60min, "upsample": int, "fps_sample": int}`
+- **Frontend**: `useUploadProgress` hook com `speed`, `eta` calculados instantaneamente, formatadores `formatBytes()`/`formatSpeed()`/`formatEta()`
+- `Upload.jsx` expandido com barra de progresso enriquecida (bytes, MB/s, tempo restante), suporte `.ts`/`.mkv`/`.mov`, MAX_SIZE_GB = 5
+- Encerramento: 354 testes backend / 176 testes frontend; versão 1.7.9
+
+#### Sprint 15 — Barra de Presença, Auto-scroll e Cadastro de Funcionários
+
+**15.1 — Barra de Presença Visual**
+- `VideoPlayer.jsx` expandido com barra horizontal com segmentos coloridos por pessoa, playhead em tempo real (transição suave), legenda com cores/nomes abaixo
+- Cálculo de posição: `(timestamp_start / duration) * 100` para left%, `Math.max(end - start, 0.5)` para width mínimo
+- Click em segmento → `onSeek(timestamp_start)`
+- Função `getCategoryColor()` mapeia "Funcionário"/#3B82F6 / "Visitante"/#8B5CF6 / "Monitorado"/#EF4444 / "Desconhecido"/#6B7280
+- 8 testes frontend (VideoPlayer.test.jsx)
+
+**15.2 — Auto-scroll ao Entrar em Cena**
+- `VideoDetail.jsx` com `cardRefs` mapping (`{person_id: elemento}`) + `prevPeopleOnScreenRef`
+- `useEffect` detecta pessoa nova em cena durante reprodução: `scrollIntoView({ behavior: 'smooth', block: 'nearest' })`
+- Estado `isPlaying` controlado via `onPlay`/`onPause` callbacks em `VideoPlayer`
+- 4 testes frontend (VideoSync.test.jsx)
+
+**15.3 — Modelo e Migração de Funcionários**
+- `app/models/employee.py` — Modelo SQLAlchemy `Employee` com 12 campos: id, name, registration (UNIQUE), department, role, photo_path, embedding_path, person_id (FK), active, notes, created_at, updated_at
+- Relacionamento bidirecional com `Person`: `employee` (uselist=False), `person` (back_populates)
+- `app/db/migrations/migration_v1_40.py` expandida com criação de tabela `employees` + índice `idx_employees_registration` (idempotente)
+- `app/schemas/employee.py` — `EmployeeCreate`, `EmployeeUpdate`, `EmployeeResponse`
+- 6 testes backend (test_migration_v1_40.py)
+
+**15.4 — Serviço de Funcionários**
+- `app/services/employee_service.py` — Orquestração completa:
+  - `register_employee()`: validação registration único (409), detecção exata 1 rosto via `face_recognition.face_locations()` (422 se 0 ou 2+), extração embedding, salvamento foto + embedding em `storage/employees/{uuid}.jpg|_embedding.npy`, criação Person + Employee linkados
+  - `list_employees(active_only, skip, limit)`, `get_employee_by_id()`, `get_employee_by_registration()`, `update_employee()`, `deactivate_employee()` (soft delete)
+- `app/core/settings.py` — `STORAGE_EMPLOYEES: Path = Path("storage/employees")`
+- `storage/employees/.gitkeep` criado
+- 10 testes backend (test_employee_service.py)
+
+**15.5 — Endpoints /api/v1/employees**
+- `app/api/v1/employees.py` — 5 endpoints:
+  - `POST /employees`: multipart (name, registration, department, role, notes, photo), validação extensão (.jpg/.jpeg/.png), tamanho (<10MB), requer JWT
+  - `GET /employees`: query params `active_only` (bool, default True), `skip`, `limit`, requer JWT
+  - `GET /employees/{id}`: requer JWT, 404 se não encontrado
+  - `PATCH /employees/{id}`: body `EmployeeUpdate`, requer JWT
+  - `DELETE /employees/{id}`: soft delete (active=0), requer JWT
+- Autenticação via `get_current_user` (JWT)
+- Registrado em `app/main.py` com `include_router(employees_router, prefix=settings.API_V1_PREFIX)`
+
+**15.6 — Frontend: Tela /employees**
+- `frontend/src/pages/Employees.jsx` — Tabela com colunas: Foto (avatar 40x40), Nome, Matrícula, Setor, Cargo, Perfil (link → /people/{id}), Status (badge Ativo/Inativo), Ações (Edit/Delete)
+- Toggle "Mostrar inativos" para filtro `active_only`
+- Botão "Cadastrar Funcionário" abre modal (placeholder — não implementado nesta sprint)
+- ConfirmModal para desativação (`DELETE /employees/{id}`)
+- API integration: `GET /employees?active_only=...`, `DELETE /employees/{id}`
+- `frontend/src/router.jsx` — Lazy load `Employees`, rota `/employees` protegida
+- `frontend/src/components/Layout.jsx` — Item "Funcionários" com ícone `BadgeCheck` posicionado entre "Pessoas" e "Alertas"
+
+### Infraestrutura
+
+- `Documentos/Cronograma de Sprints - Gossipy Watchman.docx` — Seções de Sprints 12-15 adicionadas
+- Encerramento: 370 testes backend / 180 testes frontend; build frontend 441ms; versão sincronizada em 1.8.7
+
+### Métricas Finais (Sprint 15)
+
+- **Backend**: 370 testes passando (28 adicionados nesta sprint)
+- **Frontend**: 180 testes passando (12 adicionados nesta sprint)
+- **Build**: `npm build` ✓ 441ms
+- **Cobertura**: 8 + 4 + 6 + 10 + 0 + 0 = 28 novos testes (backend + frontend)
+
+---
