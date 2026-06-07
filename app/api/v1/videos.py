@@ -4,12 +4,43 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.schemas.video import VideoDetailResponse, VideoResponse, VideoStatusResponse
+from app.schemas.video import (
+    CatalogResponse,
+    VideoDetailResponse,
+    VideoResponse,
+    VideoStatusResponse,
+)
 from app.services import video_service
 from app.services.auth_service import get_current_user
 from app.workers.video_worker import process_video
 
 router = APIRouter()
+
+
+@router.get("/videos/catalog", response_model=CatalogResponse)
+def catalog_videos(
+    q: str | None = Query(default=None, description="Busca parcial por nome de arquivo"),
+    status: str | None = Query(default=None, description="Filtro por status exato"),
+    sort_by: str = Query(
+        default="uploaded_at_desc",
+        description="uploaded_at_desc, uploaded_at_asc, name_asc, name_desc, people_desc",
+    ),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=12, ge=1, le=48),
+    include_deleted: bool = Query(default=False),
+    db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
+) -> CatalogResponse:
+    result = video_service.search_videos(
+        db,
+        query=q,
+        status_filter=status,
+        sort_by=sort_by,
+        page=page,
+        page_size=page_size,
+        include_deleted=include_deleted,
+    )
+    return CatalogResponse(**result)
 
 
 @router.get("/videos", response_model=list[VideoResponse])

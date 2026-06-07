@@ -241,3 +241,87 @@ async def test_reprocess_video_missing_file_returns_409(client, auth_headers, te
     vid = seed_video(test_engine, "sem_arquivo.mp4")
     response = await client.post(f"/api/v1/videos/{vid}/reprocess", headers=auth_headers)
     assert response.status_code == 409
+
+
+# ── GET /videos/catalog ──────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_catalog_without_token_returns_401(client):
+    response = await client.get("/api/v1/videos/catalog")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_catalog_returns_correct_structure(client, auth_headers, test_engine):
+    seed_video(test_engine, "clip1.mp4")
+    seed_video(test_engine, "clip2.mp4")
+    response = await client.get("/api/v1/videos/catalog", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert set(data.keys()) == {"items", "total", "page", "page_size", "total_pages", "has_next", "has_prev"}
+    assert data["total"] == 2
+    assert len(data["items"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_catalog_query_filters_by_name(client, auth_headers, test_engine):
+    seed_video(test_engine, "aniversario_2024.mp4")
+    seed_video(test_engine, "reuniao.mp4")
+    response = await client.get("/api/v1/videos/catalog?q=aniversario", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["file_name"] == "aniversario_2024.mp4"
+
+
+@pytest.mark.asyncio
+async def test_catalog_status_filter(client, auth_headers, test_engine):
+    from sqlalchemy.orm import sessionmaker
+
+    v1 = seed_video(test_engine, "pendente.mp4")
+    v2 = seed_video(test_engine, "concluido.mp4")
+    Session = sessionmaker(bind=test_engine)
+    session = Session()
+    video = session.get(Video, v2)
+    video.status = VideoStatus.CONCLUIDO
+    session.commit()
+    session.close()
+
+    response = await client.get("/api/v1/videos/catalog?status=Concluído", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == v2
+
+
+@pytest.mark.asyncio
+async def test_catalog_pagination(client, auth_headers, test_engine):
+    for i in range(15):
+        seed_video(test_engine, f"video{i}.mp4")
+
+    response = await client.get("/api/v1/videos/catalog?page=1&page_size=5", headers=auth_headers)
+    data = response.json()
+    assert data["page"] == 1
+    assert data["page_size"] == 5
+    assert len(data["items"]) == 5
+    assert data["has_next"] is True
+    assert data["has_prev"] is False
+
+    response2 = await client.get("/api/v1/videos/catalog?page=2&page_size=5", headers=auth_headers)
+    data2 = response2.json()
+    assert data2["page"] == 2
+    assert data2["has_prev"] is True
+
+
+@pytest.mark.asyncio
+async def test_catalog_excludes_deleted_by_default(client, auth_headers, test_engine):
+    v1 = seed_video(test_engine, "ativo.mp4")
+    v2 = seed_video(test_engine, "deletado.mp4")
+    await client.delete(f"/api/v1/videos/{v2}", headers=auth_headers)
+
+    response = await client.get("/api/v1/videos/catalog", headers=auth_headers)
+    data = response.json()
+    assert data["total"] == 1
+    ids = [item["id"] for item in data["items"]]
+    assert v1 in ids
+    assert v2 not in ids

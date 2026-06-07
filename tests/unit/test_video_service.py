@@ -294,3 +294,132 @@ def test_reprocess_video_returns_none_for_unknown_id(db):
     from app.services.video_service import reprocess_video
 
     assert reprocess_video(db, 9999) is None
+
+
+# ── search_videos ────────────────────────────────────────────────────────────
+
+def test_search_videos_without_filters_returns_all(db):
+    from app.services.video_service import create_video_record, search_videos
+
+    v1 = create_video_record(db, "clip1.mp4", "storage/videos/clip1.mp4")
+    v2 = create_video_record(db, "clip2.mp4", "storage/videos/clip2.mp4")
+
+    result = search_videos(db)
+
+    assert result["total"] == 2
+    assert len(result["items"]) == 2
+
+
+def test_search_videos_with_query_filters_by_name(db):
+    from app.services.video_service import create_video_record, search_videos
+
+    v1 = create_video_record(db, "aniversario_2024.mp4", "storage/videos/aniversario_2024.mp4")
+    v2 = create_video_record(db, "reuniao.mp4", "storage/videos/reuniao.mp4")
+
+    result = search_videos(db, query="aniversario")
+
+    assert result["total"] == 1
+    assert result["items"][0]["id"] == v1.id
+
+
+def test_search_videos_with_status_filter(db):
+    from app.services.video_service import create_video_record, update_video_status, search_videos
+
+    v1 = create_video_record(db, "a.mp4", "storage/videos/a.mp4")
+    v2 = create_video_record(db, "b.mp4", "storage/videos/b.mp4")
+    update_video_status(db, v2.id, VideoStatus.CONCLUIDO)
+
+    result = search_videos(db, status_filter=VideoStatus.CONCLUIDO.value)
+
+    assert result["total"] == 1
+    assert result["items"][0]["id"] == v2.id
+
+
+def test_search_videos_sort_by_people_desc(db):
+    from app.services.video_service import create_video_record, search_videos
+
+    v1 = create_video_record(db, "v1.mp4", "storage/videos/v1.mp4")
+    v2 = create_video_record(db, "v2.mp4", "storage/videos/v2.mp4")
+
+    person_a = _make_person(db, name="A")
+    person_b = _make_person(db, name="B")
+    person_c = _make_person(db, name="C")
+
+    # v1: 3 pessoas
+    _make_appearance(db, person_a.id, v1.id, start=1.0, end=2.0)
+    _make_appearance(db, person_b.id, v1.id, start=3.0, end=4.0)
+    _make_appearance(db, person_c.id, v1.id, start=5.0, end=6.0)
+
+    # v2: 1 pessoa
+    _make_appearance(db, person_a.id, v2.id, start=1.0, end=2.0)
+
+    result = search_videos(db, sort_by="people_desc")
+
+    assert result["items"][0]["id"] == v1.id
+    assert result["items"][1]["id"] == v2.id
+
+
+def test_search_videos_pagination_page_2(db):
+    from app.services.video_service import create_video_record, search_videos
+
+    for i in range(15):
+        create_video_record(db, f"v{i}.mp4", f"storage/videos/v{i}.mp4")
+
+    result = search_videos(db, page=2, page_size=5)
+
+    assert result["page"] == 2
+    assert len(result["items"]) == 5
+    assert result["has_prev"] is True
+    assert result["has_next"] is True
+
+
+def test_search_videos_total_pages_calculated_correctly(db):
+    from app.services.video_service import create_video_record, search_videos
+
+    for i in range(27):
+        create_video_record(db, f"v{i}.mp4", f"storage/videos/v{i}.mp4")
+
+    result = search_videos(db, page_size=12)
+
+    assert result["total"] == 27
+    assert result["total_pages"] == 3
+
+
+def test_search_videos_has_next_true_when_more_pages(db):
+    from app.services.video_service import create_video_record, search_videos
+
+    for i in range(15):
+        create_video_record(db, f"v{i}.mp4", f"storage/videos/v{i}.mp4")
+
+    result = search_videos(db, page=1, page_size=5)
+
+    assert result["has_next"] is True
+    assert result["has_prev"] is False
+
+
+def test_search_videos_people_previews_limited_to_4(db):
+    from app.services.video_service import create_video_record, search_videos
+
+    video = create_video_record(db, "v.mp4", "storage/videos/v.mp4")
+
+    for i in range(6):
+        person = _make_person(db, name=f"Person{i}")
+        _make_appearance(db, person.id, video.id, start=float(i), end=float(i+1))
+
+    result = search_videos(db)
+
+    assert result["items"][0]["people_count"] == 6
+    assert len(result["items"][0]["people_previews"]) == 4
+
+
+def test_search_videos_excludes_deleted_by_default(db):
+    from app.services.video_service import create_video_record, soft_delete_video, search_videos
+
+    v1 = create_video_record(db, "ativo.mp4", "storage/videos/ativo.mp4")
+    v2 = create_video_record(db, "deletado.mp4", "storage/videos/deletado.mp4")
+    soft_delete_video(db, v2.id)
+
+    result = search_videos(db)
+
+    assert result["total"] == 1
+    assert result["items"][0]["id"] == v1.id

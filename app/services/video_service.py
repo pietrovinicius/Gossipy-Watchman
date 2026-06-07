@@ -2,6 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.appearance import Appearance
@@ -172,3 +173,104 @@ def update_video_status(db: Session, video_id: int, status: VideoStatus) -> Vide
     db.commit()
     db.refresh(video)
     return video
+
+
+def search_videos(
+    db: Session,
+    query: str | None = None,
+    status_filter: str | None = None,
+    sort_by: str = "uploaded_at_desc",
+    page: int = 1,
+    page_size: int = 12,
+    include_deleted: bool = False,
+) -> dict:
+    """
+    Busca paginada de vídeos com filtros, busca por nome, ordenação e
+    contagem de pessoas identificadas.
+
+    Retorna dict com: items, total, page, page_size, total_pages, has_next, has_prev
+    """
+    q = db.query(Video)
+
+    if not include_deleted:
+        q = q.filter(Video.deleted_at.is_(None))
+
+    if status_filter is not None:
+        q = q.filter(Video.status == status_filter)
+
+    if query is not None:
+        q = q.filter(Video.file_name.ilike(f"%{query}%"))
+
+    if sort_by == "uploaded_at_desc":
+        q = q.order_by(Video.uploaded_at.desc())
+    elif sort_by == "uploaded_at_asc":
+        q = q.order_by(Video.uploaded_at.asc())
+    elif sort_by == "name_asc":
+        q = q.order_by(Video.file_name.asc())
+    elif sort_by == "name_desc":
+        q = q.order_by(Video.file_name.desc())
+    elif sort_by == "people_desc":
+        # Ordena por count de pessoas distintas (desc)
+        q = (
+            q.outerjoin(Appearance, Video.id == Appearance.video_id)
+            .group_by(Video.id)
+            .order_by(func.count(func.distinct(Appearance.person_id)).desc())
+        )
+    else:
+        q = q.order_by(Video.uploaded_at.desc())
+
+    total = q.count() if sort_by != "people_desc" else len(q.all())
+
+    offset = (page - 1) * page_size
+    items = q.offset(offset).limit(page_size).all()
+
+    total_pages = (total + page_size - 1) // page_size
+    has_next = page < total_pages
+    has_prev = page > 1
+
+    items_dict = []
+    for video in items:
+        people_count = (
+            db.query(func.count(func.distinct(Appearance.person_id)))
+            .filter(Appearance.video_id == video.id)
+            .scalar()
+        ) or 0
+
+        people_previews = (
+            db.query(Person.id, Person.name, Person.profile_image_path)
+            .join(Appearance, Person.id == Appearance.person_id)
+            .filter(Appearance.video_id == video.id)
+            .distinct(Person.id)
+            .limit(4)
+            .all()
+        )
+
+        items_dict.append(
+            {
+                "id": video.id,
+                "file_name": video.file_name,
+                "file_path": video.file_path,
+                "status": video.status,
+                "uploaded_at": video.uploaded_at,
+                "deleted_at": video.deleted_at,
+                "people_count": people_count,
+                "people_previews": [
+                    {
+                        "person_id": p[0],
+                        "person_name": p[1],
+                        "profile_image_path": p[2],
+                    }
+                    for p in people_previews
+                ],
+            }
+        )
+
+    return {
+        "items": items_dict,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "has_next": has_next,
+        "has_prev": has_prev,
+    }

@@ -59,3 +59,32 @@ class VideoDetailResponse(BaseModel):
     video: VideoResponse
     people: list[PersonInVideo]
     summary: VideoSummary
+
+
+class PersonPreview(BaseModel):
+    person_id: int
+    person_name: str
+    profile_image_path: str | None
+
+
+class VideoCardResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    file_name: str
+    file_path: str
+    status: VideoStatus
+    uploaded_at: datetime
+    deleted_at: datetime | None = None
+    people_count: int
+    people_previews: list[PersonPreview]
+
+
+class CatalogResponse(BaseModel):
+    items: list[VideoCardResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+    has_next: bool
+    has_prev: bool

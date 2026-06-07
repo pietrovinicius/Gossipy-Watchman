@@ -1,0 +1,146 @@
+# Desenho de Arquitetura: Clusterização de Desconhecidos (Re-identificação Assistida)
+
+Este documento estabelece o desenho de arquitetura de dados, a especificação da lógica de negócio e a estrutura de testes para a funcionalidade de clusterização de perfis com categoria `"Desconhecido"`.
+
+---
+
+## 1. Arquitetura e Fluxo de Dados
+
+### 1.1 Disparo do Pipeline (Assíncrono)
+Para evitar o bloqueio do event loop do FastAPI durante operações pesadas de álgebra linear e manipulação de arquivos, a clusterização será executada em background.
+
+```mermaid
+sequenceDiagram
+    participant UI as Frontend (React)
+    participant API as FastAPI Router
+    participant Serv as ClusterService
+    participant Work as Background Worker
+    participant DB as SQLite / Disk
+
+    UI->>API: POST /api/v1/people/clusterize (Disparar processo)
+    API->>Serv: check_if_running()
+    Note over Serv: Mutex/Lock em memória (Redis/Lock local)
+    API->>Work: dispatch_background_task(run_clusterization)
+    API-->>UI: HTTP 202 (Accepted) + task_id
+    
+    activate Work
+    Work->>DB: Carregar perfis "Desconhecido" + arquivos .npy
+    Note over Work: Executa algoritmo de agrupamento (DBSCAN/Connected Components)
+    Work->>DB: Persistir sugestões em tabelas temporárias (ClusterGroups)
+    deactivate Work
+```
+
+* **Endpoint:** `POST /api/v1/people/clusterize`
+* **Mecanismo:** FastAPI `BackgroundTasks` ou execução via `ThreadPoolExecutor` local, com controle de concorrência por meio de um lock em memória (`asyncio.Lock` ou flag persistida) para impedir execuções simultâneas.
+* **Notificação:** Ao fim do processamento, um evento WebSocket global (`watchlist_alert` ou `clusterization_completed`) é enviado via `ws_manager.broadcast_all` para notificar a UI de que novas sugestões de mesclagem estão disponíveis.
+
+### 1.2 Algoritmo de Agrupamento
+Será utilizado o algoritmo **DBSCAN** (Density-Based Spatial Clustering of Applications with Noise) ou uma variação de **Componentes Conectados** sobre a matriz de adjacência de distâncias faciais:
+
+* **Por que DBSCAN/Connected Components e não K-Means?**
+  * O número de pessoas desconhecidas ($K$) é imprevisível. O K-Means exigiria a definição prévia de clusters, inviabilizando o processo.
+  * O DBSCAN isola naturalmente *ruídos* (perfis que não se assemelham a nenhum outro), mantendo-os sem cluster associado.
+* **Parâmetros e Threshold:**
+  * $\epsilon$ (Epsilon): Mapeado diretamente para `settings.FACE_RECOGNITION_TOLERANCE` (default `0.6`).
+  * `metric`: Distância Euclidiana baseada nos embeddings de 128 floats (.npy).
+  * `min_samples`: `2` (o menor agrupamento elegível para mesclagem é composto por dois perfis).
+* **Minimização de Dependências:**
+  Para evitar a inclusão de grandes pacotes como `scikit-learn` no ambiente de produção, implementaremos o algoritmo DBSCAN clássico diretamente em Python/NumPy, aproveitando a biblioteca `numpy` que já está pinada no `requirements.txt`.
+
+### 1.3 Exposição de Sugestões e Fluxo de Merge
+1. O pipeline de clusterização gera grupos sugeridos nas tabelas do banco.
+2. A UI consome o endpoint `GET /api/v1/people/clusters` para exibir grupos de desconhecidos semelhantes na tela.
+3. Para cada grupo, o sistema define uma pessoa como a **sugestão principal** (ex: o perfil com o maior número de aparições ou maior qualidade facial).
+4. O usuário visualiza as fotos lado a lado e pode aceitar a mesclagem.
+5. Ao confirmar, o frontend chama o endpoint de mesclagem já existente da Sprint 6 (`POST /api/v1/people/merge`), passando o ID principal (`primary_id`) e os secundários (`secondary_ids`), mantendo o reaproveitamento de código e a consistência da base.
+
+---
+
+## 2. Modelagem Complementar do Banco de Dados (SQLite)
+
+Para registrar os clusters de re-identificação de forma assistida sem efetuar exclusões físicas de dados brutos (preservando o histórico e respeitando a **Regra 4: DELETE físico proibido**), criaremos duas novas tabelas.
+
+### 2.1 Schema Markdown (SQLite)
+
+```sql
+-- Representa um lote/grupo de cluster sugerido
+CREATE TABLE cluster_groups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    status VARCHAR(20) NOT NULL DEFAULT 'Pendente', -- 'Pendente', 'Aceito', 'Rejeitado'
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL DEFAULT NULL
+);
+
+-- Associa cada pessoa (people.id) ao seu respectivo grupo sugerido
+CREATE TABLE cluster_suggestions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    group_id INTEGER NOT NULL REFERENCES cluster_groups(id),
+    person_id INTEGER NOT NULL REFERENCES people(id),
+    is_primary BOOLEAN NOT NULL DEFAULT 0, -- Sugere qual deve ser o perfil principal no merge
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL DEFAULT NULL
+);
+
+-- Índices para otimização de consultas da UI e queries de join
+CREATE INDEX idx_cluster_groups_status ON cluster_groups(status) WHERE deleted_at IS NULL;
+CREATE INDEX idx_cluster_suggestions_group ON cluster_suggestions(group_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_cluster_suggestions_person ON cluster_suggestions(person_id) WHERE deleted_at IS NULL;
+```
+
+---
+
+## 3. Escopo dos Testes (TDD — Lei de Ferro)
+
+Seguindo estritamente a diretriz do TDD, a estrutura de arquivos de testes será criada e os cenários deverão falhar antes do código de produção ser escrito.
+
+### 3.1 Módulos a Serem Criados
+* **Unitários:** [tests/unit/test_cluster_service.py](file:///Users/pietrodapenhadelima/Projetos/Gossipy%20Watchman/tests/unit/test_cluster_service.py)
+* **Integração:** [tests/integration/test_cluster.py](file:///Users/pietrodapenhadelima/Projetos/Gossipy%20Watchman/tests/integration/test_cluster.py)
+
+---
+
+### 3.2 Cenários de Testes Unitários (`test_cluster_service.py`)
+
+#### `test_dbscan_clustering_groups_correctly`
+* **Objetivo:** Garantir que perfis desconhecidos com distância menor que `0.6` sejam agrupados no mesmo cluster.
+* **Setup:** Criar mocks de 4 perfis "Desconhecido". Gerar embeddings fictícios com as seguintes distâncias:
+  * A e B: distância `0.2` (deve agrupar)
+  * C e D: distância `0.3` (deve agrupar)
+  * A e C: distância `0.7` (não deve agrupar)
+* **Asserções:** Validar que a saída do algoritmo identifique dois grupos distintos `{A, B}` e `{C, D}`.
+
+#### `test_clustering_ignores_known_profiles`
+* **Objetivo:** Assegurar que perfis da categoria `"Funcionário"`, `"Visitante"` ou `"Monitorado"` fiquem de fora do pipeline de clusterização de desconhecidos.
+* **Setup:** Criar 2 perfis "Desconhecido" semelhantes e 1 perfil "Funcionário" também semelhante ao grupo.
+* **Asserções:** Validar que o perfil "Funcionário" não seja associado a nenhum grupo sugerido, contendo apenas os perfis "Desconhecido" no cluster resultante.
+
+#### `test_clustering_identifies_noise_as_single_profiles`
+* **Objetivo:** Verificar se perfis únicos (distância $> 0.6$ de todos os outros) são devidamente marcados como ruído/ruídos isolados e não geram grupos.
+* **Setup:** Criar 3 perfis desconhecidos com distâncias mútuas superiores a `0.65`.
+* **Asserções:** O serviço não deve cadastrar nenhum `cluster_groups` no banco, retornando uma lista vazia de sugestões.
+
+---
+
+### 3.3 Cenários de Testes de Integração (`test_cluster.py`)
+
+#### `test_post_clusterize_endpoint_triggers_background_task`
+* **Objetivo:** Validar que a chamada de API de disparo retorna `202 Accepted` e inicia o processamento assíncrono.
+* **Setup:** Requisição autenticada `POST /api/v1/people/clusterize`.
+* **Asserções:** Status HTTP `202`, retorno contendo a confirmação da tarefa em background e garantia de que o worker correspondente foi agendado.
+
+#### `test_get_clusters_endpoint_returns_pending_suggestions`
+* **Objetivo:** Testar se o endpoint expõe os dados das tabelas de forma estruturada para consumo da UI.
+* **Setup:** Criar registros manuais de `cluster_groups` e `cluster_suggestions` com status `'Pendente'`.
+* **Asserções:** Status HTTP `200`, retorno no formato JSON correspondendo aos schemas Pydantic contendo lista de grupos, perfis agregados e identificação do perfil sugerido como `is_primary`.
+
+#### `test_resolve_cluster_suggestion_via_merge`
+* **Objetivo:** Garantir o ciclo completo de resolução onde a UI executa o merge utilizando a lógica da Sprint 6.
+* **Setup:** 
+  1. Executar a rota de clusterização gerando um grupo contendo o desconhecido principal e secundários.
+  2. Submeter o payload ao endpoint de merge existente (`POST /api/v1/people/merge`) definindo o ID principal e secundários.
+  3. Atualizar o status do grupo de cluster para `'Aceito'`.
+* **Asserções:**
+  * O endpoint de merge retorna HTTP `200`.
+  * As aparições dos perfis secundários são migradas para o principal.
+  * Os perfis secundários são desativados via soft delete (`deleted_at` preenchido).
+  * O grupo em `cluster_groups` passa a ter status `'Aceito'`.
