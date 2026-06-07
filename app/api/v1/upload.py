@@ -13,12 +13,15 @@ from app.workers.video_worker import process_video
 
 router = APIRouter()
 
-_ALLOWED_EXTENSIONS = {".mp4", ".avi"}
+_ALLOWED_EXTENSIONS = {".mp4", ".avi", ".mkv", ".mov", ".ts"}
 _CHUNK_SIZE = 1024 * 1024  # 1 MB
 
 _MAGIC: dict[str, list[tuple[int, int, bytes]]] = {
     ".mp4": [(4, 8, b"ftyp")],
     ".avi": [(0, 4, b"RIFF"), (8, 12, b"AVI ")],
+    ".mkv": [(0, 4, b"\x1a\x45\xdf\xa3")],
+    ".mov": [(4, 8, b"ftyp")],
+    ".ts": [(0, 1, b"\x47")],
 }
 
 

@@ -548,6 +548,41 @@ Decisões:
 - Hook reutilizável permite consolidar lógica de ações no futuro (refactor Dashboard)
 
 ================================================================
+PARA VÍDEOS DE CÂMERA DE SEGURANÇA (arquivos 5GB+)
+================================================================
+
+Configurações no .env para câmeras CFTV/Catraca:
+  MAX_UPLOAD_SIZE_MB=5120            # 5GB
+  FACE_DETECTION_MODEL=cnn           # maior precisão
+  FACE_UPSAMPLE=1                    # ou 2 se câmera distante
+  FRAMES_PER_SECOND_SAMPLE=2         # 2 frames/s vs 1 padrão
+
+Iniciar backend com timeout estendido:
+  source venv/bin/activate
+  uvicorn app.main:app --reload --port 8000 --timeout-keep-alive 300
+
+Formatos suportados:
+  MP4, AVI, MKV, MOV, TS
+  Magic bytes validados antes do upload
+
+Dica para vídeos muito longos (>30 min):
+  Extrair trechos de 15-20min e processar separadamente.
+  Dobro de frames/s (2/s vs 1/s) = ~2h processamento por 1h vídeo com CNN.
+  Se o vídeo for outro formato (MPEG-TS, H264 raw):
+    ffmpeg -i entrada.ts -c copy -bsf:v h264_mp4toannexb saida.mp4
+  Ou usar ffmpeg para converter para MP4 antes do upload.
+
+Tratamento de erro em vídeos grandes:
+  Se status = Erro e há "MemoryError" nos logs:
+    - Arquivo pode estar corrompido ou muito grande
+    - Tente um trecho menor (5-10 min) para calibrar
+    - Aumentar RAM disponível se der timeout
+
+Progresso do processamento:
+  Backend loga a cada 100 frames: Processados X frames | Y faces | Z novas pessoas
+  WebSocket notifica o frontend em tempo real via /ws/video/{id}
+
+================================================================
 CONTATO E REPOSITÓRIO
 ================================================================
 Desenvolvido por: Pietro Vinicius Lima
