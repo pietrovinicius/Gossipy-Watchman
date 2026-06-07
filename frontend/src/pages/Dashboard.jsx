@@ -4,6 +4,7 @@ import Layout from '../components/Layout'
 import api from '../services/api'
 import { sanitizeFileName } from '../utils/sanitizeFileName'
 import { downloadCsv } from '../utils/downloadCsv'
+import { formatDateTime } from '../utils/formatDate'
 import { useGlobalWebSocket } from '../hooks/useGlobalWebSocket'
 
 const STATUS_BADGE = {
@@ -106,12 +107,7 @@ export default function Dashboard() {
   const unknown   = people?.filter((p) => p.name.startsWith('Desconhecido')).length ?? null
   const recent    = videos?.slice(0, 10) ?? []
 
-  function fmt(dateStr) {
-    return new Date(dateStr).toLocaleString('pt-BR', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-    })
-  }
+  const fmt = formatDateTime
 
   return (
     <Layout>
