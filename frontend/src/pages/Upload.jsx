@@ -4,7 +4,8 @@ import { UploadCloud, FileVideo, CheckCircle, AlertCircle, X } from 'lucide-reac
 import Layout from '../components/Layout'
 import api from '../services/api'
 
-const ALLOWED = ['.mp4', '.avi']
+const ALLOWED = ['.mp4', '.avi', '.mkv', '.mov', '.ts']
+const MAX_SIZE_GB = 5
 
 function getExt(name) {
   return name.slice(name.lastIndexOf('.')).toLowerCase()
@@ -27,7 +28,7 @@ export default function Upload() {
     setExtError('')
     setProgress(0)
     if (!ALLOWED.includes(getExt(f.name))) {
-      setExtError(`Formato não suportado: "${getExt(f.name)}". Use .mp4 ou .avi.`)
+      setExtError(`Formato não suportado: "${getExt(f.name)}". Use .mp4, .avi, .mkv, .mov ou .ts.`)
       setFile(null)
       return
     }
@@ -124,11 +125,12 @@ export default function Upload() {
               <UploadCloud className="w-12 h-12 text-text-muted mx-auto mb-3" aria-hidden="true" />
               <p className="text-text-base font-medium">Arraste um arquivo aqui</p>
               <p className="text-text-muted text-sm mt-1">ou clique para selecionar</p>
-              <p className="text-xs text-text-muted mt-2">Formatos aceitos: .mp4, .avi</p>
+              <p className="text-xs text-text-muted mt-2">Formatos: .mp4, .avi, .mkv, .mov, .ts</p>
+              <p className="text-xs text-text-muted">Máximo: {MAX_SIZE_GB} GB</p>
               <input
                 ref={inputRef}
                 type="file"
-                accept=".mp4,.avi"
+                accept=".mp4,.avi,.mkv,.mov,.ts"
                 className="hidden"
                 aria-hidden="true"
                 onChange={(e) => e.target.files[0] && selectFile(e.target.files[0])}
