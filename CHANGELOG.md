@@ -192,3 +192,55 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - `Documentos/Cronograma de Sprints - Gossipy Watchman.docx` — Sprint 7 adicionada
 - `Anotacoes.txt` — versão bump + decisões técnicas 6/7/8 documentadas (asyncio bridge, WS auth via query param, CSV via stdlib)
 - Verificação Sprint 7: 186 testes pytest + 40 testes vitest passando; build de produção frontend limpo
+
+---
+
+## [1.6.4] — 2026-06-07
+
+Consolidação dos fragmentos `v1.28` a `v1.64` (Sprints 8, 9, 10 e 11).
+
+### Adicionado
+
+#### Sprint 8 — Watchlist, Busca por Similaridade e Analytics
+- Migração `migration_v1_20` + modelo `Alert` (tabela `alerts`: person_id, video_id, timestamp_in_video, message, seen, created_at)
+- `alert_service` + endpoints `GET /alerts`, `GET /alerts/count`, `PATCH /alerts/seen` (autenticados)
+- Integração da watchlist no `video_worker`: alerta único por pessoa/vídeo (`alerted_in_this_video`), persistência + broadcast WS `watchlist_alert` para pessoas categoria "Monitorado"
+- `search_service` + `POST /api/v1/search/by-face`: busca por similaridade facial via embeddings (multipart, max 10MB, `query_time_ms` exposto)
+- `analytics_service` + endpoints `GET /analytics/{overview,appearances-per-video,top-people,activity-timeline}`
+- Frontend: página `Alerts.jsx` (badge de não vistos, toast WS, marcar como visto), painel "Buscar por face" em `People.jsx` (`useFaceSearch`), `AnalyticsDashboard.jsx` com recharts (LineChart/BarChart)
+- Encerramento: 220 testes backend / 58 testes frontend; versão sincronizada em 1.4.0
+
+#### Tema claro/escuro
+- `ThemeContext` com alternância dark/light persistida (localStorage → preferência do sistema → dark), tokens semânticos via CSS custom properties (`--color-*`), `ThemeToggle` na sidebar, gráficos recharts adaptados via `var(--chart-grid)`/`var(--chart-text)`. 12 novos testes, 70/70 frontend
+
+#### Sprint 9 — PersonDetail Avançado
+- `save_face_sample()` + `MAX_FACE_SAMPLES` (10): pipeline passa a salvar amostras faciais por aparição em `storage/faces/`; endpoint `GET /people/{id}/frames`
+- `PATCH /people/{id}/primary-photo`: define amostra da galeria como foto principal (validação 400→404→403, `shutil.copy2`)
+- `GET /people/{id}/quality`: indicador de qualidade do perfil (avg_confidence, quality_score, 5 níveis com recomendação textual)
+- Frontend: `PhotoModal` (zoom acessível, focus trap), `PersonFrames` (galeria + "Definir como principal"), `ProfileQuality` (sinal semafórico) integrados ao `PersonDetail`
+- Encerramento: 248 testes backend / 91 testes frontend; versão 1.5.3
+
+#### Sprint 10 — Página de Detalhe do Vídeo
+- `get_video_detail()` + `GET /api/v1/videos/{id}/detail`: metadados, pessoas identificadas com timeline de aparições e resumo agregado
+- Fix de fuso horário no Dashboard: `parseUtcDate`/`formatDateTime` interpretam datetimes naive do backend como UTC antes de converter para horário local
+- Página `/videos/:id` (`VideoDetail.jsx`): cabeçalho, cards de resumo, lista de pessoas com timeline colapsável, exportação CSV, auto-refresh durante processamento
+- Dashboard: linhas da tabela de vídeos tornam-se clicáveis (navegação para `/videos/{id}`)
+- Navegação cruzada: `PersonDetail` → `VideoDetail` via coluna "Vídeo" da timeline de aparições
+- Encerramento: 263 testes backend / 114 testes frontend
+
+#### Sprint 11 — Soft Delete, Reprocessamento e Filtros
+- `migration_v1_30`: coluna `deleted_at` (nullable) em `people` e `videos`
+- Soft delete de pessoas: `soft_delete_person`/`restore_person`, `DELETE /people/{id}`, `POST /people/{id}/restore`, `list_people` com `include_deleted`
+- Soft delete e reprocessamento de vídeos: `soft_delete_video`/`restore_video`/`reprocess_video` (valida arquivo em disco, HTTP 409 se ausente), `DELETE /videos/{id}`, `POST /videos/{id}/restore`, `POST /videos/{id}/reprocess`, `list_videos` com `include_deleted`/`status`
+- `reset_person_name`: restaura nome para `Desconhecido #{id}` via `POST /people/{id}/reset-name`
+- Componente reutilizável `ConfirmModal` (Portal, variantes danger/warning/info, `requireTyping`)
+- UI de exclusão/restauração de pessoas em `People` (toggle "Exibir excluídos", badge "Excluído") e `PersonDetail` ("Excluir perfil" com `requireTyping="excluir"`, "Restaurar nome")
+- UI de filtros, exclusão, restauração e reprocessamento de vídeos em `Dashboard` (pills de status, toggle "Mostrar excluídos") e `VideoDetail` ("Excluir vídeo", "Reprocessar", "Restaurar vídeo")
+- Encerramento: 304 testes backend / 143 testes frontend; versão sincronizada em 1.6.4
+
+### Corrigido
+- `GET /people/{id}/stats` retornava 500 ao calcular `total_seconds` com aparições de `timestamp_end=None` (aparição "aberta"); cálculo passa a ignorá-las
+- Detecção facial trocada de HOG para CNN (`FACE_DETECTION_MODEL`/`FACE_UPSAMPLE`) — maior taxa de detecção em faces pequenas/de perfil/iluminação adversa, ao custo de ~11x mais tempo de processamento
+
+### Infraestrutura
+- `Documentos/Cronograma de Sprints - Gossipy Watchman.docx`: seções de planejamento das Sprints 8, 9, 10 e 11 adicionadas
