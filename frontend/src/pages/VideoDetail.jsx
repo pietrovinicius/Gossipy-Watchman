@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft, Download, Loader2, AlertCircle, UserCircle, ExternalLink,
@@ -59,7 +59,7 @@ function SummaryCard({ icon: Icon, label, value, color }) {
   )
 }
 
-function PersonCard({ person, isOnScreen, onSeekTo }) {
+function PersonCard({ person, isOnScreen, onSeekTo, cardRef }) {
   const filename = person.profile_image_path
     ? person.profile_image_path.split('/').pop()
     : null
@@ -72,7 +72,11 @@ function PersonCard({ person, isOnScreen, onSeekTo }) {
     : person.appearances.slice(0, TIMELINE_PREVIEW_COUNT)
 
   return (
-    <div className={`card space-y-4 transition-all ${isOnScreen ? 'border-2 border-primary' : ''}`}>
+    <div
+      ref={cardRef}
+      data-testid={`person-card-${person.person_id}`}
+      className={`card space-y-4 transition-all ${isOnScreen ? 'border-2 border-primary' : ''}`}
+    >
       <div className="flex items-start gap-4">
         <div className="w-16 h-16 rounded-2xl overflow-hidden bg-surface border border-border flex-shrink-0">
           {imgSrc ? (
@@ -170,6 +174,11 @@ export default function VideoDetail() {
   const [reprocessModalOpen, setReprocessModalOpen] = useState(false)
   const [seekTo, setSeekTo] = useState(null)
   const [currentTime, setCurrentTime] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [videoDuration, setVideoDuration] = useState(0)
+
+  const cardRefs = useRef({})
+  const prevPeopleOnScreenRef = useRef([])
 
   const token = sessionStorage.getItem('token')
 
@@ -184,6 +193,18 @@ export default function VideoDetail() {
     () => getPeopleOnScreen(currentTime, detail?.people),
     [currentTime, detail?.people]
   )
+
+  const handlePlayClick = () => {
+    setIsPlaying(true)
+  }
+
+  const handlePauseClick = () => {
+    setIsPlaying(false)
+  }
+
+  const handleDurationChange = (duration) => {
+    setVideoDuration(duration)
+  }
 
   const fetchDetail = useCallback(() => {
     setError('')
@@ -204,6 +225,25 @@ export default function VideoDetail() {
     const interval = setInterval(fetchDetail, REFRESH_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [isProcessing, fetchDetail])
+
+  useEffect(() => {
+    if (!isPlaying) return
+
+    const prev = prevPeopleOnScreenRef.current.map(p => p.person_id)
+    const curr = peopleOnScreen.map(p => p.person_id)
+
+    // Detectar pessoa nova em cena
+    const newOnScreen = curr.filter(id => !prev.includes(id))
+    if (newOnScreen.length > 0) {
+      const firstNew = newOnScreen[0]
+      cardRefs.current[firstNew]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      })
+    }
+
+    prevPeopleOnScreenRef.current = peopleOnScreen
+  }, [peopleOnScreen, isPlaying])
 
   async function handleExportCsv() {
     setExportLoading(true)
@@ -277,6 +317,13 @@ export default function VideoDetail() {
             token={token}
             onTimeUpdate={setCurrentTime}
             seekTo={seekTo}
+            people={detail.people}
+            duration={videoDuration}
+            currentTime={currentTime}
+            onSeek={setSeekTo}
+            onDurationChange={handleDurationChange}
+            onPlay={handlePlayClick}
+            onPause={handlePauseClick}
           />
         )}
 
@@ -420,6 +467,7 @@ export default function VideoDetail() {
                   person={person}
                   isOnScreen={peopleOnScreen?.some(p => p.person_id === person.person_id)}
                   onSeekTo={setSeekTo}
+                  cardRef={(el) => { cardRefs.current[person.person_id] = el }}
                 />
               ))}
             </div>
