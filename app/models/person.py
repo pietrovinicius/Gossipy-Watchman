@@ -30,3 +30,6 @@ class Person(Base):
         default=PersonCategory.desconhecido.value,
         nullable=False,
     )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True, default=None
+    )

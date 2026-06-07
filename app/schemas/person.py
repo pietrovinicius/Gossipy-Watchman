@@ -21,6 +21,7 @@ class PersonResponse(BaseModel):
     created_at: datetime
     notes: str | None = None
     category: str = PersonCategory.desconhecido.value
+    deleted_at: datetime | None = None
 
     @field_validator("category", mode="before")
     @classmethod

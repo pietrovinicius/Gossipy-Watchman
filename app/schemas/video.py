@@ -18,6 +18,7 @@ class VideoResponse(BaseModel):
     file_path: str
     status: VideoStatus
     uploaded_at: datetime
+    deleted_at: datetime | None = None
 
 
 class VideoStatusResponse(BaseModel):
