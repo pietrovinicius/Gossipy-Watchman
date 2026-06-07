@@ -26,3 +26,35 @@ class VideoStatusResponse(BaseModel):
     id: int
     status: VideoStatus
     uploaded_at: datetime
+
+
+class AppearanceDetail(BaseModel):
+    id: int
+    timestamp_start: float
+    timestamp_end: float | None
+    confidence: float
+
+
+class PersonInVideo(BaseModel):
+    person_id: int
+    person_name: str
+    person_category: str
+    profile_image_path: str | None
+    total_seconds: float
+    appearance_count: int
+    first_seen_at: float
+    last_seen_at: float
+    appearances: list[AppearanceDetail]
+
+
+class VideoSummary(BaseModel):
+    total_people: int
+    total_appearances: int
+    duration_covered: float
+    processing_status: str
+
+
+class VideoDetailResponse(BaseModel):
+    video: VideoResponse
+    people: list[PersonInVideo]
+    summary: VideoSummary

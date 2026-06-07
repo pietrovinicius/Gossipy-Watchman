@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.schemas.video import VideoResponse, VideoStatusResponse
+from app.schemas.video import VideoDetailResponse, VideoResponse, VideoStatusResponse
 from app.services import video_service
 from app.services.auth_service import get_current_user
 
@@ -17,6 +17,18 @@ def list_videos(
     _current_user: dict = Depends(get_current_user),
 ) -> list[VideoResponse]:
     return video_service.list_videos(db, skip=skip, limit=limit)
+
+
+@router.get("/videos/{video_id}/detail", response_model=VideoDetailResponse)
+def get_video_detail(
+    video_id: int,
+    db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
+) -> VideoDetailResponse:
+    detail = video_service.get_video_detail(db, video_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Vídeo não encontrado")
+    return VideoDetailResponse.model_validate(detail)
 
 
 @router.get("/videos/{video_id}", response_model=VideoResponse)
