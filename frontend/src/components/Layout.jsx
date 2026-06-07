@@ -5,6 +5,7 @@ import {
   Upload,
   Film,
   Users,
+  BadgeCheck,
   Bell,
   BarChart2,
   LogOut,
@@ -81,6 +82,7 @@ export default function Layout({ children }) {
     { to: '/upload',    label: 'Upload',     icon: Upload },
     { to: '/videos',    label: 'Vídeos',     icon: Film },
     { to: '/people',   label: 'Pessoas',    icon: Users },
+    { to: '/employees', label: 'Funcionários', icon: BadgeCheck },
     { to: '/alerts',    label: 'Alertas',   icon: Bell, badge: unseenCount },
     { to: '/analytics', label: 'Analytics',  icon: BarChart2 },
   ]
