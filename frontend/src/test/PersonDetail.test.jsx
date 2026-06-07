@@ -66,7 +66,9 @@ describe('PersonDetail — navegação cruzada para vídeo', () => {
     const api = (await import('../services/api')).default
     api.get.mockImplementation((url) => {
       if (url.includes('/timeline')) return Promise.resolve({ data: MOCK_TIMELINE })
+      if (url.includes('/frames')) return Promise.resolve({ data: [] })
       if (url.includes('/stats')) return Promise.resolve({ data: MOCK_STATS })
+      if (url.includes('/quality')) return Promise.resolve({ data: {} })
       return Promise.resolve({ data: MOCK_PERSON })
     })
   })

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, UserCircle, Pencil, Check, X, AlertCircle, Download, Loader2, ExternalLink } from 'lucide-react'
+import { ArrowLeft, UserCircle, Pencil, Check, X, AlertCircle, Download, Loader2, ExternalLink, Trash2, RotateCcw } from 'lucide-react'
 import Layout from '../components/Layout'
 import CategoryBadge from '../components/CategoryBadge'
+import ConfirmModal from '../components/ConfirmModal'
 import PhotoModal from '../components/PhotoModal'
 import PersonFrames from '../components/PersonFrames'
 import ProfileQuality from '../components/ProfileQuality'
@@ -49,6 +50,8 @@ export default function PersonDetail() {
   const [exportLoading, setExportLoading] = useState(false)
   const [exportErr, setExportErr] = useState('')
   const [photoModalOpen, setPhotoModalOpen] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [actionErr, setActionErr] = useState('')
 
   useEffect(() => {
     Promise.all([
@@ -114,6 +117,29 @@ export default function PersonDetail() {
     }
   }
 
+  async function handleDeletePerson() {
+    setActionErr('')
+    try {
+      const res = await api.delete(`/people/${id}`)
+      setPerson(res.data)
+      setDeleteModalOpen(false)
+    } catch (err) {
+      setActionErr(err.response?.data?.detail ?? err.message)
+      setDeleteModalOpen(false)
+    }
+  }
+
+  async function handleResetName() {
+    setActionErr('')
+    try {
+      const res = await api.post(`/people/${id}/reset-name`)
+      setPerson(res.data)
+      setNameInput(res.data.name)
+    } catch (err) {
+      setActionErr(err.response?.data?.detail ?? err.message)
+    }
+  }
+
   if (loadErr) {
     return (
       <Layout>
@@ -148,21 +174,53 @@ export default function PersonDetail() {
           </button>
 
           {person && (
-            <button
-              onClick={handleExportCsv}
-              disabled={exportLoading}
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
-                         border-border text-text-muted hover:text-text-base transition-colors
-                         disabled:opacity-50"
-            >
-              {exportLoading
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
-                : <Download className="w-3.5 h-3.5" aria-hidden="true" />}
-              Exportar CSV
-            </button>
+            <div className="flex items-center gap-2">
+              {!person.name.startsWith('Desconhecido') && (
+                <button
+                  onClick={handleResetName}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
+                             border-border text-text-muted hover:text-text-base transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+                  Restaurar nome
+                </button>
+              )}
+              <button
+                onClick={handleExportCsv}
+                disabled={exportLoading}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
+                           border-border text-text-muted hover:text-text-base transition-colors
+                           disabled:opacity-50"
+              >
+                {exportLoading
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                  : <Download className="w-3.5 h-3.5" aria-hidden="true" />}
+                Exportar CSV
+              </button>
+              <button
+                onClick={() => setDeleteModalOpen(true)}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
+                           border-border text-error-color hover:bg-error-color/10 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                Excluir perfil
+              </button>
+            </div>
           )}
         </div>
         {exportErr && <p className="text-xs text-error-color">{exportErr}</p>}
+        {actionErr && <p role="alert" className="text-xs text-error-color">{actionErr}</p>}
+
+        <ConfirmModal
+          isOpen={deleteModalOpen}
+          title="Excluir perfil"
+          message={person ? `Esta ação excluirá o perfil de "${person.name}". Digite "excluir" para confirmar. O perfil pode ser restaurado posteriormente.` : ''}
+          variant="danger"
+          requireTyping
+          confirmWord="excluir"
+          onConfirm={handleDeletePerson}
+          onCancel={() => setDeleteModalOpen(false)}
+        />
 
         {/* Profile */}
         {person === null ? (

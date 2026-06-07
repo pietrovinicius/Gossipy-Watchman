@@ -1,19 +1,21 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, UserCircle, ChevronRight, GitMerge, ScanFace, X, Loader2, Link } from 'lucide-react'
+import { Search, UserCircle, ChevronRight, GitMerge, ScanFace, X, Loader2, Link, Trash2, RotateCcw, Eye } from 'lucide-react'
 import Layout from '../components/Layout'
 import InlineEdit from '../components/InlineEdit'
 import CategoryBadge from '../components/CategoryBadge'
 import MergeActionBar from '../components/MergeActionBar'
+import ConfirmModal from '../components/ConfirmModal'
 import api from '../services/api'
 import { useAuthImage } from '../hooks/useAuthImage'
 import { useFaceSearch } from '../hooks/useFaceSearch.js'
 
-function PersonCard({ person, onRename, onClick, selectable, selected, onToggleSelect }) {
+function PersonCard({ person, onRename, onClick, selectable, selected, onToggleSelect, onDelete, onRestore }) {
   const filename = person.profile_image_path
     ? person.profile_image_path.split('/').pop()
     : null
   const imgSrc = useAuthImage(filename)
+  const isDeleted = Boolean(person.deleted_at)
 
   const created = new Date(person.created_at).toLocaleDateString('pt-BR')
 
@@ -21,8 +23,40 @@ function PersonCard({ person, onRename, onClick, selectable, selected, onToggleS
     <div
       className={`card text-left hover:border-primary/50 hover:bg-surface/80
                  transition-all duration-200 group w-full relative
-                 ${selected ? 'border-primary ring-1 ring-primary/40' : ''}`}
+                 ${selected ? 'border-primary ring-1 ring-primary/40' : ''}
+                 ${isDeleted ? 'opacity-50' : ''}`}
     >
+      {isDeleted && (
+        <span className="absolute top-2 left-2 text-[10px] font-medium px-2 py-0.5 rounded-full
+                         bg-error-color/20 text-error-color">
+          Excluído
+        </span>
+      )}
+
+      {!selectable && !isDeleted && (
+        <button
+          onClick={() => onDelete(person)}
+          aria-label={`Excluir ${person.name}`}
+          className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-lg
+                     text-text-muted hover:text-error-color hover:bg-error-color/10
+                     opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer"
+        >
+          <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+        </button>
+      )}
+
+      {isDeleted && (
+        <button
+          onClick={() => onRestore(person)}
+          aria-label={`Restaurar ${person.name}`}
+          className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-lg
+                     text-text-muted hover:text-primary hover:bg-primary/10
+                     transition-colors duration-200 cursor-pointer"
+        >
+          <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+        </button>
+      )}
+
       {selectable && (
         <button
           onClick={() => onToggleSelect(person.id)}
@@ -85,6 +119,8 @@ export default function People() {
   const [people, setPeople] = useState(null)
   const [search, setSearch] = useState('')
   const [error, setError] = useState('')
+  const [showDeleted, setShowDeleted] = useState(false)
+  const [personToDelete, setPersonToDelete] = useState(null)
 
   // face search
   const { results: faceResults, loading: faceLoading, error: faceError, queryTimeMs, search: faceSearch, reset: faceReset } = useFaceSearch()
@@ -110,11 +146,36 @@ export default function People() {
   const [primaryId, setPrimaryId] = useState(null)
   const [merging, setMerging] = useState(false)
 
-  useEffect(() => {
-    api.get('/people?limit=200')
+  const loadPeople = (includeDeleted) => {
+    const url = includeDeleted ? '/people?limit=200&include_deleted=true' : '/people?limit=200'
+    api.get(url)
       .then((r) => setPeople(r.data))
       .catch((err) => setError(err.message))
-  }, [])
+  }
+
+  useEffect(() => {
+    loadPeople(showDeleted)
+  }, [showDeleted])
+
+  const handleDelete = async (person) => {
+    try {
+      await api.delete(`/people/${person.id}`)
+      setPersonToDelete(null)
+      loadPeople(showDeleted)
+    } catch (err) {
+      setError(err.response?.data?.detail ?? err.message)
+      setPersonToDelete(null)
+    }
+  }
+
+  const handleRestore = async (person) => {
+    try {
+      await api.post(`/people/${person.id}/restore`)
+      loadPeople(showDeleted)
+    } catch (err) {
+      setError(err.response?.data?.detail ?? err.message)
+    }
+  }
 
   const handleRename = async (id, newName) => {
     try {
@@ -168,6 +229,17 @@ export default function People() {
                 {filtered.length} de {people.length} pessoa{people.length !== 1 ? 's' : ''}
               </p>
             )}
+            <button
+              onClick={() => setShowDeleted((s) => !s)}
+              aria-pressed={showDeleted}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
+                          transition-colors ${showDeleted
+                            ? 'bg-primary/10 border-primary text-primary'
+                            : 'border-border text-text-muted hover:text-text-base'}`}
+            >
+              <Eye className="w-3.5 h-3.5" aria-hidden="true" />
+              Exibir excluídos
+            </button>
             {people && people.length >= 2 && (
               <button
                 onClick={() => setMergeMode((m) => !m)}
@@ -313,11 +385,23 @@ export default function People() {
                 selectable={mergeMode}
                 selected={selected.includes(p.id)}
                 onToggleSelect={toggleSelect}
+                onDelete={setPersonToDelete}
+                onRestore={handleRestore}
               />
             ))}
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={personToDelete !== null}
+        title="Excluir pessoa"
+        message={personToDelete ? `Tem certeza que deseja excluir "${personToDelete.name}"? Esta ação pode ser desfeita restaurando o perfil.` : ''}
+        variant="danger"
+        confirmLabel="Excluir"
+        onConfirm={() => handleDelete(personToDelete)}
+        onCancel={() => setPersonToDelete(null)}
+      />
 
       <MergeActionBar
         selected={selected}
