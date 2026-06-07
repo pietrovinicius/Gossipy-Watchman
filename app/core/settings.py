@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     # Storage
     STORAGE_VIDEOS: Path = Path("storage/videos")
     STORAGE_FACES: Path = Path("storage/faces")
+    STORAGE_EMPLOYEES: Path = Path("storage/employees")
 
     # Visão computacional
     FACE_RECOGNITION_TOLERANCE: float = 0.6
