@@ -184,6 +184,7 @@ cython_debug/
 *.db
 storage/videos/*
 storage/faces/*
+storage/models/
 !storage/videos/.gitkeep
 !storage/faces/.gitkeep
 frontend/node_modules/

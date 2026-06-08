@@ -2,7 +2,6 @@ from uuid import uuid4
 from pathlib import Path
 import numpy as np
 import cv2
-import face_recognition
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -28,20 +27,20 @@ def register_employee(
     if existing:
         raise HTTPException(status_code=409, detail="Matrícula já cadastrada")
 
-    # 2. Detect faces in photo
+    # 2. Detect faces in photo and extract embedding
     nparr = np.frombuffer(photo_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    rgb_frame = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    if img is None:
+        raise HTTPException(status_code=422, detail="Arquivo de imagem inválido")
 
-    face_locations = face_recognition.face_locations(rgb_frame, model="cnn")
-    if len(face_locations) == 0:
+    from app.services import face_service
+    results = face_service.extract_embeddings(img)
+    if len(results) == 0:
         raise HTTPException(status_code=422, detail="Nenhum rosto detectado na foto")
-    if len(face_locations) > 1:
+    if len(results) > 1:
         raise HTTPException(status_code=422, detail="Foto contém múltiplos rostos")
 
-    # 3. Extract embedding
-    embeddings = face_recognition.face_encodings(rgb_frame, face_locations)
-    embedding = embeddings[0]  # First (only) face
+    embedding, location = results[0]
 
     # 4. Save photo
     settings.STORAGE_EMPLOYEES.mkdir(parents=True, exist_ok=True)

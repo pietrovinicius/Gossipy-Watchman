@@ -1,5 +1,4 @@
-from unittest.mock import ANY, patch
-
+from unittest.mock import ANY, patch, MagicMock
 import numpy as np
 import pytest
 
@@ -17,6 +16,14 @@ def make_embedding() -> np.ndarray:
 def make_face_location(size: int = 120) -> tuple:
     """(top, right, bottom, left) representando rosto quadrado de `size` px."""
     return (0, size, size, 0)
+
+
+@pytest.fixture(autouse=True)
+def reset_face_service_singletons():
+    import app.services.face_service
+    app.services.face_service._detector = None
+    app.services.face_service._recognizer = None
+
 
 
 # ── is_good_quality_frame ─────────────────────────────────────────────────────
@@ -56,8 +63,16 @@ def test_is_good_quality_frame_accepts_sharp_large_face():
 def test_extract_embeddings_no_face_returns_empty():
     from app.services.face_service import extract_embeddings
 
-    with patch("app.services.face_service.face_recognition.face_locations", return_value=[]), \
-         patch("app.services.face_service.face_recognition.face_encodings", return_value=[]):
+    with patch("cv2.FaceDetectorYN.create") as mock_det_create, \
+         patch("cv2.FaceRecognizerSF.create") as mock_rec_create:
+        
+        mock_det = MagicMock()
+        mock_det.detect.return_value = (0, None)
+        mock_det_create.return_value = mock_det
+        
+        mock_rec = MagicMock()
+        mock_rec_create.return_value = mock_rec
+
         result = extract_embeddings(make_bgr_frame())
 
     assert result == []
@@ -67,77 +82,79 @@ def test_extract_embeddings_two_faces_returns_two_tuples():
     from app.services.face_service import extract_embeddings
 
     emb1, emb2 = make_embedding(), make_embedding()
-    loc1, loc2 = make_face_location(120), make_face_location(120)
-    with patch("app.services.face_service.face_recognition.face_locations", return_value=[loc1, loc2]), \
-         patch("app.services.face_service.face_recognition.face_encodings", return_value=[emb1, emb2]), \
+    # YuNet detect outputs (N, 15), where x,y,w,h is face[0:4]
+    # Bounding Box 1: x=0, y=0, w=120, h=120 -> location=(0, 120, 120, 0)
+    # Bounding Box 2: x=100, y=100, w=120, h=120 -> location=(100, 220, 220, 100)
+    faces_arr = np.zeros((2, 15), dtype=np.float32)
+    faces_arr[0, 0:4] = [0, 0, 120, 120]
+    faces_arr[1, 0:4] = [100, 100, 120, 120]
+
+    with patch("cv2.FaceDetectorYN.create") as mock_det_create, \
+         patch("cv2.FaceRecognizerSF.create") as mock_rec_create, \
          patch("app.services.face_service.is_good_quality_frame", return_value=True):
+        
+        mock_det = MagicMock()
+        mock_det.detect.return_value = (2, faces_arr)
+        mock_det_create.return_value = mock_det
+        
+        mock_rec = MagicMock()
+        mock_rec.feature.side_effect = [emb1.reshape(1, 128), emb2.reshape(1, 128)]
+        mock_rec_create.return_value = mock_rec
+
         result = extract_embeddings(make_bgr_frame())
 
     assert len(result) == 2
-    assert result[0] == (emb1, loc1)
-    assert result[1] == (emb2, loc2)
+    assert np.allclose(result[0][0], emb1)
+    assert result[0][1] == (0, 120, 120, 0)
+    assert np.allclose(result[1][0], emb2)
+    assert result[1][1] == (100, 220, 220, 100)
 
 
 def test_extract_embeddings_discards_small_faces():
     from app.services.face_service import extract_embeddings
 
-    loc_small = make_face_location(30)
-    with patch("app.services.face_service.face_recognition.face_locations", return_value=[loc_small]), \
-         patch("app.services.face_service.face_recognition.face_encodings", return_value=[make_embedding()]), \
+    faces_arr = np.zeros((1, 15), dtype=np.float32)
+    faces_arr[0, 0:4] = [0, 0, 30, 30]
+
+    with patch("cv2.FaceDetectorYN.create") as mock_det_create, \
+         patch("cv2.FaceRecognizerSF.create") as mock_rec_create, \
          patch("app.services.face_service.is_good_quality_frame", return_value=False) as mock_quality:
+        
+        mock_det = MagicMock()
+        mock_det.detect.return_value = (1, faces_arr)
+        mock_det_create.return_value = mock_det
+        
+        mock_rec = MagicMock()
+        mock_rec_create.return_value = mock_rec
+
         result = extract_embeddings(make_bgr_frame())
 
-    mock_quality.assert_called_once_with(loc_small, ANY, settings.FACE_MIN_SIZE_PX)
+    mock_quality.assert_called_once_with((0, 30, 30, 0), ANY, settings.FACE_MIN_SIZE_PX)
     assert result == []
 
 
 def test_extract_embeddings_all_bad_quality_returns_empty():
     from app.services.face_service import extract_embeddings
 
-    locations = [make_face_location(30), make_face_location(40)]
-    with patch("app.services.face_service.face_recognition.face_locations", return_value=locations), \
-         patch("app.services.face_service.face_recognition.face_encodings") as mock_encodings, \
+    faces_arr = np.zeros((2, 15), dtype=np.float32)
+    faces_arr[0, 0:4] = [0, 0, 30, 30]
+    faces_arr[1, 0:4] = [0, 0, 40, 40]
+
+    with patch("cv2.FaceDetectorYN.create") as mock_det_create, \
+         patch("cv2.FaceRecognizerSF.create") as mock_rec_create, \
          patch("app.services.face_service.is_good_quality_frame", return_value=False):
+        
+        mock_det = MagicMock()
+        mock_det.detect.return_value = (2, faces_arr)
+        mock_det_create.return_value = mock_det
+        
+        mock_rec = MagicMock()
+        mock_rec_create.return_value = mock_rec
+
         result = extract_embeddings(make_bgr_frame())
 
-    mock_encodings.assert_not_called()
+    mock_rec.feature.assert_not_called()
     assert result == []
-
-
-def test_extract_embeddings_converts_bgr_to_rgb():
-    """Verifica que face_locations recebe frame RGB (não BGR)."""
-    from app.services.face_service import extract_embeddings
-
-    bgr_frame = np.zeros((2, 2, 3), dtype=np.uint8)
-    bgr_frame[0, 0] = [10, 20, 30]  # B=10, G=20, R=30
-
-    captured = {}
-
-    def fake_locations(rgb_frame, **kwargs):
-        captured["frame"] = rgb_frame.copy()
-        return []
-
-    with patch("app.services.face_service.face_recognition.face_locations", side_effect=fake_locations), \
-         patch("app.services.face_service.face_recognition.face_encodings", return_value=[]):
-        extract_embeddings(bgr_frame)
-
-    # pixel [0,0] deve ter R=10, G=20, B=30 (invertido)
-    assert captured["frame"][0, 0, 0] == 30  # R channel
-    assert captured["frame"][0, 0, 2] == 10  # B channel
-
-
-def test_extract_embeddings_calls_face_locations_with_settings_model_and_upsample():
-    from app.services.face_service import extract_embeddings
-
-    with patch("app.services.face_service.face_recognition.face_locations", return_value=[]) as mock_locations, \
-         patch("app.services.face_service.face_recognition.face_encodings", return_value=[]):
-        extract_embeddings(make_bgr_frame())
-
-    mock_locations.assert_called_with(
-        ANY,
-        number_of_times_to_upsample=settings.FACE_UPSAMPLE,
-        model=settings.FACE_DETECTION_MODEL,
-    )
 
 
 # ── find_matching_person ──────────────────────────────────────────────────────
@@ -155,21 +172,19 @@ def test_find_matching_below_tolerance_returns_match():
     target = make_embedding()
     known = [(42, target)]  # distância ~0
 
-    with patch("app.services.face_service.face_recognition.face_distance", return_value=np.array([0.3])):
-        person_id, dist = find_matching_person(target, known, tolerance=0.6)
+    person_id, dist = find_matching_person(target, known, tolerance=0.6)
 
     assert person_id == 42
-    assert dist == pytest.approx(0.3)
+    assert dist == pytest.approx(0.0)
 
 
 def test_find_matching_above_tolerance_returns_none():
     from app.services.face_service import find_matching_person
 
-    target = make_embedding()
-    known = [(7, make_embedding())]
+    target = np.ones(128)
+    known = [(7, np.zeros(128))]  # dist = sqrt(128) ≈ 11.3
 
-    with patch("app.services.face_service.face_recognition.face_distance", return_value=np.array([0.8])):
-        person_id, dist = find_matching_person(target, known, tolerance=0.6)
+    person_id, dist = find_matching_person(target, known, tolerance=0.6)
 
     assert person_id is None
     assert dist is None
@@ -178,15 +193,18 @@ def test_find_matching_above_tolerance_returns_none():
 def test_find_matching_picks_closest():
     from app.services.face_service import find_matching_person
 
-    target = make_embedding()
-    known = [(1, make_embedding()), (2, make_embedding()), (3, make_embedding())]
+    target = np.zeros(128)
+    # dists: 5.0, 2.0, 4.0
+    known = [
+        (1, np.ones(128) * (5.0 / np.sqrt(128))),
+        (2, np.ones(128) * (2.0 / np.sqrt(128))),
+        (3, np.ones(128) * (4.0 / np.sqrt(128)))
+    ]
 
-    with patch("app.services.face_service.face_recognition.face_distance",
-               return_value=np.array([0.5, 0.2, 0.4])):
-        person_id, dist = find_matching_person(target, known, tolerance=0.6)
+    person_id, dist = find_matching_person(target, known, tolerance=6.0)
 
     assert person_id == 2
-    assert dist == pytest.approx(0.2)
+    assert dist == pytest.approx(2.0)
 
 
 # ── find_matching_person — votação k-NN ──────────────────────────────────────
@@ -196,12 +214,14 @@ def test_find_matching_majority_vote_overrides_nearest_neighbor():
     sem ser o vizinho mais próximo isolado."""
     from app.services.face_service import find_matching_person
 
-    target = make_embedding()
-    known = [(1, make_embedding()), (2, make_embedding()), (1, make_embedding())]
+    target = np.zeros(128)
+    known = [
+        (1, np.ones(128) * (0.1 / np.sqrt(128))),
+        (2, np.ones(128) * (0.15 / np.sqrt(128))),
+        (1, np.ones(128) * (0.2 / np.sqrt(128)))
+    ]
 
-    with patch("app.services.face_service.face_recognition.face_distance",
-               return_value=np.array([0.1, 0.15, 0.2])):
-        person_id, dist = find_matching_person(target, known, tolerance=0.6, k=3)
+    person_id, dist = find_matching_person(target, known, tolerance=0.6, k=3)
 
     assert person_id == 1
     assert dist == pytest.approx(0.1)
@@ -210,12 +230,14 @@ def test_find_matching_majority_vote_overrides_nearest_neighbor():
 def test_find_matching_knn_ignores_neighbors_above_tolerance():
     from app.services.face_service import find_matching_person
 
-    target = make_embedding()
-    known = [(1, make_embedding()), (2, make_embedding()), (3, make_embedding())]
+    target = np.zeros(128)
+    known = [
+        (1, np.ones(128) * (0.1 / np.sqrt(128))),
+        (2, np.ones(128) * (0.9 / np.sqrt(128))),
+        (3, np.ones(128) * (0.95 / np.sqrt(128)))
+    ]
 
-    with patch("app.services.face_service.face_recognition.face_distance",
-               return_value=np.array([0.1, 0.9, 0.95])):
-        person_id, dist = find_matching_person(target, known, tolerance=0.6, k=3)
+    person_id, dist = find_matching_person(target, known, tolerance=0.6, k=3)
 
     assert person_id == 1
     assert dist == pytest.approx(0.1)
@@ -224,12 +246,13 @@ def test_find_matching_knn_ignores_neighbors_above_tolerance():
 def test_find_matching_knn_all_above_tolerance_returns_none():
     from app.services.face_service import find_matching_person
 
-    target = make_embedding()
-    known = [(1, make_embedding()), (2, make_embedding())]
+    target = np.zeros(128)
+    known = [
+        (1, np.ones(128) * (0.7 / np.sqrt(128))),
+        (2, np.ones(128) * (0.8 / np.sqrt(128)))
+    ]
 
-    with patch("app.services.face_service.face_recognition.face_distance",
-               return_value=np.array([0.7, 0.8])):
-        person_id, dist = find_matching_person(target, known, tolerance=0.6, k=3)
+    person_id, dist = find_matching_person(target, known, tolerance=0.6, k=3)
 
     assert person_id is None
     assert dist is None

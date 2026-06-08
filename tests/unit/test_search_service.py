@@ -28,11 +28,6 @@ FAKE_EMBEDDING = np.array([0.1] * 128, dtype=np.float64)
 FAKE_FRAME = np.zeros((480, 640, 3), dtype=np.uint8)
 FAKE_RGB = np.zeros((480, 640, 3), dtype=np.uint8)
 
-_CV2_PATCH = {
-    "cv2_imdecode": patch("app.services.search_service.cv2.imdecode", return_value=FAKE_FRAME),
-    "cv2_cvtColor": patch("app.services.search_service.cv2.cvtColor", return_value=FAKE_RGB),
-}
-
 
 def _mock_cv2():
     return (
@@ -44,8 +39,7 @@ def _mock_cv2():
 def test_imagem_sem_face_retorna_lista_vazia(db):
     from app.services.search_service import search_by_face
     p1, p2 = _mock_cv2()
-    with p1, p2, patch("app.services.search_service.face_recognition") as mock_fr:
-        mock_fr.face_locations.return_value = []
+    with p1, p2, patch("app.services.face_service.extract_embeddings", return_value=[]):
         result = search_by_face(db, b"fake_image_bytes")
     assert result == []
 
@@ -59,22 +53,19 @@ def test_imagem_com_face_retorna_resultados_por_distancia_asc(db):
 
     emb1 = np.array([0.1] * 128)
     emb2 = np.array([0.9] * 128)
-    query_emb = np.array([0.15] * 128)
+    query_emb = np.array([0.3] * 128)  # dist1 = sqrt(128 * 0.2^2) ≈ 2.26, dist2 = sqrt(128 * 0.6^2) ≈ 6.78
 
     cv1, cv2p = _mock_cv2()
     with cv1, cv2p, \
-         patch("app.services.search_service.face_recognition") as mock_fr, \
+         patch("app.services.face_service.extract_embeddings", return_value=[(query_emb, (0, 100, 100, 0))]), \
          patch("app.services.search_service.person_service.get_all_embeddings",
                return_value=[(p1.id, emb1), (p2.id, emb2)]):
-        mock_fr.face_locations.return_value = [(0, 100, 100, 0)]
-        mock_fr.face_encodings.return_value = [query_emb]
-        distances = np.array([0.2, 0.8])
-        mock_fr.face_distance.return_value = distances
 
-        result = search_by_face(db, b"fake", tolerance=1.0)
+        result = search_by_face(db, b"fake", tolerance=10.0)
 
     assert len(result) == 2
     assert result[0]["distance"] <= result[1]["distance"]
+    assert result[0]["person_id"] == p1.id
 
 
 def test_resultados_acima_do_tolerance_excluidos(db):
@@ -88,14 +79,11 @@ def test_resultados_acima_do_tolerance_excluidos(db):
 
     cv1, cv2p = _mock_cv2()
     with cv1, cv2p, \
-         patch("app.services.search_service.face_recognition") as mock_fr, \
+         patch("app.services.face_service.extract_embeddings", return_value=[(query_emb, (0, 100, 100, 0))]), \
          patch("app.services.search_service.person_service.get_all_embeddings",
                return_value=[(p.id, emb)]):
-        mock_fr.face_locations.return_value = [(0, 100, 100, 0)]
-        mock_fr.face_encodings.return_value = [query_emb]
-        mock_fr.face_distance.return_value = np.array([0.8])
 
-        result = search_by_face(db, b"fake", tolerance=0.6)
+        result = search_by_face(db, b"fake", tolerance=1.0)
 
     assert result == []
 
@@ -107,20 +95,17 @@ def test_confidence_pct_calculado_corretamente(db):
     db.commit()
 
     emb = np.array([0.1] * 128)
-    query_emb = np.array([0.2] * 128)
+    query_emb = np.array([0.1] * 128)  # dist = 0.0
 
     cv1, cv2p = _mock_cv2()
     with cv1, cv2p, \
-         patch("app.services.search_service.face_recognition") as mock_fr, \
+         patch("app.services.face_service.extract_embeddings", return_value=[(query_emb, (0, 100, 100, 0))]), \
          patch("app.services.search_service.person_service.get_all_embeddings",
                return_value=[(p.id, emb)]):
-        mock_fr.face_locations.return_value = [(0, 100, 100, 0)]
-        mock_fr.face_encodings.return_value = [query_emb]
-        mock_fr.face_distance.return_value = np.array([0.3])
 
         result = search_by_face(db, b"fake", tolerance=1.0)
 
-    assert result[0]["confidence_pct"] == 70  # int((1 - 0.3) * 100)
+    assert result[0]["confidence_pct"] == 100  # 1.0 - 0.0 * 100 = 100
 
 
 def test_top_k_limita_numero_de_resultados(db):
@@ -129,18 +114,15 @@ def test_top_k_limita_numero_de_resultados(db):
     db.add_all(people)
     db.commit()
 
-    embs = [(p.id, np.random.rand(128)) for p in people]
-    query_emb = np.random.rand(128)
-    distances = np.linspace(0.1, 0.5, len(people))
+    # Todos com o mesmo embedding
+    embs = [(p.id, np.array([0.1] * 128)) for p in people]
+    query_emb = np.array([0.1] * 128)
 
     cv1, cv2p = _mock_cv2()
     with cv1, cv2p, \
-         patch("app.services.search_service.face_recognition") as mock_fr, \
+         patch("app.services.face_service.extract_embeddings", return_value=[(query_emb, (0, 100, 100, 0))]), \
          patch("app.services.search_service.person_service.get_all_embeddings",
                return_value=embs):
-        mock_fr.face_locations.return_value = [(0, 100, 100, 0)]
-        mock_fr.face_encodings.return_value = [query_emb]
-        mock_fr.face_distance.return_value = distances
 
         result = search_by_face(db, b"fake", top_k=3, tolerance=1.0)
 
@@ -159,18 +141,17 @@ def test_multiplas_faces_usa_maior_area(db):
 
     # face_locations: (top, right, bottom, left) — área = (bottom-top)*(right-left)
     # face pequena: 10x10=100, face grande: 100x100=10000
-    locs = [(0, 10, 10, 0), (0, 100, 100, 0)]
+    loc_small = (0, 10, 10, 0)
+    loc_big = (0, 100, 100, 0)
 
     cv1, cv2p = _mock_cv2()
     with cv1, cv2p, \
-         patch("app.services.search_service.face_recognition") as mock_fr, \
+         patch("app.services.face_service.extract_embeddings", return_value=[(small_emb, loc_small), (big_emb, loc_big)]), \
          patch("app.services.search_service.person_service.get_all_embeddings",
                return_value=[(p.id, emb)]):
-        mock_fr.face_locations.return_value = locs
-        mock_fr.face_encodings.return_value = [small_emb, big_emb]
-        mock_fr.face_distance.return_value = np.array([0.05])
 
         result = search_by_face(db, b"fake", tolerance=1.0)
 
     assert len(result) == 1
-    assert result[0]["distance"] == pytest.approx(0.05)
+    # Deve usar big_emb (distancia 0.0)
+    assert result[0]["distance"] == pytest.approx(0.0)

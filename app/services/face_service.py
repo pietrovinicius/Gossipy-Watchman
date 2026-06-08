@@ -1,11 +1,48 @@
 import logging
 import cv2
-import face_recognition
 import numpy as np
 
 from app.core.settings import settings
 
 logger = logging.getLogger(__name__)
+
+# Singletons para os modelos do OpenCV
+_detector = None
+_recognizer = None
+_current_input_size = None
+
+
+def get_face_models(input_size: tuple[int, int]):
+    """
+    Inicializa e gerencia o cache para FaceDetectorYN e FaceRecognizerSF do OpenCV.
+    """
+    global _detector, _recognizer, _current_input_size
+    
+    from app.core.model_downloader import YUNET_PATH, SFACE_PATH, ensure_models_downloaded
+    ensure_models_downloaded()
+    
+    if _detector is None:
+        logger.info(f"Carregando FaceDetectorYN a partir de {YUNET_PATH}")
+        _detector = cv2.FaceDetectorYN.create(
+            model=str(YUNET_PATH),
+            config="",
+            input_size=input_size,
+            score_threshold=0.8,
+            nms_threshold=0.3
+        )
+        _current_input_size = input_size
+    elif _current_input_size != input_size:
+        _detector.setInputSize(input_size)
+        _current_input_size = input_size
+        
+    if _recognizer is None:
+        logger.info(f"Carregando FaceRecognizerSF a partir de {SFACE_PATH}")
+        _recognizer = cv2.FaceRecognizerSF.create(
+            model=str(SFACE_PATH),
+            config=""
+        )
+        
+    return _detector, _recognizer
 
 
 def is_good_quality_frame(
@@ -22,6 +59,8 @@ def is_good_quality_frame(
         return False
 
     face_crop = frame[top:bottom, left:right]
+    if face_crop.size == 0:
+        return False
     gray = cv2.cvtColor(face_crop, cv2.COLOR_BGR2GRAY)
     variance = cv2.Laplacian(gray, cv2.CV_64F).var()
 
@@ -29,37 +68,44 @@ def is_good_quality_frame(
 
 
 def extract_embeddings(frame: np.ndarray) -> list[tuple[np.ndarray, tuple]]:
-    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    locations = face_recognition.face_locations(
-        rgb,
-        number_of_times_to_upsample=settings.FACE_UPSAMPLE,
-        model=settings.FACE_DETECTION_MODEL,
-    )
-    logger.debug(
-        f"[EXTRACT] faces_detectadas={len(locations)} "
-        f"model={settings.FACE_DETECTION_MODEL} "
-        f"upsample={settings.FACE_UPSAMPLE}"
-    )
-
-    good_locations = [
-        loc for loc in locations
-        if is_good_quality_frame(loc, frame, settings.FACE_MIN_SIZE_PX)
-    ]
-    logger.debug(
-        f"[EXTRACT] faces_boa_qualidade={len(good_locations)} "
-        f"descartadas={len(locations) - len(good_locations)}"
-    )
-    if not good_locations:
+    height, width = frame.shape[:2]
+    try:
+        detector, recognizer = get_face_models((width, height))
+    except Exception as e:
+        logger.error(f"Erro ao carregar modelos de detecção/reconhecimento: {e}")
         return []
 
-    encodings = face_recognition.face_encodings(rgb, good_locations)
-    logger.debug(f"[EXTRACT] embeddings_gerados={len(encodings)}")
-    for i, enc in enumerate(encodings):
-        logger.debug(
-            f"[EXTRACT] embedding[{i}] shape={enc.shape} dtype={enc.dtype} "
-            f"norm={np.linalg.norm(enc):.4f}"
-        )
-    return list(zip(encodings, good_locations))
+    _, faces = detector.detect(frame)
+    if faces is None:
+        logger.debug("[EXTRACT] faces_detectadas=0")
+        return []
+
+    logger.debug(f"[EXTRACT] faces_detectadas={len(faces)}")
+    
+    results = []
+    for face in faces:
+        # face contem as coordenadas no formato x, y, w, h em face[0:4]
+        x, y, w, h = face[0:4]
+        top = int(max(0, y))
+        left = int(max(0, x))
+        bottom = int(min(height, y + h))
+        right = int(min(width, x + w))
+        location = (top, right, bottom, left)
+        
+        if not is_good_quality_frame(location, frame, settings.FACE_MIN_SIZE_PX):
+            continue
+            
+        try:
+            # Alinha e recorta a face usando os landmarks retornados pelo YuNet
+            aligned = recognizer.alignCrop(frame, face)
+            feat = recognizer.feature(aligned)
+            embedding = feat.flatten().astype(np.float64)
+            results.append((embedding, location))
+        except Exception as e:
+            logger.error(f"Erro ao extrair embedding de face: {e}")
+            
+    logger.debug(f"[EXTRACT] embeddings_gerados={len(results)}")
+    return results
 
 
 class FaceTrack:
@@ -164,7 +210,10 @@ def find_matching_person(
 
     known_vecs = [emb for _, emb in known_embeddings]
     person_ids = [pid for pid, _ in known_embeddings]
-    distances: np.ndarray = face_recognition.face_distance(known_vecs, embedding)
+    
+    # Cálculo de distância Euclidiana via NumPy
+    known_vecs_arr = np.array(known_vecs)
+    distances: np.ndarray = np.linalg.norm(known_vecs_arr - embedding, axis=1)
 
     logger.debug(
         f"[MATCH] embedding_buscado shape={embedding.shape} dtype={embedding.dtype} "
