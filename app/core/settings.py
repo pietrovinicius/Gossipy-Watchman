@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     MOTION_GATING_ENABLED: bool = True
     MOTION_GATING_THRESHOLD: int = 15
     MOTION_GATING_AREA_RATIO: float = 0.001
+    MOTION_GATING_FORCE_INTERVAL: int = 5  # forçar detecção a cada N segundos
 
     # App
     APP_NAME: str = "Gossipy Watchman"

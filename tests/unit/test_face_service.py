@@ -110,9 +110,10 @@ def test_extract_embeddings_one_face_returns_one_tuple():
         result = extract_embeddings(make_bgr_frame())
 
     assert len(result) == 1
-    embedding, location = result[0]
+    embedding, location, det_score = result[0]
     assert embedding.shape == (512,)
     assert len(location) == 4  # (top, right, bottom, left)
+    assert isinstance(det_score, float)
 
 
 def test_extract_embeddings_discards_low_det_score():
@@ -339,3 +340,78 @@ def test_face_track_mean_embedding_is_l2_normalized():
 
     mean = track.mean_embedding()
     assert abs(np.linalg.norm(mean) - 1.0) < 1e-5
+
+
+# ── Task 3: FaceTrack armazena crop, não frame completo ──────────────────────
+
+def test_face_track_armazena_crop_nao_frame_completo():
+    """_frames_data deve guardar crop da face, não o frame inteiro."""
+    from app.services.face_service import FaceTrack
+
+    track = FaceTrack(start_time=0.0)
+    big_frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+    location = (100, 200, 160, 140)  # top=100, right=200, bottom=160, left=140 → 60x60
+    track.add_frame_data(make_l2_embedding(), location, big_frame, timestamp=1.0)
+
+    stored = track._frames_data[0]
+    assert "crop" in stored, "_frames_data deve ter chave 'crop'"
+    assert stored["crop"].shape == (60, 60, 3), (
+        f"Shape esperado (60,60,3), recebido {stored['crop'].shape}"
+    )
+    # NÃO deve guardar o frame completo
+    assert "frame" not in stored, "_frames_data NÃO deve guardar o frame completo"
+
+
+def test_face_track_get_best_crop_usa_crop_armazenado():
+    """get_best_crop deve retornar o crop do frame com maior área facial."""
+    from app.services.face_service import FaceTrack
+
+    track = FaceTrack(start_time=0.0)
+    frame = make_bgr_frame()
+
+    # face pequena 40x40
+    track.add_frame_data(make_l2_embedding(), make_face_location(size=40), frame, timestamp=1.0)
+    # face grande 120x120
+    track.add_frame_data(make_l2_embedding(), make_face_location(size=120), frame, timestamp=2.0)
+
+    crop = track.get_best_crop()
+    assert crop.shape[:2] == (120, 120), (
+        f"Melhor crop deve ser 120x120, recebido {crop.shape[:2]}"
+    )
+
+
+# ── Task 5: média ponderada por det_score ─────────────────────────────────────
+
+def test_mean_embedding_pondera_por_det_score():
+    """Frame com det_score alto deve ter mais peso no embedding médio."""
+    from app.services.face_service import FaceTrack
+
+    track = FaceTrack(start_time=0.0)
+    frame = make_bgr_frame()
+    location = make_face_location()
+
+    emb_strong = np.zeros(512, dtype=np.float32); emb_strong[0] = 1.0
+    emb_weak   = np.zeros(512, dtype=np.float32); emb_weak[1] = 1.0
+
+    # det_score alto → deve dominar o embedding
+    track.add_frame_data(emb_strong, location, frame, timestamp=1.0, det_score=0.99)
+    track.add_frame_data(emb_weak,   location, frame, timestamp=2.0, det_score=0.50)
+
+    mean = track.mean_embedding()
+    dot_strong = float(np.dot(mean, emb_strong))
+    dot_weak   = float(np.dot(mean, emb_weak))
+    assert dot_strong > dot_weak, (
+        f"Embedding médio deve ser mais próximo de emb_strong "
+        f"(dot_strong={dot_strong:.4f}, dot_weak={dot_weak:.4f})"
+    )
+
+
+def test_add_frame_data_aceita_det_score_opcional():
+    """add_frame_data com det_score=1.0 default deve funcionar."""
+    from app.services.face_service import FaceTrack
+
+    track = FaceTrack(start_time=0.0)
+    frame = make_bgr_frame()
+    # sem passar det_score — deve usar default 1.0
+    track.add_frame_data(make_l2_embedding(), make_face_location(), frame, timestamp=1.0)
+    assert track.sample_count == 1

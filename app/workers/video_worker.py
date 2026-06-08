@@ -38,17 +38,16 @@ def _process_track(
     track,
     person_counter: int,
     alerted_in_this_video: set[int],
-) -> int:
-    """Resolve a identidade de um track (aparição contínua) e persiste o
-    resultado: pessoa nova ou aparição/alerta de pessoa conhecida.
+    known_embeddings: list[tuple[int, np.ndarray]],
+) -> tuple[int, list[tuple[int, np.ndarray]]]:
+    """Resolve identidade de um track e persiste resultado.
 
-    Retorna o `person_counter` atualizado.
+    Retorna (person_counter atualizado, known_embeddings atualizado).
     """
     mean_embedding = track.mean_embedding()
     best_crop = track.get_best_crop()
 
-    known = person_service.get_all_embeddings(db)
-    person_id, distance = face_service.find_matching_person(mean_embedding, known)
+    person_id, distance = face_service.find_matching_person(mean_embedding, known_embeddings)
 
     if person_id is None:
         person_counter += 1
@@ -56,8 +55,11 @@ def _process_track(
             f"[WORKER] track={track.start_time:.1f}s-{track.last_seen:.1f}s "
             f"({track.sample_count} amostras) NOVA_PESSOA → Desconhecido #{person_counter}"
         )
-        person_service.save_new_person(db, mean_embedding, best_crop, person_index=person_counter)
-        return person_counter
+        new_person = person_service.save_new_person(
+            db, mean_embedding, best_crop, person_index=person_counter
+        )
+        known_embeddings.append((new_person.id, mean_embedding))
+        return person_counter, known_embeddings
 
     logger.info(
         f"[WORKER] track={track.start_time:.1f}s-{track.last_seen:.1f}s "
@@ -95,7 +97,7 @@ def _process_track(
                 "severity": "high",
             })
 
-    return person_counter
+    return person_counter, known_embeddings
 
 
 def process_video(video_id: int, video_path: Path, _engine=None) -> None:
@@ -153,11 +155,16 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
                 })
                 return
 
-        person_counter = db.query(Video).count()  # heurística simples para índice inicial
+        # Task 1: contar pessoas existentes (não vídeos) para índice correto
+        person_counter = db.query(Person).count()
+        # Task 2: carregar embeddings uma única vez por vídeo
+        known_embeddings: list[tuple[int, np.ndarray]] = person_service.get_all_embeddings(db)
         alerted_in_this_video: set[int] = set()
         first_frame = True
         tracker = face_service.FaceTracker()
         prev_gray = None
+        # Task 4: controle de detecção forçada periódica
+        last_forced_detection: float = -float(settings.MOTION_GATING_FORCE_INTERVAL)
 
         for segundo, frame in frame_service.extract_frames(video_path):
             # Salvar primeiro frame como thumbnail
@@ -172,7 +179,7 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
                     logger.warning(f"[WORKER] falha ao salvar thumbnail para video_id={video_id}", exc_info=True)
                 first_frame = False
 
-            # Motion Gating
+            # Motion Gating com fallback periódico (Task 4)
             run_detection = True
             if settings.MOTION_GATING_ENABLED:
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -184,22 +191,37 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
                     prev_gray = gray
                     run_detection = True
                 else:
-                    run_detection, motion_ratio = frame_service.has_motion(prev_gray, gray)
-                    logger.debug(f"[WORKER] video_id={video_id} segundo={segundo} motion_ratio={motion_ratio:.4f} run_detection={run_detection}")
+                    has_mov, motion_ratio = frame_service.has_motion(prev_gray, gray)
+                    force_detect = (segundo - last_forced_detection) >= settings.MOTION_GATING_FORCE_INTERVAL
+                    run_detection = has_mov or force_detect
+                    if force_detect and not has_mov:
+                        logger.debug(
+                            f"[WORKER] video_id={video_id} segundo={segundo} "
+                            f"detecção forçada (sem movimento, interval={settings.MOTION_GATING_FORCE_INTERVAL}s)"
+                        )
+                    else:
+                        logger.debug(
+                            f"[WORKER] video_id={video_id} segundo={segundo} "
+                            f"motion_ratio={motion_ratio:.4f} run_detection={run_detection}"
+                        )
 
             if run_detection:
                 embeddings = face_service.extract_embeddings(frame)
-                for embedding, location in embeddings:
-                    tracker.add_detection(embedding, location, frame, timestamp=float(segundo))
+                for embedding, location, det_score in embeddings:
+                    tracker.add_detection(embedding, location, frame,
+                                          timestamp=float(segundo), det_score=det_score)
                 if settings.MOTION_GATING_ENABLED:
                     prev_gray = gray
+                    last_forced_detection = float(segundo)
             else:
                 logger.debug(f"[WORKER] video_id={video_id} segundo={segundo} frame estatico pulado")
 
             _broadcast_sync(video_id, {"event": "frame", "second": segundo, "video_id": video_id})
 
         for track in tracker.flush():
-            person_counter = _process_track(db, video_id, track, person_counter, alerted_in_this_video)
+            person_counter, known_embeddings = _process_track(
+                db, video_id, track, person_counter, alerted_in_this_video, known_embeddings
+            )
 
         video = db.get(Video, video_id)
         video.status = VideoStatus.CONCLUIDO

@@ -69,7 +69,7 @@ def is_good_quality_frame(
     return bool(variance >= blur_threshold)
 
 
-def extract_embeddings(frame: np.ndarray) -> list[tuple[np.ndarray, tuple]]:
+def extract_embeddings(frame: np.ndarray) -> list[tuple[np.ndarray, tuple, float]]:
     app = get_face_app()
     faces = app.get(frame)
 
@@ -78,13 +78,10 @@ def extract_embeddings(frame: np.ndarray) -> list[tuple[np.ndarray, tuple]]:
     result = []
     for face in faces:
         location = bbox_to_location(face.bbox)
-        if not is_good_quality_frame(
-            location,
-            frame,
-            det_score=float(face.det_score),
-        ):
+        score = float(face.det_score)
+        if not is_good_quality_frame(location, frame, det_score=score):
             continue
-        result.append((face.embedding, location))
+        result.append((face.embedding, location, score))
 
     logger.debug(
         "[EXTRACT] faces_boa_qualidade=%d descartadas=%d",
@@ -101,6 +98,7 @@ class FaceTrack:
         self.start_time = start_time
         self.last_seen = start_time
         self.embeddings: list[np.ndarray] = []
+        self._det_scores: list[float] = []
         self._frames_data: list[dict] = []
 
     def add_frame_data(
@@ -109,11 +107,14 @@ class FaceTrack:
         location: tuple[int, int, int, int],
         frame: np.ndarray,
         timestamp: float,
+        det_score: float = 1.0,
     ) -> None:
+        top, right, bottom, left = location
+        crop = frame[top:bottom, left:right].copy()
+        area = (right - left) * (bottom - top)
         self.embeddings.append(embedding)
-        self._frames_data.append(
-            {"location": location, "frame": frame, "timestamp": timestamp}
-        )
+        self._det_scores.append(det_score)
+        self._frames_data.append({"crop": crop, "area": area, "timestamp": timestamp})
         self.last_seen = timestamp
 
     @property
@@ -121,18 +122,15 @@ class FaceTrack:
         return len(self.embeddings)
 
     def mean_embedding(self) -> np.ndarray:
-        mean = np.mean(self.embeddings, axis=0).astype(np.float32)
+        weights = np.array(self._det_scores, dtype=np.float32)
+        embs = np.array(self.embeddings, dtype=np.float32)
+        mean = np.average(embs, axis=0, weights=weights).astype(np.float32)
         norm = np.linalg.norm(mean)
         return mean / norm if norm > 0 else mean
 
     def get_best_crop(self) -> np.ndarray:
-        def face_area(data: dict) -> int:
-            top, right, bottom, left = data["location"]
-            return (right - left) * (bottom - top)
-
-        best = max(self._frames_data, key=face_area)
-        top, right, bottom, left = best["location"]
-        return best["frame"][top:bottom, left:right]
+        best = max(self._frames_data, key=lambda d: d["area"])
+        return best["crop"]
 
 
 class FaceTracker:
@@ -154,6 +152,7 @@ class FaceTracker:
         location: tuple[int, int, int, int],
         frame: np.ndarray,
         timestamp: float,
+        det_score: float = 1.0,
     ) -> None:
         if self.active_track is None:
             self.active_track = FaceTrack(start_time=timestamp)
@@ -161,7 +160,7 @@ class FaceTracker:
             self._close_active_track()
             self.active_track = FaceTrack(start_time=timestamp)
 
-        self.active_track.add_frame_data(embedding, location, frame, timestamp)
+        self.active_track.add_frame_data(embedding, location, frame, timestamp, det_score=det_score)
 
     def _close_active_track(self) -> None:
         if (

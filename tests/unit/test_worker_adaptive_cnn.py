@@ -34,17 +34,16 @@ def test_process_track_passes_embedding_to_save_face_sample():
     appearance_mock = MagicMock()
     appearance_mock.id = 42
 
-    with patch("app.workers.video_worker.person_service.get_all_embeddings",
-               return_value=[(1, mean_emb)]), \
-         patch("app.workers.video_worker.face_service.find_matching_person",
+    known_embeddings = [(1, mean_emb)]
+    with patch("app.workers.video_worker.face_service.find_matching_person",
                return_value=(1, 0.05)), \
          patch("app.workers.video_worker.appearance_service.upsert_appearance",
                return_value=appearance_mock), \
-         patch("app.workers.video_worker.person_service.save_face_sample") as mock_save_sample, \
-         patch("app.workers.video_worker.db") if False else MagicMock():  # skip
+         patch("app.workers.video_worker.person_service.save_face_sample") as mock_save_sample:
         mock_db.get.return_value = None  # no alert (person not "monitorado")
         _process_track(mock_db, video_id=1, track=track,
-                       person_counter=0, alerted_in_this_video=set())
+                       person_counter=0, alerted_in_this_video=set(),
+                       known_embeddings=known_embeddings)
 
     mock_save_sample.assert_called_once()
     _, kwargs = mock_save_sample.call_args
@@ -61,13 +60,13 @@ def test_process_track_creates_new_person_when_no_match():
     track = _make_track()
     mean_emb = track.mean_embedding()
 
-    with patch("app.workers.video_worker.person_service.get_all_embeddings",
-               return_value=[]), \
-         patch("app.workers.video_worker.face_service.find_matching_person",
+    with patch("app.workers.video_worker.face_service.find_matching_person",
                return_value=(None, None)), \
-         patch("app.workers.video_worker.person_service.save_new_person") as mock_save_new:
-        new_counter = _process_track(mock_db, video_id=1, track=track,
-                                     person_counter=5, alerted_in_this_video=set())
+         patch("app.workers.video_worker.person_service.save_new_person",
+               return_value=MagicMock(id=99)) as mock_save_new:
+        new_counter, _ = _process_track(mock_db, video_id=1, track=track,
+                                        person_counter=5, alerted_in_this_video=set(),
+                                        known_embeddings=[])
 
     assert new_counter == 6
     mock_save_new.assert_called_once()
