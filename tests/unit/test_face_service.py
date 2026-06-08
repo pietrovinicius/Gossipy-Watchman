@@ -14,6 +14,43 @@ def make_embedding() -> np.ndarray:
     return np.random.rand(128).astype(np.float64)
 
 
+def make_face_location(size: int = 120) -> tuple:
+    """(top, right, bottom, left) representando rosto quadrado de `size` px."""
+    return (0, size, size, 0)
+
+
+# ── is_good_quality_frame ─────────────────────────────────────────────────────
+
+def test_is_good_quality_frame_rejects_small_face():
+    from app.services.face_service import is_good_quality_frame
+
+    frame = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+    small_location = make_face_location(size=30)  # < min_face_size=60
+
+    assert is_good_quality_frame(small_location, frame, min_face_size=60) is False
+
+
+def test_is_good_quality_frame_rejects_blurred_face():
+    from app.services.face_service import is_good_quality_frame
+
+    frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    frame[:120, :120] = 128  # região uniforme → variância do Laplaciano ≈ 0
+    location = make_face_location(size=120)
+
+    assert is_good_quality_frame(location, frame, min_face_size=60) is False
+
+
+def test_is_good_quality_frame_accepts_sharp_large_face():
+    from app.services.face_service import is_good_quality_frame
+
+    frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    rng = np.random.default_rng(42)
+    frame[:120, :120] = rng.integers(0, 255, (120, 120, 3), dtype=np.uint8)
+    location = make_face_location(size=120)
+
+    assert is_good_quality_frame(location, frame, min_face_size=60) is True
+
+
 # ── extract_embeddings ────────────────────────────────────────────────────────
 
 def test_extract_embeddings_no_face_returns_empty():
@@ -26,15 +63,45 @@ def test_extract_embeddings_no_face_returns_empty():
     assert result == []
 
 
-def test_extract_embeddings_two_faces_returns_two():
+def test_extract_embeddings_two_faces_returns_two_tuples():
     from app.services.face_service import extract_embeddings
 
     emb1, emb2 = make_embedding(), make_embedding()
-    with patch("app.services.face_service.face_recognition.face_locations", return_value=["loc1", "loc2"]), \
-         patch("app.services.face_service.face_recognition.face_encodings", return_value=[emb1, emb2]):
+    loc1, loc2 = make_face_location(120), make_face_location(120)
+    with patch("app.services.face_service.face_recognition.face_locations", return_value=[loc1, loc2]), \
+         patch("app.services.face_service.face_recognition.face_encodings", return_value=[emb1, emb2]), \
+         patch("app.services.face_service.is_good_quality_frame", return_value=True):
         result = extract_embeddings(make_bgr_frame())
 
     assert len(result) == 2
+    assert result[0] == (emb1, loc1)
+    assert result[1] == (emb2, loc2)
+
+
+def test_extract_embeddings_discards_small_faces():
+    from app.services.face_service import extract_embeddings
+
+    loc_small = make_face_location(30)
+    with patch("app.services.face_service.face_recognition.face_locations", return_value=[loc_small]), \
+         patch("app.services.face_service.face_recognition.face_encodings", return_value=[make_embedding()]), \
+         patch("app.services.face_service.is_good_quality_frame", return_value=False) as mock_quality:
+        result = extract_embeddings(make_bgr_frame())
+
+    mock_quality.assert_called_once_with(loc_small, ANY, settings.FACE_MIN_SIZE_PX)
+    assert result == []
+
+
+def test_extract_embeddings_all_bad_quality_returns_empty():
+    from app.services.face_service import extract_embeddings
+
+    locations = [make_face_location(30), make_face_location(40)]
+    with patch("app.services.face_service.face_recognition.face_locations", return_value=locations), \
+         patch("app.services.face_service.face_recognition.face_encodings") as mock_encodings, \
+         patch("app.services.face_service.is_good_quality_frame", return_value=False):
+        result = extract_embeddings(make_bgr_frame())
+
+    mock_encodings.assert_not_called()
+    assert result == []
 
 
 def test_extract_embeddings_converts_bgr_to_rgb():

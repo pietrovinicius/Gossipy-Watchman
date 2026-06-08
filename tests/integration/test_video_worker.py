@@ -87,7 +87,7 @@ def test_new_face_calls_save_new_person(video_in_db):
     with patch("app.workers.video_worker.frame_service.extract_frames",
                return_value=iter([(0, fake_frame)])), \
          patch("app.workers.video_worker.face_service.extract_embeddings",
-               return_value=[embedding]), \
+               return_value=[(embedding, (0, 120, 120, 0))]), \
          patch("app.workers.video_worker.person_service.get_all_embeddings",
                return_value=[]), \
          patch("app.workers.video_worker.face_service.find_matching_person",
@@ -111,7 +111,7 @@ def test_known_face_calls_upsert_appearance(video_in_db):
     with patch("app.workers.video_worker.frame_service.extract_frames",
                return_value=iter([(2, fake_frame)])), \
          patch("app.workers.video_worker.face_service.extract_embeddings",
-               return_value=[embedding]), \
+               return_value=[(embedding, (0, 120, 120, 0))]), \
          patch("app.workers.video_worker.person_service.get_all_embeddings",
                return_value=[(7, embedding)]), \
          patch("app.workers.video_worker.face_service.find_matching_person",
@@ -151,7 +151,7 @@ def test_monitorado_dispara_create_alert(video_in_db):
     with patch("app.workers.video_worker.frame_service.extract_frames",
                return_value=iter([(1, fake_frame)])), \
          patch("app.workers.video_worker.face_service.extract_embeddings",
-               return_value=[embedding]), \
+               return_value=[(embedding, (0, 120, 120, 0))]), \
          patch("app.workers.video_worker.person_service.get_all_embeddings",
                return_value=[(person_id, embedding)]), \
          patch("app.workers.video_worker.face_service.find_matching_person",
@@ -187,7 +187,7 @@ def test_funcionario_nao_dispara_alerta(video_in_db):
     with patch("app.workers.video_worker.frame_service.extract_frames",
                return_value=iter([(1, fake_frame)])), \
          patch("app.workers.video_worker.face_service.extract_embeddings",
-               return_value=[embedding]), \
+               return_value=[(embedding, (0, 120, 120, 0))]), \
          patch("app.workers.video_worker.person_service.get_all_embeddings",
                return_value=[(person_id, embedding)]), \
          patch("app.workers.video_worker.face_service.find_matching_person",
@@ -212,7 +212,7 @@ def test_alerta_criado_apenas_uma_vez_por_pessoa_por_video(video_in_db):
     with patch("app.workers.video_worker.frame_service.extract_frames",
                return_value=iter([(1, fake_frame), (2, fake_frame), (3, fake_frame)])), \
          patch("app.workers.video_worker.face_service.extract_embeddings",
-               return_value=[embedding]), \
+               return_value=[(embedding, (0, 120, 120, 0))]), \
          patch("app.workers.video_worker.person_service.get_all_embeddings",
                return_value=[(person_id, embedding)]), \
          patch("app.workers.video_worker.face_service.find_matching_person",

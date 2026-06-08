@@ -26,6 +26,17 @@ class Settings(BaseSettings):
     FACE_DETECTION_MODEL: str = "cnn"
     FACE_UPSAMPLE: int = 1
 
+    # Qualidade de frame
+    FACE_MIN_SIZE_PX: int = 60
+    FACE_BLUR_THRESHOLD: float = 100.0
+
+    # Agregação por aparição contínua (track)
+    FACE_TRACK_GAP_TOLERANCE: float = 2.0
+    FACE_TRACK_MIN_SAMPLES: int = 2
+
+    # k-NN voting
+    FACE_KNN_K: int = 3
+
     # App
     APP_NAME: str = "Gossipy Watchman"
     APP_VERSION: str = "1.8.7"

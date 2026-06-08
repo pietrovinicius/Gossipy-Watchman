@@ -101,7 +101,7 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
                 first_frame = False
             embeddings = face_service.extract_embeddings(frame)
 
-            for embedding in embeddings:
+            for embedding, location in embeddings:
                 known = person_service.get_all_embeddings(db)
                 person_id, distance = face_service.find_matching_person(embedding, known)
 
