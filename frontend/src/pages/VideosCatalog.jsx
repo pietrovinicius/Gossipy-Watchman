@@ -15,6 +15,7 @@ import Layout from '../components/Layout'
 import ConfirmModal from '../components/ConfirmModal'
 import api from '../services/api'
 import { useTheme } from '../contexts/ThemeContext'
+import { useAuthVideoThumbnail } from '../hooks/useAuthVideoThumbnail'
 
 const STATUS_COLORS = {
   'Pendente': { bg: 'bg-yellow-100', text: 'text-yellow-800', dark: 'dark:bg-yellow-900 dark:text-yellow-200' },
@@ -27,6 +28,7 @@ function VideoCard({ video, onDelete, onReprocess, onExport, loading, loadingAct
   const navigate = useNavigate()
   const status = video.status
   const colors = STATUS_COLORS[status] || STATUS_COLORS['Pendente']
+  const thumbnailSrc = useAuthVideoThumbnail(video.id, Boolean(video.thumbnail_path))
 
   return (
     <div className="bg-card rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-all duration-200 flex flex-col h-full">
@@ -35,9 +37,9 @@ function VideoCard({ video, onDelete, onReprocess, onExport, loading, loadingAct
         className="relative w-full pt-[56.25%] bg-slate-100 dark:bg-slate-800 cursor-pointer overflow-hidden group"
         onClick={() => navigate(`/videos/${video.id}`)}
       >
-        {video.thumbnail_path ? (
+        {thumbnailSrc ? (
           <img
-            src={`${import.meta.env.VITE_API_URL}/videos/${video.id}/thumbnail`}
+            src={thumbnailSrc}
             alt={video.file_name}
             className="absolute inset-0 w-full h-full object-cover"
           />
