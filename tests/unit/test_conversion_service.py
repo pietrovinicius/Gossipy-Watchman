@@ -218,3 +218,27 @@ def test_repair_mp4_moov_raises_called_process_error_if_ffmpeg_fails(tmp_path):
             with pytest.raises(subprocess.CalledProcessError):
                 repair_mp4_moov(test_file)
 
+
+def test_repair_mp4_moov_falls_back_to_h264_recovery_on_missing_moov(tmp_path):
+    from app.services.conversion_service import repair_mp4_moov
+    
+    test_file = tmp_path / "video.mp4"
+    content = b"fakeheader_mdat" + b"\x00\x00\x00\x04\x67\x00\x00\x00" + b"\x00\x00\x00\x04\x68\x00\x00\x00"
+    test_file.write_bytes(content)
+    
+    with patch("app.services.conversion_service.FFMPEG_AVAILABLE", True):
+        with patch("app.services.conversion_service.subprocess.run") as mock_run:
+            def run_side_effect(cmd, **kwargs):
+                if "-f" in cmd and "h264" in cmd:
+                    out_path = Path(cmd[-1])
+                    out_path.write_bytes(b"recovered mp4")
+                    return MagicMock(returncode=0)
+                else:
+                    return MagicMock(returncode=1, stderr=b"moov atom not found")
+            mock_run.side_effect = run_side_effect
+            
+            result = repair_mp4_moov(test_file)
+            assert result == test_file
+            assert test_file.read_bytes() == b"recovered mp4"
+
+
