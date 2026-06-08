@@ -27,8 +27,8 @@ class Settings(BaseSettings):
     FACE_UPSAMPLE: int = 1
 
     # Qualidade de frame
-    FACE_MIN_SIZE_PX: int = 60
-    FACE_BLUR_THRESHOLD: float = 100.0
+    FACE_MIN_SIZE_PX: int = 40
+    FACE_BLUR_THRESHOLD: float = 30.0
 
     # Agregação por aparição contínua (track)
     FACE_TRACK_GAP_TOLERANCE: float = 2.0
@@ -39,8 +39,8 @@ class Settings(BaseSettings):
 
     # Motion Gating
     MOTION_GATING_ENABLED: bool = True
-    MOTION_GATING_THRESHOLD: int = 25
-    MOTION_GATING_AREA_RATIO: float = 0.005
+    MOTION_GATING_THRESHOLD: int = 15
+    MOTION_GATING_AREA_RATIO: float = 0.001
 
     # App
     APP_NAME: str = "Gossipy Watchman"

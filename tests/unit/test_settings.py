@@ -98,3 +98,12 @@ def test_face_detection_model_accepts_hog():
     from app.core.settings import Settings
     s = Settings(FACE_DETECTION_MODEL="hog")
     assert s.FACE_DETECTION_MODEL == "hog"
+
+
+def test_new_calibration_thresholds():
+    from app.core.settings import settings
+    assert settings.MOTION_GATING_THRESHOLD == 15
+    assert settings.MOTION_GATING_AREA_RATIO == 0.001
+    assert settings.FACE_BLUR_THRESHOLD == 30.0
+    assert settings.FACE_MIN_SIZE_PX == 40
+

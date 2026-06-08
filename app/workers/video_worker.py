@@ -211,7 +211,10 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
             run_detection = True
             if settings.MOTION_GATING_ENABLED:
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                gray = cv2.GaussianBlur(gray, (21, 21), 0)
+                # Calibração adaptativa do kernel (1% da largura do frame, ímpar, mínimo 3)
+                k_size = int(frame.shape[1] * 0.01) | 1
+                k_size = max(3, k_size)
+                gray = cv2.GaussianBlur(gray, (k_size, k_size), 0)
                 if prev_gray is None:
                     prev_gray = gray
                     run_detection = True
