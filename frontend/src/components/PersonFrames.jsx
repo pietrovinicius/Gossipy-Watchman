@@ -61,11 +61,21 @@ export default function PersonFrames({ personId }) {
   const [deletingFilename, setDeletingFilename] = useState(null)
   const [actionErr, setActionErr] = useState('')
 
+  useEffect(() => {
+    console.log('[PersonFrames] frames estado mudou:', frames)
+  }, [frames])
+
   const fetchFrames = useCallback(() => {
     setLoadErr('')
     api.get(`/people/${personId}/frames`)
-      .then((res) => setFrames(res.data))
-      .catch((err) => setLoadErr(err.message))
+      .then((res) => {
+        console.log('[PersonFrames] fetchFrames resposta:', res.data)
+        setFrames(res.data)
+      })
+      .catch((err) => {
+        console.error('[PersonFrames] fetchFrames erro:', err)
+        setLoadErr(err.message)
+      })
   }, [personId])
 
   useEffect(() => {
@@ -73,12 +83,16 @@ export default function PersonFrames({ personId }) {
   }, [fetchFrames])
 
   async function handleSetPrimary(filename) {
+    console.log('[PersonFrames] handleSetPrimary clicado:', filename)
     setSettingFilename(filename)
     setActionErr('')
     try {
-      await api.patch(`/people/${personId}/primary-photo`, { filename })
-      fetchFrames()
+      const patchRes = await api.patch(`/people/${personId}/primary-photo`, { filename })
+      console.log('[PersonFrames] PATCH resposta:', patchRes.data)
+      console.log('[PersonFrames] Chamando fetchFrames após PATCH')
+      await fetchFrames()
     } catch (err) {
+      console.error('[PersonFrames] handleSetPrimary erro:', err)
       setActionErr(err.response?.data?.detail ?? err.message ?? 'Erro ao definir foto principal.')
     } finally {
       setSettingFilename(null)

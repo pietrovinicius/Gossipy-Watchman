@@ -102,15 +102,22 @@ def list_face_samples(db: Session, person_id: int) -> list[dict]:
         if person and person.profile_image_path
         else None
     )
+    logger.debug(
+        f"[LIST_SAMPLES] person_id={person_id} "
+        f"profile_image_path={person.profile_image_path if person else None} "
+        f"primary_filename={primary_filename}"
+    )
 
     files = sorted(settings.STORAGE_FACES.glob(f"{person_id}.jpg")) + sorted(
         settings.STORAGE_FACES.glob(f"{person_id}_sample_*.jpg")
     )
 
-    return [
+    result = [
         {"filename": f.name, "is_primary": f.name == primary_filename}
         for f in files
     ]
+    logger.debug(f"[LIST_SAMPLES] result={result}")
+    return result
 
 
 def _is_safe_face_filename(filename: str) -> bool:
@@ -149,6 +156,8 @@ def set_primary_photo(db: Session, person_id: int, source_filename: str) -> Pers
     → 403 (arquivo pertence a outra pessoa). Copia preservando o original
     (shutil.copy2) para {person_id}.jpg.
     """
+    logger.info(f"[SET_PRIMARY] iniciando: person_id={person_id} source_filename={source_filename}")
+
     if not _is_safe_face_filename(source_filename):
         raise HTTPException(status_code=400, detail="Nome de arquivo inválido")
 
@@ -166,10 +175,15 @@ def set_primary_photo(db: Session, person_id: int, source_filename: str) -> Pers
 
     primary_path = settings.STORAGE_FACES / f"{person_id}.jpg"
     shutil.copy2(str(source_path), str(primary_path))
+    logger.info(f"[SET_PRIMARY] arquivo copiado: {source_path} → {primary_path}")
 
     person.profile_image_path = str(primary_path)
     db.commit()
+    logger.info(f"[SET_PRIMARY] DB commitado: profile_image_path={person.profile_image_path}")
+
     db.refresh(person)
+    logger.info(f"[SET_PRIMARY] pessoa refreshada do DB: profile_image_path={person.profile_image_path}")
+
     return person
 
 
