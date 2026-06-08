@@ -32,12 +32,8 @@ from app.api.v1.employees import router as employees_router
 from app.api.v1.ws import router as ws_router
 
 
-from app.core.model_downloader import ensure_models_downloaded
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    ensure_models_downloaded()
     init_db()
     migration_v1_13()
     migration_v1_20()
@@ -46,7 +42,6 @@ async def lifespan(app: FastAPI):
     migration_v1_40()
     ws_manager.set_loop(asyncio.get_event_loop())
     yield
-
 
 
 app = FastAPI(

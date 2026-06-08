@@ -55,7 +55,8 @@ def test_search_sem_auth_retorna_401(client_with_db):
 def test_search_imagem_sem_face_retorna_lista_vazia(client_with_db):
     client, _, token = client_with_db
     headers = {"Authorization": f"Bearer {token}"}
-    with patch("app.services.face_service.extract_embeddings", return_value=[]):
+    with patch("app.services.search_service.face_recognition") as mock_fr:
+        mock_fr.face_locations.return_value = []
         response = client.post(
             "/api/v1/search/by-face",
             files={"file": ("face.jpg", _fake_jpeg(), "image/jpeg")},
@@ -77,15 +78,17 @@ def test_search_retorna_resultados_com_campos_corretos(client_with_db):
     db.close()
 
     emb = np.array([0.1] * 128)
-    query_emb = np.array([0.11] * 128)
     fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
     headers = {"Authorization": f"Bearer {token}"}
 
     with patch("app.services.search_service.cv2.imdecode", return_value=fake_frame), \
          patch("app.services.search_service.cv2.cvtColor", return_value=fake_frame), \
-         patch("app.services.face_service.extract_embeddings", return_value=[(query_emb, (0, 100, 100, 0))]), \
+         patch("app.services.search_service.face_recognition") as mock_fr, \
          patch("app.services.search_service.person_service.get_all_embeddings",
                return_value=[(person_id, emb)]):
+        mock_fr.face_locations.return_value = [(0, 100, 100, 0)]
+        mock_fr.face_encodings.return_value = [np.array([0.15] * 128)]
+        mock_fr.face_distance.return_value = np.array([0.2])
 
         response = client.post(
             "/api/v1/search/by-face",

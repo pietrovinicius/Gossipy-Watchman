@@ -21,14 +21,14 @@ class Settings(BaseSettings):
     STORAGE_EMPLOYEES: Path = Path("storage/employees")
 
     # Visão computacional
-    FACE_RECOGNITION_TOLERANCE: float = 1.1
+    FACE_RECOGNITION_TOLERANCE: float = 0.6
     FRAMES_PER_SECOND_SAMPLE: int = 2
     FACE_DETECTION_MODEL: str = "cnn"
     FACE_UPSAMPLE: int = 1
 
     # Qualidade de frame
-    FACE_MIN_SIZE_PX: int = 40
-    FACE_BLUR_THRESHOLD: float = 30.0
+    FACE_MIN_SIZE_PX: int = 60
+    FACE_BLUR_THRESHOLD: float = 100.0
 
     # Agregação por aparição contínua (track)
     FACE_TRACK_GAP_TOLERANCE: float = 2.0

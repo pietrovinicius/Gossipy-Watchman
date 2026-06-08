@@ -1,5 +1,4 @@
 import pytest
-import numpy as np
 from unittest.mock import patch, MagicMock
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -23,20 +22,21 @@ def photo_bytes():
 class TestRegisterEmployee:
     """Tests for register_employee function."""
 
-    @patch("app.services.face_service.extract_embeddings")
+    @patch("app.services.employee_service.face_recognition")
     @patch("app.services.employee_service.cv2")
     @patch("app.services.employee_service.np")
     @patch("app.services.employee_service.uuid4")
     def test_register_employee_creates_employee_and_person(
-        self, mock_uuid, mock_np, mock_cv2, mock_extract, mock_db, photo_bytes
+        self, mock_uuid, mock_np, mock_cv2, mock_fr, mock_db, photo_bytes
     ):
         """register_employee should create Employee and Person."""
         from app.services.employee_service import register_employee
 
         mock_uuid.return_value = "test-uuid"
-        mock_extract.return_value = [
-            (np.array([0.1, 0.2, 0.3]), (0, 100, 100, 0))
-        ]
+        mock_fr.face_locations.return_value = [(0, 0, 100, 100)]  # 1 face
+        mock_fr.face_encodings.return_value = [
+            [0.1, 0.2, 0.3]
+        ]  # 1 embedding
         mock_db.query.return_value.filter_by.return_value.first.return_value = None
 
         result = register_employee(
@@ -53,8 +53,9 @@ class TestRegisterEmployee:
         assert result is not None
         assert mock_db.add.call_count >= 2  # Person + Employee
 
+    @patch("app.services.employee_service.face_recognition")
     def test_register_employee_fails_duplicate_registration(
-        self, mock_db, photo_bytes
+        self, mock_fr, mock_db, photo_bytes
     ):
         """register_employee should raise 409 for duplicate registration."""
         from app.services.employee_service import register_employee
@@ -81,16 +82,17 @@ class TestRegisterEmployee:
         assert exc_info.value.status_code == 409
 
     @patch("app.services.employee_service.cv2")
-    @patch("app.services.face_service.extract_embeddings")
+    @patch("app.services.employee_service.face_recognition")
     def test_register_employee_fails_no_face_detected(
-        self, mock_extract, mock_cv2, mock_db, photo_bytes
+        self, mock_fr, mock_cv2, mock_db, photo_bytes
     ):
         """register_employee should raise 422 if photo has no face."""
         from app.services.employee_service import register_employee
         from fastapi import HTTPException
 
         mock_cv2.imdecode.return_value = MagicMock()
-        mock_extract.return_value = []  # No faces
+        mock_cv2.cvtColor.return_value = MagicMock()
+        mock_fr.face_locations.return_value = []  # No faces
         mock_db.query.return_value.filter_by.return_value.first.return_value = None
 
         with pytest.raises(HTTPException) as exc_info:
@@ -108,18 +110,19 @@ class TestRegisterEmployee:
         assert exc_info.value.status_code == 422
 
     @patch("app.services.employee_service.cv2")
-    @patch("app.services.face_service.extract_embeddings")
+    @patch("app.services.employee_service.face_recognition")
     def test_register_employee_fails_multiple_faces(
-        self, mock_extract, mock_cv2, mock_db, photo_bytes
+        self, mock_fr, mock_cv2, mock_db, photo_bytes
     ):
         """register_employee should raise 422 if photo has multiple faces."""
         from app.services.employee_service import register_employee
         from fastapi import HTTPException
 
         mock_cv2.imdecode.return_value = MagicMock()
-        mock_extract.return_value = [
-            (np.array([0.1]), (0, 100, 100, 0)),
-            (np.array([0.2]), (100, 200, 200, 100)),
+        mock_cv2.cvtColor.return_value = MagicMock()
+        mock_fr.face_locations.return_value = [
+            (0, 0, 100, 100),
+            (100, 100, 200, 200),
         ]  # 2 faces
         mock_db.query.return_value.filter_by.return_value.first.return_value = None
 

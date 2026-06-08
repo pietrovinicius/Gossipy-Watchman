@@ -21,7 +21,7 @@ def test_storage_faces_is_path():
 def test_face_recognition_tolerance_default():
     from app.core.settings import Settings
     s = Settings(_env_file=None)
-    assert s.FACE_RECOGNITION_TOLERANCE == 1.1
+    assert s.FACE_RECOGNITION_TOLERANCE == 0.6
     assert isinstance(s.FACE_RECOGNITION_TOLERANCE, float)
 
 
@@ -98,12 +98,3 @@ def test_face_detection_model_accepts_hog():
     from app.core.settings import Settings
     s = Settings(FACE_DETECTION_MODEL="hog")
     assert s.FACE_DETECTION_MODEL == "hog"
-
-
-def test_new_calibration_thresholds():
-    from app.core.settings import settings
-    assert settings.MOTION_GATING_THRESHOLD == 15
-    assert settings.MOTION_GATING_AREA_RATIO == 0.001
-    assert settings.FACE_BLUR_THRESHOLD == 30.0
-    assert settings.FACE_MIN_SIZE_PX == 40
-

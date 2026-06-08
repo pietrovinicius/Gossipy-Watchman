@@ -3,6 +3,7 @@ import time
 from io import BytesIO
 
 import cv2
+import face_recognition
 import numpy as np
 from sqlalchemy.orm import Session
 
@@ -29,10 +30,9 @@ def search_by_face(
     if frame is None:
         return []
 
-    from app.services import face_service
-
-    results = face_service.extract_embeddings(frame)
-    if not results:
+    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    locations = face_recognition.face_locations(rgb)
+    if not locations:
         return []
 
     # pick largest face by area
@@ -40,8 +40,9 @@ def search_by_face(
         top, right, bottom, left = loc
         return (bottom - top) * (right - left)
 
-    best_match = max(results, key=lambda r: _area(r[1]))
-    query_embedding = best_match[0]
+    best_idx = max(range(len(locations)), key=lambda i: _area(locations[i]))
+    encodings = face_recognition.face_encodings(rgb, known_face_locations=locations)
+    query_embedding = encodings[best_idx]
 
     known = person_service.get_all_embeddings(db)
     if not known:
@@ -50,7 +51,7 @@ def search_by_face(
     known_ids = [pid for pid, _ in known]
     known_embeddings = np.array([emb for _, emb in known])
 
-    distances = np.linalg.norm(known_embeddings - query_embedding, axis=1)
+    distances = face_recognition.face_distance(known_embeddings, query_embedding)
 
     results: list[dict] = []
     for pid, dist in zip(known_ids, distances):
