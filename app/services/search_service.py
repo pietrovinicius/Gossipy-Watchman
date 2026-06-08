@@ -1,15 +1,14 @@
 import logging
 import time
-from io import BytesIO
 
 import cv2
-import face_recognition
 import numpy as np
 from sqlalchemy.orm import Session
 
 from app.core.settings import settings
 from app.models.person import Person
 from app.services import person_service
+from app.services.face_service import get_face_app
 
 logger = logging.getLogger(__name__)
 
@@ -30,31 +29,24 @@ def search_by_face(
     if frame is None:
         return []
 
-    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    locations = face_recognition.face_locations(rgb)
-    if not locations:
+    faces = get_face_app().get(frame)
+    if not faces:
         return []
 
-    # pick largest face by area
-    def _area(loc: tuple) -> int:
-        top, right, bottom, left = loc
-        return (bottom - top) * (right - left)
+    def _area(face) -> float:
+        x1, y1, x2, y2 = face.bbox
+        return (x2 - x1) * (y2 - y1)
 
-    best_idx = max(range(len(locations)), key=lambda i: _area(locations[i]))
-    encodings = face_recognition.face_encodings(rgb, known_face_locations=locations)
-    query_embedding = encodings[best_idx]
+    best_face = max(faces, key=_area)
+    query_embedding = best_face.embedding  # L2-normalized ArcFace 512-dim
 
     known = person_service.get_all_embeddings(db)
     if not known:
         return []
 
-    known_ids = [pid for pid, _ in known]
-    known_embeddings = np.array([emb for _, emb in known])
-
-    distances = face_recognition.face_distance(known_embeddings, query_embedding)
-
     results: list[dict] = []
-    for pid, dist in zip(known_ids, distances):
+    for pid, emb in known:
+        dist = float(1.0 - np.dot(query_embedding, emb))
         if dist > tolerance:
             continue
         person = db.get(Person, pid)
@@ -63,9 +55,11 @@ def search_by_face(
         results.append({
             "person_id": pid,
             "person_name": person.name,
-            "distance": float(dist),
-            "confidence_pct": int((1.0 - float(dist)) * 100),
+            "distance": dist,
+            "confidence_pct": int((1.0 - dist) * 100),
         })
 
     results.sort(key=lambda r: r["distance"])
+    elapsed = time.perf_counter() - t0
+    logger.info("[SEARCH] %.3fs → %d resultados", elapsed, len(results))
     return results[:top_k]

@@ -19,18 +19,24 @@ def get_all_embeddings(db: Session) -> list[tuple[int, np.ndarray]]:
     people = db.query(Person).all()
     result: list[tuple[int, np.ndarray]] = []
     for person in people:
-        npy_path = settings.STORAGE_FACES / f"{person.id}_embedding.npy"
-        if not npy_path.exists():
-            logger.warning("Embedding não encontrado para pessoa id=%s: %s", person.id, npy_path)
+        npy_files = sorted(settings.STORAGE_FACES.glob(f"{person.id}_embedding_*.npy"))
+        if not npy_files:
+            logger.warning("Nenhum embedding encontrado para pessoa id=%s", person.id)
             continue
-        embedding = np.load(str(npy_path))
-        logger.debug(
-            f"[EMBEDDING CARREGADO] person_id={person.id} name={person.name} "
-            f"shape={embedding.shape} dtype={embedding.dtype} "
-            f"norm={np.linalg.norm(embedding):.4f}"
-        )
-        result.append((person.id, embedding))
-    logger.info(f"[EMBEDDINGS TOTAIS] carregados={len(result)}")
+        for npy_path in npy_files:
+            try:
+                embedding = np.load(str(npy_path))
+                if embedding.shape != (512,):
+                    logger.warning(
+                        "Embedding com shape inesperado %s ignorado: %s",
+                        embedding.shape,
+                        npy_path.name,
+                    )
+                    continue
+                result.append((person.id, embedding))
+            except Exception:
+                logger.warning("Falha ao carregar %s", npy_path, exc_info=True)
+    logger.info("[EMBEDDINGS TOTAIS] carregados=%d", len(result))
     return result
 
 
@@ -50,10 +56,10 @@ def save_new_person(
     db.refresh(person)
 
     jpg_path = settings.STORAGE_FACES / f"{person.id}.jpg"
-    npy_path = settings.STORAGE_FACES / f"{person.id}_embedding.npy"
+    npy_path = settings.STORAGE_FACES / f"{person.id}_embedding_0.npy"
 
     cv2.imwrite(str(jpg_path), face_crop)
-    np.save(str(npy_path), embedding)
+    np.save(str(npy_path), embedding.astype(np.float32))
 
     logger.info(
         f"[SAVE NEW PERSON] person_id={person.id} name={person.name} "
@@ -75,11 +81,12 @@ def save_face_sample(
     person_id: int,
     appearance_id: int,
     face_crop: np.ndarray,
+    embedding: np.ndarray | None = None,
 ) -> str | None:
-    """Salva recorte facial como amostra adicional da pessoa, até MAX_FACE_SAMPLES por pessoa.
+    """Salva recorte facial como amostra adicional. Se embedding ArcFace fornecido
+    e o total for menor que FACE_MAX_EMBEDDINGS_PER_PERSON, grava embedding adicional.
 
-    Nunca propaga exceção: falhas de I/O são logadas e retornam None,
-    pois a amostra é um complemento opcional ao fluxo principal do worker.
+    Nunca propaga exceção: falhas de I/O são logadas e retornam None.
     """
     try:
         existing = list(settings.STORAGE_FACES.glob(f"{person_id}_sample_*.jpg"))
@@ -88,6 +95,19 @@ def save_face_sample(
 
         sample_path = settings.STORAGE_FACES / f"{person_id}_sample_{appearance_id}.jpg"
         cv2.imwrite(str(sample_path), face_crop)
+
+        if embedding is not None:
+            existing_embs = list(
+                settings.STORAGE_FACES.glob(f"{person_id}_embedding_*.npy")
+            )
+            if len(existing_embs) < settings.FACE_MAX_EMBEDDINGS_PER_PERSON:
+                idx = len(existing_embs)
+                emb_path = settings.STORAGE_FACES / f"{person_id}_embedding_{idx}.npy"
+                np.save(str(emb_path), embedding.astype(np.float32))
+                logger.debug(
+                    "Embedding adicional salvo: %s (total=%d)", emb_path.name, idx + 1
+                )
+
         return str(sample_path)
     except Exception:
         logger.warning("Falha ao salvar amostra facial para pessoa id=%s", person_id, exc_info=True)
@@ -378,12 +398,14 @@ def merge_people(
             {"person_id": primary_id}
         )
 
-        # remove .npy and .jpg files for secondary
-        for suffix in (f"{sec_id}_embedding.npy", f"{sec_id}.jpg"):
-            path = settings.STORAGE_FACES / suffix
-            if path.exists():
-                path.unlink()
-                logger.info("merge_people: removido %s", path)
+        # remove embeddings e foto principal do secundário
+        for npy_path in settings.STORAGE_FACES.glob(f"{sec_id}_embedding_*.npy"):
+            npy_path.unlink(missing_ok=True)
+            logger.info("merge_people: removido %s", npy_path)
+        jpg_path = settings.STORAGE_FACES / f"{sec_id}.jpg"
+        if jpg_path.exists():
+            jpg_path.unlink()
+            logger.info("merge_people: removido %s", jpg_path)
 
         db.delete(secondary)
 

@@ -195,8 +195,9 @@ def test_matching_uses_track_mean_embedding(video_in_db):
     from app.workers.video_worker import process_video
 
     engine, video_id = video_in_db
-    emb1 = np.random.rand(128)
-    emb2 = np.random.rand(128)
+    rng = np.random.default_rng(7)
+    emb1 = rng.random(512).astype(np.float32)
+    emb2 = rng.random(512).astype(np.float32)
     fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
     location = (0, 120, 120, 0)
 
@@ -214,7 +215,8 @@ def test_matching_uses_track_mean_embedding(video_in_db):
 
     mock_match.assert_called_once()
     used_embedding = mock_match.call_args[0][0]
-    expected_mean = np.mean([emb1, emb2], axis=0)
+    raw_mean = np.mean([emb1, emb2], axis=0).astype(np.float32)
+    expected_mean = raw_mean / np.linalg.norm(raw_mean)
     assert np.allclose(used_embedding, expected_mean)
 
 

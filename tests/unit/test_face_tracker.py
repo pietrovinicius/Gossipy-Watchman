@@ -27,7 +27,8 @@ def test_face_track_aggregates_mean_embedding():
     track.add_frame_data(emb1, make_location(), make_frame(), timestamp=1.0)
     track.add_frame_data(emb2, make_location(), make_frame(), timestamp=2.0)
 
-    expected = np.mean([emb1, emb2], axis=0)
+    raw_mean = np.mean([emb1, emb2], axis=0).astype(np.float32)
+    expected = raw_mean / np.linalg.norm(raw_mean)
     assert np.allclose(track.mean_embedding(), expected)
 
 

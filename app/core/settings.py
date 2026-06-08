@@ -21,10 +21,14 @@ class Settings(BaseSettings):
     STORAGE_EMPLOYEES: Path = Path("storage/employees")
 
     # Visão computacional
-    FACE_RECOGNITION_TOLERANCE: float = 0.6
+    FACE_RECOGNITION_TOLERANCE: float = 0.4  # distância coseno ArcFace
     FRAMES_PER_SECOND_SAMPLE: int = 2
-    FACE_DETECTION_MODEL: str = "cnn"
-    FACE_UPSAMPLE: int = 1
+
+    # InsightFace
+    INSIGHTFACE_MODEL: str = "buffalo_l"
+    INSIGHTFACE_DET_SIZE: int = 640
+    INSIGHTFACE_DET_SCORE: float = 0.7
+    FACE_MAX_EMBEDDINGS_PER_PERSON: int = 5
 
     # Qualidade de frame
     FACE_MIN_SIZE_PX: int = 60
@@ -68,16 +72,6 @@ class Settings(BaseSettings):
 
     # ffmpeg
     FFMPEG_PATH: str = "ffmpeg"
-
-    # CNN adaptativo por duração (segundos)
-    CNN_ADAPTIVE_SHORT_MAX: int = 600
-    CNN_ADAPTIVE_MEDIUM_MAX: int = 3600
-    CNN_SHORT_UPSAMPLE: int = 2
-    CNN_SHORT_FPS_SAMPLE: int = 2
-    CNN_MEDIUM_UPSAMPLE: int = 1
-    CNN_MEDIUM_FPS_SAMPLE: int = 2
-    CNN_LONG_UPSAMPLE: int = 1
-    CNN_LONG_FPS_SAMPLE: int = 1
 
     @model_validator(mode="after")
     def _compute_derived(self) -> "Settings":

@@ -49,8 +49,9 @@ def test_get_all_embeddings_loads_existing_npy(db_session, tmp_path):
     db_session.add(person)
     db_session.commit()
 
-    embedding = np.random.rand(128)
-    npy_path = tmp_path / f"{person.id}_embedding.npy"
+    raw = np.random.rand(512).astype(np.float32)
+    embedding = raw / np.linalg.norm(raw)
+    npy_path = tmp_path / f"{person.id}_embedding_0.npy"
     np.save(str(npy_path), embedding)
 
     with patch("app.services.person_service.settings") as mock_settings:
@@ -113,8 +114,9 @@ def test_save_new_person_calls_np_save_with_correct_path(db_session, tmp_path):
 
         person = save_new_person(db_session, embedding, face_crop, person_index=1)
 
-    expected_npy = str(tmp_path / f"{person.id}_embedding.npy")
-    mock_save.assert_called_once_with(expected_npy, embedding)
+    expected_npy = str(tmp_path / f"{person.id}_embedding_0.npy")
+    assert mock_save.call_count == 1
+    assert mock_save.call_args[0][0] == expected_npy
 
 
 # ── update_person_details ─────────────────────────────────────────────────────
@@ -743,3 +745,91 @@ def test_reset_person_name_persists_change(db_session):
 
     reloaded = db_session.get(Person, pid)
     assert reloaded.name == f"Desconhecido #{pid}"
+
+
+# ── Multi-embedding (InsightFace) ─────────────────────────────────────────────
+
+def test_get_all_embeddings_loads_multiple_npy_per_person(tmp_path, monkeypatch):
+    """get_all_embeddings carrega todos os embedding_*.npy de cada pessoa."""
+    import numpy as np
+    from unittest.mock import MagicMock
+    from app.services.person_service import get_all_embeddings
+
+    np.save(str(tmp_path / "1_embedding_0.npy"), np.ones(512, dtype=np.float32))
+    np.save(str(tmp_path / "1_embedding_1.npy"), np.zeros(512, dtype=np.float32))
+
+    monkeypatch.setattr("app.services.person_service.settings.STORAGE_FACES", tmp_path)
+
+    mock_person = MagicMock()
+    mock_person.id = 1
+
+    mock_db = MagicMock()
+    mock_db.query.return_value.all.return_value = [mock_person]
+
+    result = get_all_embeddings(mock_db)
+
+    assert len(result) == 2
+    assert all(pid == 1 for pid, _ in result)
+
+
+def test_get_all_embeddings_skips_wrong_shape(tmp_path, monkeypatch):
+    """Embedding com shape != (512,) é ignorado."""
+    import numpy as np
+    from unittest.mock import MagicMock
+    from app.services.person_service import get_all_embeddings
+
+    np.save(str(tmp_path / "1_embedding_0.npy"), np.zeros(128, dtype=np.float32))
+
+    monkeypatch.setattr("app.services.person_service.settings.STORAGE_FACES", tmp_path)
+
+    mock_person = MagicMock()
+    mock_person.id = 1
+    mock_db = MagicMock()
+    mock_db.query.return_value.all.return_value = [mock_person]
+
+    result = get_all_embeddings(mock_db)
+    assert result == []
+
+
+def test_save_new_person_creates_embedding_0_npy(tmp_path, monkeypatch):
+    """save_new_person grava {id}_embedding_0.npy."""
+    import numpy as np
+    from unittest.mock import MagicMock, patch
+    from app.services.person_service import save_new_person
+
+    monkeypatch.setattr("app.services.person_service.settings.STORAGE_FACES", tmp_path)
+
+    embedding = np.ones(512, dtype=np.float32)
+    face_crop = np.zeros((80, 80, 3), dtype=np.uint8)
+
+    mock_person = MagicMock()
+    mock_person.id = 7
+
+    mock_db = MagicMock()
+    mock_db.refresh.side_effect = lambda p: None
+
+    with patch("app.services.person_service.Person") as MockPerson:
+        MockPerson.return_value = mock_person
+        save_new_person(mock_db, embedding, face_crop, person_index=7)
+
+    assert (tmp_path / "7_embedding_0.npy").exists()
+    assert not (tmp_path / "7_embedding.npy").exists()
+
+
+def test_save_face_sample_adds_embedding_when_below_limit(tmp_path, monkeypatch):
+    """save_face_sample grava embedding adicional quando abaixo do limite."""
+    import numpy as np
+    from app.services.person_service import save_face_sample
+
+    monkeypatch.setattr("app.services.person_service.settings.STORAGE_FACES", tmp_path)
+    monkeypatch.setattr("app.services.person_service.settings.FACE_MAX_EMBEDDINGS_PER_PERSON", 5)
+
+    np.save(str(tmp_path / "3_embedding_0.npy"), np.ones(512, dtype=np.float32))
+
+    mock_db = MagicMock()
+    face_crop = np.zeros((60, 60, 3), dtype=np.uint8)
+    embedding = np.ones(512, dtype=np.float32)
+
+    save_face_sample(mock_db, person_id=3, appearance_id=99, face_crop=face_crop, embedding=embedding)
+
+    assert (tmp_path / "3_embedding_1.npy").exists()

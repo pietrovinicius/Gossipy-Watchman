@@ -21,7 +21,7 @@ def test_storage_faces_is_path():
 def test_face_recognition_tolerance_default():
     from app.core.settings import Settings
     s = Settings(_env_file=None)
-    assert s.FACE_RECOGNITION_TOLERANCE == 0.6
+    assert s.FACE_RECOGNITION_TOLERANCE == 0.4
     assert isinstance(s.FACE_RECOGNITION_TOLERANCE, float)
 
 
@@ -81,20 +81,28 @@ def test_docs_enabled_default():
     assert settings.DOCS_ENABLED is True
 
 
-# ── Novos testes Sprint — detecção facial CNN ───────────────────────────────
+# ── Testes InsightFace ────────────────────────────────────────────────────────
 
-def test_face_detection_model_default():
+def test_insightface_model_default():
     from app.core.settings import settings
-    assert settings.FACE_DETECTION_MODEL == "cnn"
+    assert settings.INSIGHTFACE_MODEL == "buffalo_l"
 
 
-def test_face_upsample_default():
+def test_insightface_det_size_default():
     from app.core.settings import settings
-    assert settings.FACE_UPSAMPLE == 1
-    assert isinstance(settings.FACE_UPSAMPLE, int)
+    assert settings.INSIGHTFACE_DET_SIZE == 640
 
 
-def test_face_detection_model_accepts_hog():
-    from app.core.settings import Settings
-    s = Settings(FACE_DETECTION_MODEL="hog")
-    assert s.FACE_DETECTION_MODEL == "hog"
+def test_insightface_det_score_default():
+    from app.core.settings import settings
+    assert settings.INSIGHTFACE_DET_SCORE == 0.7
+
+
+def test_face_max_embeddings_per_person_default():
+    from app.core.settings import settings
+    assert settings.FACE_MAX_EMBEDDINGS_PER_PERSON == 5
+
+
+def test_face_recognition_tolerance_cosine():
+    from app.core.settings import settings
+    assert settings.FACE_RECOGNITION_TOLERANCE == 0.4

@@ -17,6 +17,7 @@ from app.db.migrations.migration_v1_20 import run as migration_v1_20
 from app.db.migrations.migration_v1_30 import run as migration_v1_30
 from app.db.migrations.migration_v1_35 import run as migration_v1_35
 from app.db.migrations.migration_v1_40 import run as migration_v1_40
+from app.db.migrations.migration_insightface import run as migration_insightface
 from app.api.v1.auth import router as auth_router
 from app.api.v1.export import router as export_router
 from app.api.v1.faces import router as faces_router
@@ -34,6 +35,7 @@ from app.api.v1.ws import router as ws_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    migration_insightface()
     init_db()
     migration_v1_13()
     migration_v1_20()
@@ -41,6 +43,14 @@ async def lifespan(app: FastAPI):
     migration_v1_35()
     migration_v1_40()
     ws_manager.set_loop(asyncio.get_event_loop())
+    # Pre-warm InsightFace model (loads ONNX weights once, runs on CoreML/CPU)
+    from app.services.face_service import get_face_app
+    try:
+        get_face_app()
+    except Exception:
+        logging.getLogger(__name__).warning(
+            "InsightFace pre-warm falhou — modelo será carregado no primeiro uso"
+        )
     yield
 
 

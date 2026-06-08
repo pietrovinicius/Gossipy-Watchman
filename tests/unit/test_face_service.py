@@ -1,4 +1,4 @@
-from unittest.mock import ANY, patch
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -6,17 +6,31 @@ import pytest
 from app.core.settings import settings
 
 
-def make_bgr_frame() -> np.ndarray:
-    return np.zeros((480, 640, 3), dtype=np.uint8)
+def make_bgr_frame(h: int = 480, w: int = 640) -> np.ndarray:
+    rng = np.random.default_rng(42)
+    return rng.integers(0, 255, (h, w, 3), dtype=np.uint8)
 
 
-def make_embedding() -> np.ndarray:
-    return np.random.rand(128).astype(np.float64)
+def make_l2_embedding(dim: int = 512) -> np.ndarray:
+    v = np.random.rand(dim).astype(np.float32)
+    return v / np.linalg.norm(v)
 
 
 def make_face_location(size: int = 120) -> tuple:
-    """(top, right, bottom, left) representando rosto quadrado de `size` px."""
+    """(top, right, bottom, left)"""
     return (0, size, size, 0)
+
+
+def make_mock_face(
+    bbox: list | None = None,
+    det_score: float = 0.95,
+    embedding: np.ndarray | None = None,
+):
+    face = MagicMock()
+    face.bbox = np.array(bbox or [0, 0, 120, 120], dtype=np.float32)
+    face.det_score = det_score
+    face.embedding = embedding if embedding is not None else make_l2_embedding()
+    return face
 
 
 # ── is_good_quality_frame ─────────────────────────────────────────────────────
@@ -25,7 +39,7 @@ def test_is_good_quality_frame_rejects_small_face():
     from app.services.face_service import is_good_quality_frame
 
     frame = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
-    small_location = make_face_location(size=30)  # < min_face_size=60
+    small_location = make_face_location(size=30)
 
     assert is_good_quality_frame(small_location, frame, min_face_size=60) is False
 
@@ -33,22 +47,39 @@ def test_is_good_quality_frame_rejects_small_face():
 def test_is_good_quality_frame_rejects_blurred_face():
     from app.services.face_service import is_good_quality_frame
 
-    frame = np.zeros((480, 640, 3), dtype=np.uint8)
-    frame[:120, :120] = 128  # região uniforme → variância do Laplaciano ≈ 0
+    blurred_frame = np.full((480, 640, 3), 128, dtype=np.uint8)
     location = make_face_location(size=120)
 
-    assert is_good_quality_frame(location, frame, min_face_size=60) is False
+    assert is_good_quality_frame(location, blurred_frame, blur_threshold=100.0) is False
 
 
 def test_is_good_quality_frame_accepts_sharp_large_face():
     from app.services.face_service import is_good_quality_frame
 
-    frame = np.zeros((480, 640, 3), dtype=np.uint8)
-    rng = np.random.default_rng(42)
-    frame[:120, :120] = rng.integers(0, 255, (120, 120, 3), dtype=np.uint8)
+    frame = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
     location = make_face_location(size=120)
 
-    assert is_good_quality_frame(location, frame, min_face_size=60) is True
+    assert is_good_quality_frame(location, frame, min_face_size=60, blur_threshold=10.0) is True
+
+
+def test_is_good_quality_frame_rejects_low_det_score():
+    from app.services.face_service import is_good_quality_frame
+
+    frame = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+    location = make_face_location(size=120)
+
+    assert is_good_quality_frame(location, frame, det_score=0.5, det_score_threshold=0.7) is False
+
+
+def test_is_good_quality_frame_accepts_high_det_score():
+    from app.services.face_service import is_good_quality_frame
+
+    frame = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+    location = make_face_location(size=120)
+
+    assert is_good_quality_frame(
+        location, frame, det_score=0.9, det_score_threshold=0.7, blur_threshold=10.0
+    ) is True
 
 
 # ── extract_embeddings ────────────────────────────────────────────────────────
@@ -56,183 +87,188 @@ def test_is_good_quality_frame_accepts_sharp_large_face():
 def test_extract_embeddings_no_face_returns_empty():
     from app.services.face_service import extract_embeddings
 
-    with patch("app.services.face_service.face_recognition.face_locations", return_value=[]), \
-         patch("app.services.face_service.face_recognition.face_encodings", return_value=[]):
+    with patch("app.services.face_service.get_face_app") as mock_get:
+        mock_app = MagicMock()
+        mock_app.get.return_value = []
+        mock_get.return_value = mock_app
+
         result = extract_embeddings(make_bgr_frame())
 
     assert result == []
 
 
-def test_extract_embeddings_two_faces_returns_two_tuples():
+def test_extract_embeddings_one_face_returns_one_tuple():
     from app.services.face_service import extract_embeddings
 
-    emb1, emb2 = make_embedding(), make_embedding()
-    loc1, loc2 = make_face_location(120), make_face_location(120)
-    with patch("app.services.face_service.face_recognition.face_locations", return_value=[loc1, loc2]), \
-         patch("app.services.face_service.face_recognition.face_encodings", return_value=[emb1, emb2]), \
-         patch("app.services.face_service.is_good_quality_frame", return_value=True):
+    face = make_mock_face(bbox=[10, 10, 130, 130], det_score=0.95)
+
+    with patch("app.services.face_service.get_face_app") as mock_get:
+        mock_app = MagicMock()
+        mock_app.get.return_value = [face]
+        mock_get.return_value = mock_app
+
+        result = extract_embeddings(make_bgr_frame())
+
+    assert len(result) == 1
+    embedding, location = result[0]
+    assert embedding.shape == (512,)
+    assert len(location) == 4  # (top, right, bottom, left)
+
+
+def test_extract_embeddings_discards_low_det_score():
+    from app.services.face_service import extract_embeddings
+
+    face = make_mock_face(det_score=0.3)
+
+    with patch("app.services.face_service.get_face_app") as mock_get:
+        mock_app = MagicMock()
+        mock_app.get.return_value = [face]
+        mock_get.return_value = mock_app
+
+        result = extract_embeddings(make_bgr_frame())
+
+    assert result == []
+
+
+def test_extract_embeddings_discards_small_face():
+    from app.services.face_service import extract_embeddings
+
+    face = make_mock_face(bbox=[0, 0, 20, 20], det_score=0.95)
+
+    with patch("app.services.face_service.get_face_app") as mock_get:
+        mock_app = MagicMock()
+        mock_app.get.return_value = [face]
+        mock_get.return_value = mock_app
+
+        result = extract_embeddings(make_bgr_frame())
+
+    assert result == []
+
+
+def test_extract_embeddings_two_faces_returns_two():
+    from app.services.face_service import extract_embeddings
+
+    faces = [
+        make_mock_face(bbox=[0, 0, 120, 120], det_score=0.95),
+        make_mock_face(bbox=[200, 200, 320, 320], det_score=0.90),
+    ]
+
+    with patch("app.services.face_service.get_face_app") as mock_get:
+        mock_app = MagicMock()
+        mock_app.get.return_value = faces
+        mock_get.return_value = mock_app
+
         result = extract_embeddings(make_bgr_frame())
 
     assert len(result) == 2
-    assert result[0] == (emb1, loc1)
-    assert result[1] == (emb2, loc2)
 
 
-def test_extract_embeddings_discards_small_faces():
-    from app.services.face_service import extract_embeddings
+# ── bbox_to_location ──────────────────────────────────────────────────────────
 
-    loc_small = make_face_location(30)
-    with patch("app.services.face_service.face_recognition.face_locations", return_value=[loc_small]), \
-         patch("app.services.face_service.face_recognition.face_encodings", return_value=[make_embedding()]), \
-         patch("app.services.face_service.is_good_quality_frame", return_value=False) as mock_quality:
-        result = extract_embeddings(make_bgr_frame())
+def test_bbox_to_location_converts_correctly():
+    from app.services.face_service import bbox_to_location
 
-    mock_quality.assert_called_once_with(loc_small, ANY, settings.FACE_MIN_SIZE_PX)
-    assert result == []
+    # InsightFace bbox: [x1, y1, x2, y2] → (top=y1, right=x2, bottom=y2, left=x1)
+    location = bbox_to_location(np.array([10.0, 20.0, 110.0, 120.0]))
+    assert location == (20, 110, 120, 10)
 
 
-def test_extract_embeddings_all_bad_quality_returns_empty():
-    from app.services.face_service import extract_embeddings
-
-    locations = [make_face_location(30), make_face_location(40)]
-    with patch("app.services.face_service.face_recognition.face_locations", return_value=locations), \
-         patch("app.services.face_service.face_recognition.face_encodings") as mock_encodings, \
-         patch("app.services.face_service.is_good_quality_frame", return_value=False):
-        result = extract_embeddings(make_bgr_frame())
-
-    mock_encodings.assert_not_called()
-    assert result == []
-
-
-def test_extract_embeddings_converts_bgr_to_rgb():
-    """Verifica que face_locations recebe frame RGB (não BGR)."""
-    from app.services.face_service import extract_embeddings
-
-    bgr_frame = np.zeros((2, 2, 3), dtype=np.uint8)
-    bgr_frame[0, 0] = [10, 20, 30]  # B=10, G=20, R=30
-
-    captured = {}
-
-    def fake_locations(rgb_frame, **kwargs):
-        captured["frame"] = rgb_frame.copy()
-        return []
-
-    with patch("app.services.face_service.face_recognition.face_locations", side_effect=fake_locations), \
-         patch("app.services.face_service.face_recognition.face_encodings", return_value=[]):
-        extract_embeddings(bgr_frame)
-
-    # pixel [0,0] deve ter R=10, G=20, B=30 (invertido)
-    assert captured["frame"][0, 0, 0] == 30  # R channel
-    assert captured["frame"][0, 0, 2] == 10  # B channel
-
-
-def test_extract_embeddings_calls_face_locations_with_settings_model_and_upsample():
-    from app.services.face_service import extract_embeddings
-
-    with patch("app.services.face_service.face_recognition.face_locations", return_value=[]) as mock_locations, \
-         patch("app.services.face_service.face_recognition.face_encodings", return_value=[]):
-        extract_embeddings(make_bgr_frame())
-
-    mock_locations.assert_called_with(
-        ANY,
-        number_of_times_to_upsample=settings.FACE_UPSAMPLE,
-        model=settings.FACE_DETECTION_MODEL,
-    )
-
-
-# ── find_matching_person ──────────────────────────────────────────────────────
+# ── find_matching_person (coseno) ─────────────────────────────────────────────
 
 def test_find_matching_empty_list_returns_none():
     from app.services.face_service import find_matching_person
 
-    result = find_matching_person(make_embedding(), [])
-    assert result == (None, None)
+    result_id, result_dist = find_matching_person(make_l2_embedding(), [])
+    assert result_id is None
+    assert result_dist is None
 
 
 def test_find_matching_below_tolerance_returns_match():
     from app.services.face_service import find_matching_person
 
-    target = make_embedding()
-    known = [(42, target)]  # distância ~0
+    query = make_l2_embedding()
+    known = [(1, query.copy())]
 
-    with patch("app.services.face_service.face_recognition.face_distance", return_value=np.array([0.3])):
-        person_id, dist = find_matching_person(target, known, tolerance=0.6)
+    match_id, dist = find_matching_person(query, known, tolerance=0.4)
 
-    assert person_id == 42
-    assert dist == pytest.approx(0.3)
+    assert match_id == 1
+    assert dist is not None
+    assert dist < 0.01
 
 
 def test_find_matching_above_tolerance_returns_none():
     from app.services.face_service import find_matching_person
 
-    target = make_embedding()
-    known = [(7, make_embedding())]
+    query = np.zeros(512, dtype=np.float32)
+    query[0] = 1.0
 
-    with patch("app.services.face_service.face_recognition.face_distance", return_value=np.array([0.8])):
-        person_id, dist = find_matching_person(target, known, tolerance=0.6)
+    opposite = np.zeros(512, dtype=np.float32)
+    opposite[1] = 1.0  # distância coseno = 1.0
 
-    assert person_id is None
-    assert dist is None
+    match_id, dist = find_matching_person(query, [(1, opposite)], tolerance=0.4)
+
+    assert match_id is None
 
 
 def test_find_matching_picks_closest():
     from app.services.face_service import find_matching_person
 
-    target = make_embedding()
-    known = [(1, make_embedding()), (2, make_embedding()), (3, make_embedding())]
+    query = np.zeros(512, dtype=np.float32)
+    query[0] = 1.0
 
-    with patch("app.services.face_service.face_recognition.face_distance",
-               return_value=np.array([0.5, 0.2, 0.4])):
-        person_id, dist = find_matching_person(target, known, tolerance=0.6)
+    close = np.zeros(512, dtype=np.float32)
+    close[0] = 0.99
+    close[1] = 0.01
+    close = close / np.linalg.norm(close)
 
-    assert person_id == 2
-    assert dist == pytest.approx(0.2)
+    far = np.zeros(512, dtype=np.float32)
+    far[0] = 0.7
+    far[1] = 0.3
+    far = far / np.linalg.norm(far)
+
+    match_id, dist = find_matching_person(query, [(1, close), (2, far)], tolerance=0.4)
+    assert match_id == 1
 
 
-# ── find_matching_person — votação k-NN ──────────────────────────────────────
-
-def test_find_matching_majority_vote_overrides_nearest_neighbor():
-    """3 vizinhos mais próximos votam: pessoa 1 vence por maioria mesmo
-    sem ser o vizinho mais próximo isolado."""
+def test_find_matching_knn_majority_vote():
     from app.services.face_service import find_matching_person
 
-    target = make_embedding()
-    known = [(1, make_embedding()), (2, make_embedding()), (1, make_embedding())]
+    query = np.zeros(512, dtype=np.float32)
+    query[0] = 1.0
 
-    with patch("app.services.face_service.face_recognition.face_distance",
-               return_value=np.array([0.1, 0.15, 0.2])):
-        person_id, dist = find_matching_person(target, known, tolerance=0.6, k=3)
+    emb_p1 = query.copy()
 
-    assert person_id == 1
-    assert dist == pytest.approx(0.1)
+    emb_p2a = np.zeros(512, dtype=np.float32)
+    emb_p2a[0] = 0.98
+    emb_p2a[1] = 0.02
+    emb_p2a = emb_p2a / np.linalg.norm(emb_p2a)
+
+    emb_p2b = np.zeros(512, dtype=np.float32)
+    emb_p2b[0] = 0.97
+    emb_p2b[1] = 0.03
+    emb_p2b = emb_p2b / np.linalg.norm(emb_p2b)
+
+    known = [(1, emb_p1), (2, emb_p2a), (2, emb_p2b)]
+    match_id, _ = find_matching_person(query, known, tolerance=0.4, k=3)
+    assert match_id == 2
 
 
 def test_find_matching_knn_ignores_neighbors_above_tolerance():
     from app.services.face_service import find_matching_person
 
-    target = make_embedding()
-    known = [(1, make_embedding()), (2, make_embedding()), (3, make_embedding())]
+    query = np.zeros(512, dtype=np.float32)
+    query[0] = 1.0
 
-    with patch("app.services.face_service.face_recognition.face_distance",
-               return_value=np.array([0.1, 0.9, 0.95])):
-        person_id, dist = find_matching_person(target, known, tolerance=0.6, k=3)
+    close = np.zeros(512, dtype=np.float32)
+    close[0] = 0.99
+    close[1] = 0.01
+    close = close / np.linalg.norm(close)
 
-    assert person_id == 1
-    assert dist == pytest.approx(0.1)
+    far = np.zeros(512, dtype=np.float32)
+    far[1] = 1.0  # dist coseno = 1.0
 
-
-def test_find_matching_knn_all_above_tolerance_returns_none():
-    from app.services.face_service import find_matching_person
-
-    target = make_embedding()
-    known = [(1, make_embedding()), (2, make_embedding())]
-
-    with patch("app.services.face_service.face_recognition.face_distance",
-               return_value=np.array([0.7, 0.8])):
-        person_id, dist = find_matching_person(target, known, tolerance=0.6, k=3)
-
-    assert person_id is None
-    assert dist is None
+    match_id, dist = find_matching_person(query, [(1, close), (2, far)], tolerance=0.4, k=3)
+    assert match_id == 1
 
 
 def test_find_matching_uses_settings_knn_k_default():
@@ -241,3 +277,65 @@ def test_find_matching_uses_settings_knn_k_default():
 
     params = inspect.signature(find_matching_person).parameters
     assert params["k"].default == settings.FACE_KNN_K
+
+
+# ── get_face_app singleton ────────────────────────────────────────────────────
+
+def test_get_face_app_returns_same_instance():
+    from app.services import face_service
+
+    face_service._face_app = None
+
+    with patch("app.services.face_service.FaceAnalysis") as mock_cls:
+        mock_instance = MagicMock()
+        mock_instance.prepare = MagicMock()
+        mock_cls.return_value = mock_instance
+
+        app1 = face_service.get_face_app()
+        app2 = face_service.get_face_app()
+
+    assert app1 is app2
+    assert mock_cls.call_count == 1
+
+
+# ── FaceTrack / FaceTracker ───────────────────────────────────────────────────
+
+def test_face_tracker_aggregates_detections():
+    from app.services.face_service import FaceTracker
+
+    tracker = FaceTracker(gap_tolerance=2.0, min_samples=2)
+    emb = make_l2_embedding()
+    frame = make_bgr_frame()
+
+    tracker.add_detection(emb, make_face_location(), frame, timestamp=1.0)
+    tracker.add_detection(emb, make_face_location(), frame, timestamp=2.0)
+
+    tracks = tracker.flush()
+    assert len(tracks) == 1
+    assert tracks[0].sample_count == 2
+
+
+def test_face_tracker_discards_short_tracks():
+    from app.services.face_service import FaceTracker
+
+    tracker = FaceTracker(gap_tolerance=2.0, min_samples=2)
+    emb = make_l2_embedding()
+    frame = make_bgr_frame()
+
+    tracker.add_detection(emb, make_face_location(), frame, timestamp=1.0)
+
+    tracks = tracker.flush()
+    assert len(tracks) == 0
+
+
+def test_face_track_mean_embedding_is_l2_normalized():
+    from app.services.face_service import FaceTrack
+
+    track = FaceTrack(start_time=0.0)
+    frame = make_bgr_frame()
+    for _ in range(3):
+        emb = make_l2_embedding()
+        track.add_frame_data(emb, make_face_location(), frame, timestamp=1.0)
+
+    mean = track.mean_embedding()
+    assert abs(np.linalg.norm(mean) - 1.0) < 1e-5
