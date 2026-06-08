@@ -17,6 +17,16 @@ def mock_can_opencv_read():
         yield mock
 
 
+@pytest.fixture(autouse=True)
+def disable_motion_gating_by_default():
+    from app.core.settings import settings
+    original = settings.MOTION_GATING_ENABLED
+    settings.MOTION_GATING_ENABLED = False
+    yield
+    settings.MOTION_GATING_ENABLED = original
+
+
+
 @pytest.fixture
 def db_engine():
     engine = create_engine(
@@ -301,3 +311,74 @@ def test_alerta_criado_apenas_uma_vez_por_pessoa_por_video(video_in_db):
         process_video(video_id, Path("video.mp4"), _engine=engine)
 
     assert mock_alert.call_count == 1
+
+
+def test_motion_gating_disabled_processes_all_frames(video_in_db):
+    from app.workers.video_worker import process_video
+    from app.core.settings import settings
+    
+    engine, video_id = video_in_db
+    frame1 = np.zeros((100, 100, 3), dtype=np.uint8)
+    frame2 = np.zeros((100, 100, 3), dtype=np.uint8) # Idêntico
+    
+    frames = [(0, frame1), (1, frame2)]
+    
+    with patch("app.workers.video_worker.frame_service.extract_frames", return_value=iter(frames)), \
+         patch("app.workers.video_worker.face_service.extract_embeddings", return_value=[]) as mock_extract, \
+         patch("app.workers.video_worker.settings", MagicMock(MOTION_GATING_ENABLED=False, DATABASE_URL=settings.DATABASE_URL)):
+        
+        process_video(video_id, Path("video.mp4"), _engine=engine)
+        
+    assert mock_extract.call_count == 2
+
+
+def test_motion_gating_enabled_skips_static_frames(video_in_db):
+    from app.workers.video_worker import process_video
+    from app.core.settings import settings
+    
+    engine, video_id = video_in_db
+    frame1 = np.zeros((100, 100, 3), dtype=np.uint8)
+    frame2 = np.zeros((100, 100, 3), dtype=np.uint8) # Idêntico
+    
+    frames = [(0, frame1), (1, frame2)]
+    
+    with patch("app.workers.video_worker.frame_service.extract_frames", return_value=iter(frames)), \
+         patch("app.workers.video_worker.face_service.extract_embeddings", return_value=[]) as mock_extract, \
+         patch("app.workers.video_worker.settings", MagicMock(
+             MOTION_GATING_ENABLED=True, 
+             MOTION_GATING_THRESHOLD=25,
+             MOTION_GATING_AREA_RATIO=0.005,
+             DATABASE_URL=settings.DATABASE_URL,
+             STORAGE_VIDEOS=settings.STORAGE_VIDEOS
+         )):
+        
+        process_video(video_id, Path("video.mp4"), _engine=engine)
+        
+    assert mock_extract.call_count == 1
+
+
+def test_motion_gating_enabled_processes_moving_frames(video_in_db):
+    from app.workers.video_worker import process_video
+    from app.core.settings import settings
+    
+    engine, video_id = video_in_db
+    frame1 = np.zeros((100, 100, 3), dtype=np.uint8)
+    frame2 = np.zeros((100, 100, 3), dtype=np.uint8)
+    frame2[40:60, 40:60] = 255 # Movimento bem acima de 0.5% (20*20 = 400 pixels = 4%)
+    
+    frames = [(0, frame1), (1, frame2)]
+    
+    with patch("app.workers.video_worker.frame_service.extract_frames", return_value=iter(frames)), \
+         patch("app.workers.video_worker.face_service.extract_embeddings", return_value=[]) as mock_extract, \
+         patch("app.workers.video_worker.settings", MagicMock(
+             MOTION_GATING_ENABLED=True, 
+             MOTION_GATING_THRESHOLD=25,
+             MOTION_GATING_AREA_RATIO=0.005,
+             DATABASE_URL=settings.DATABASE_URL,
+             STORAGE_VIDEOS=settings.STORAGE_VIDEOS
+         )):
+        
+        process_video(video_id, Path("video.mp4"), _engine=engine)
+        
+    assert mock_extract.call_count == 2
+

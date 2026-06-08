@@ -160,6 +160,7 @@ INICIAR O PROJETO (USO DIÁRIO)
 BACKEND — Terminal 1:
 
   macOS/Linux:
+    cd /Users/pietrodapenhadelima/Projetos/Gossipy\ Watchman 
     source venv/bin/activate
     uvicorn app.main:app --reload --port 8000
 

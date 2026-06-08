@@ -92,3 +92,36 @@ def test_yields_ndarray_frames():
 
     assert len(results) == 1
     assert isinstance(results[0][1], np.ndarray)
+
+
+def test_has_motion_no_motion():
+    from app.services.frame_service import has_motion
+    frame1 = np.zeros((100, 100), dtype=np.uint8)
+    frame2 = np.zeros((100, 100), dtype=np.uint8)
+    
+    motion_detected, ratio = has_motion(frame1, frame2, threshold=25, area_ratio=0.005)
+    assert not motion_detected
+    assert ratio == 0.0
+
+
+def test_has_motion_with_motion():
+    from app.services.frame_service import has_motion
+    frame1 = np.zeros((100, 100), dtype=np.uint8)
+    frame2 = np.zeros((100, 100), dtype=np.uint8)
+    frame2[45:55, 45:55] = 255
+    
+    motion_detected, ratio = has_motion(frame1, frame2, threshold=25, area_ratio=0.005)
+    assert motion_detected
+    assert ratio == 0.01
+
+
+def test_has_motion_below_area_ratio():
+    from app.services.frame_service import has_motion
+    frame1 = np.zeros((100, 100), dtype=np.uint8)
+    frame2 = np.zeros((100, 100), dtype=np.uint8)
+    frame2[47:52, 47:52] = 255
+    
+    motion_detected, ratio = has_motion(frame1, frame2, threshold=25, area_ratio=0.005)
+    assert not motion_detected
+    assert ratio == 0.0025
+

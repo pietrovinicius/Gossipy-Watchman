@@ -192,6 +192,7 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
         alerted_in_this_video: set[int] = set()
         first_frame = True
         tracker = face_service.FaceTracker()
+        prev_gray = None
 
         for segundo, frame in frame_service.extract_frames(video_path):
             # Salvar primeiro frame como thumbnail
@@ -206,9 +207,26 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
                     logger.warning(f"[WORKER] falha ao salvar thumbnail para video_id={video_id}", exc_info=True)
                 first_frame = False
 
-            embeddings = face_service.extract_embeddings(frame)
-            for embedding, location in embeddings:
-                tracker.add_detection(embedding, location, frame, timestamp=float(segundo))
+            # Motion Gating
+            run_detection = True
+            if settings.MOTION_GATING_ENABLED:
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                gray = cv2.GaussianBlur(gray, (21, 21), 0)
+                if prev_gray is None:
+                    prev_gray = gray
+                    run_detection = True
+                else:
+                    run_detection, motion_ratio = frame_service.has_motion(prev_gray, gray)
+                    logger.debug(f"[WORKER] video_id={video_id} segundo={segundo} motion_ratio={motion_ratio:.4f} run_detection={run_detection}")
+
+            if run_detection:
+                embeddings = face_service.extract_embeddings(frame)
+                for embedding, location in embeddings:
+                    tracker.add_detection(embedding, location, frame, timestamp=float(segundo))
+                if settings.MOTION_GATING_ENABLED:
+                    prev_gray = gray
+            else:
+                logger.debug(f"[WORKER] video_id={video_id} segundo={segundo} frame estatico pulado")
 
             _broadcast_sync(video_id, {"event": "frame", "second": segundo, "video_id": video_id})
 

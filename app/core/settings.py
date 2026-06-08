@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     # k-NN voting
     FACE_KNN_K: int = 3
 
+    # Motion Gating
+    MOTION_GATING_ENABLED: bool = True
+    MOTION_GATING_THRESHOLD: int = 25
+    MOTION_GATING_AREA_RATIO: float = 0.005
+
     # App
     APP_NAME: str = "Gossipy Watchman"
     APP_VERSION: str = "1.95.0"

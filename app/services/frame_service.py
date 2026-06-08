@@ -30,3 +30,30 @@ def extract_frames(
             frame_index += 1
     finally:
         cap.release()
+
+
+def has_motion(
+    prev_gray: np.ndarray,
+    curr_gray: np.ndarray,
+    threshold: int = settings.MOTION_GATING_THRESHOLD,
+    area_ratio: float = settings.MOTION_GATING_AREA_RATIO,
+) -> tuple[bool, float]:
+    """
+    Detecta movimento significativo entre dois frames em escala de cinza.
+    Aplica diferença absoluta, binarização, dilatação e conta pixels de mudança.
+    
+    Retorna (has_motion: bool, motion_ratio: float).
+    """
+    # Diferença absoluta
+    frame_diff = cv2.absdiff(prev_gray, curr_gray)
+    
+    # Threshold binário
+    _, thresh = cv2.threshold(frame_diff, threshold, 255, cv2.THRESH_BINARY)
+    
+    # Contagem de pixels brancos
+    motion_pixels = cv2.countNonZero(thresh)
+    total_pixels = curr_gray.shape[0] * curr_gray.shape[1]
+    
+    ratio = motion_pixels / total_pixels
+    return bool(ratio >= area_ratio), ratio
+
