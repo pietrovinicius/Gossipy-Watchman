@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ImageOff, Star } from 'lucide-react'
+import { ImageOff, Star, Trash2 } from 'lucide-react'
 import api from '../services/api'
 import { useAuthImage } from '../hooks/useAuthImage'
 
-function FrameThumb({ frame, onSetPrimary, settingFilename }) {
+function FrameThumb({ frame, onSetPrimary, onDelete, settingFilename, deletingFilename }) {
   const imgSrc = useAuthImage(frame.filename)
   const isSetting = settingFilename === frame.filename
+  const isDeleting = deletingFilename === frame.filename
 
   return (
     <div className="group relative aspect-square rounded-xl overflow-hidden bg-surface border border-border">
@@ -25,18 +26,30 @@ function FrameThumb({ frame, onSetPrimary, settingFilename }) {
         </span>
       )}
 
-      {!frame.is_primary && (
+      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 focus-visible:opacity-100
+                      transition-opacity duration-200 flex flex-col items-center justify-end p-2 gap-2">
+        {!frame.is_primary && (
+          <button
+            onClick={() => onSetPrimary(frame.filename)}
+            disabled={isSetting || isDeleting}
+            className="w-full text-xs font-medium px-2 py-1.5 rounded-lg
+                       bg-primary text-white hover:bg-primary/90 cursor-pointer disabled:opacity-50
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            {isSetting ? 'Definindo…' : 'Definir como principal'}
+          </button>
+        )}
         <button
-          onClick={() => onSetPrimary(frame.filename)}
-          disabled={isSetting}
-          className="absolute inset-x-2 bottom-2 opacity-0 group-hover:opacity-100 focus-visible:opacity-100
-                     transition-opacity duration-200 text-xs font-medium px-2 py-1.5 rounded-lg
-                     bg-black/70 text-white hover:bg-black/80 cursor-pointer disabled:opacity-50
-                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          onClick={() => onDelete(frame.filename)}
+          disabled={isDeleting || isSetting}
+          className="w-full flex items-center justify-center gap-1.5 text-xs font-medium px-2 py-1.5 rounded-lg
+                     bg-error-color/80 text-white hover:bg-error-color cursor-pointer disabled:opacity-50
+                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error-color"
         >
-          {isSetting ? 'Definindo…' : 'Definir como principal'}
+          <Trash2 className="w-3 h-3" aria-hidden="true" />
+          {isDeleting ? 'Deletando…' : 'Deletar'}
         </button>
-      )}
+      </div>
     </div>
   )
 }
@@ -45,6 +58,7 @@ export default function PersonFrames({ personId }) {
   const [frames, setFrames] = useState(null)
   const [loadErr, setLoadErr] = useState('')
   const [settingFilename, setSettingFilename] = useState(null)
+  const [deletingFilename, setDeletingFilename] = useState(null)
   const [actionErr, setActionErr] = useState('')
 
   const fetchFrames = useCallback(() => {
@@ -64,10 +78,23 @@ export default function PersonFrames({ personId }) {
     try {
       await api.patch(`/people/${personId}/primary-photo`, { filename })
       fetchFrames()
-    } catch {
-      setActionErr('Erro ao definir foto principal.')
+    } catch (err) {
+      setActionErr(err.response?.data?.detail ?? err.message ?? 'Erro ao definir foto principal.')
     } finally {
       setSettingFilename(null)
+    }
+  }
+
+  async function handleDeleteFrame(filename) {
+    setDeletingFilename(filename)
+    setActionErr('')
+    try {
+      await api.delete(`/people/${personId}/frames/${filename}`)
+      fetchFrames()
+    } catch (err) {
+      setActionErr(err.response?.data?.detail ?? err.message ?? 'Erro ao deletar frame.')
+    } finally {
+      setDeletingFilename(null)
     }
   }
 
@@ -97,7 +124,9 @@ export default function PersonFrames({ personId }) {
                 key={frame.filename}
                 frame={frame}
                 onSetPrimary={handleSetPrimary}
+                onDelete={handleDeleteFrame}
                 settingFilename={settingFilename}
+                deletingFilename={deletingFilename}
               />
             ))}
           </div>

@@ -24,7 +24,13 @@ def get_all_embeddings(db: Session) -> list[tuple[int, np.ndarray]]:
             logger.warning("Embedding não encontrado para pessoa id=%s: %s", person.id, npy_path)
             continue
         embedding = np.load(str(npy_path))
+        logger.debug(
+            f"[EMBEDDING CARREGADO] person_id={person.id} name={person.name} "
+            f"shape={embedding.shape} dtype={embedding.dtype} "
+            f"norm={np.linalg.norm(embedding):.4f}"
+        )
         result.append((person.id, embedding))
+    logger.info(f"[EMBEDDINGS TOTAIS] carregados={len(result)}")
     return result
 
 
@@ -34,6 +40,10 @@ def save_new_person(
     face_crop: np.ndarray,
     person_index: int,
 ) -> Person:
+    logger.debug(
+        f"[SAVE NEW PERSON] embedding_entrada shape={embedding.shape} "
+        f"dtype={embedding.dtype} norm={np.linalg.norm(embedding):.4f}"
+    )
     person = Person(name=f"Desconhecido #{person_index}")
     db.add(person)
     db.commit()
@@ -44,6 +54,12 @@ def save_new_person(
 
     cv2.imwrite(str(jpg_path), face_crop)
     np.save(str(npy_path), embedding)
+
+    logger.info(
+        f"[SAVE NEW PERSON] person_id={person.id} name={person.name} "
+        f"embedding_salvo shape={embedding.shape} dtype={embedding.dtype} "
+        f"npy_path={npy_path}"
+    )
 
     person.profile_image_path = str(jpg_path)
     db.commit()
@@ -99,6 +115,31 @@ def list_face_samples(db: Session, person_id: int) -> list[dict]:
 
 def _is_safe_face_filename(filename: str) -> bool:
     return ".." not in filename and "/" not in filename and "\\" not in filename
+
+
+def delete_face_frame(db: Session, person_id: int, filename: str) -> None:
+    """Deleta arquivo de frame facial da pessoa.
+
+    Validações: path traversal + ownership. Não permite deletar foto principal.
+    """
+    if not _is_safe_face_filename(filename):
+        raise HTTPException(status_code=400, detail="Nome de arquivo inválido")
+
+    # Validar ownership
+    owner_prefix = f"{person_id}_"
+    if filename != f"{person_id}.jpg" and not filename.startswith(owner_prefix):
+        raise HTTPException(status_code=403, detail="Arquivo não pertence a esta pessoa")
+
+    # Não permitir deletar foto principal
+    if filename == f"{person_id}.jpg":
+        raise HTTPException(status_code=400, detail="Não é possível deletar a foto principal")
+
+    frame_path = settings.STORAGE_FACES / filename
+    if not frame_path.exists():
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+
+    frame_path.unlink()
+    logger.info(f"Frame deletado: {filename} (person_id={person_id})")
 
 
 def set_primary_photo(db: Session, person_id: int, source_filename: str) -> Person:

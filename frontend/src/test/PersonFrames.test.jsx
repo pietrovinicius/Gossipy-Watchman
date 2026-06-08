@@ -86,14 +86,15 @@ describe('PersonFrames', () => {
 
   it('exibe mensagem de erro quando PATCH falha', async () => {
     api.get.mockResolvedValue({ data: FRAMES })
-    api.patch.mockRejectedValue(new Error('falhou'))
+    const error = { response: { data: { detail: 'Arquivo não encontrado' } } }
+    api.patch.mockRejectedValue(error)
     render(<PersonFrames personId={3} />)
 
     const btn = await screen.findByRole('button', { name: /definir como principal/i })
     fireEvent.click(btn)
 
     await waitFor(() => {
-      expect(screen.getByText(/erro ao definir/i)).toBeTruthy()
+      expect(screen.getByText('Arquivo não encontrado')).toBeTruthy()
     })
   })
 })

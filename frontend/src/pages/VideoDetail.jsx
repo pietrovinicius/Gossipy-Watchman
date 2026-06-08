@@ -233,23 +233,8 @@ export default function VideoDetail() {
   }, [isProcessing, fetchDetail])
 
   useEffect(() => {
-    if (!isPlaying) return
-
-    const prev = prevPeopleOnScreenRef.current.map(p => p.person_id)
-    const curr = peopleOnScreen.map(p => p.person_id)
-
-    // Detectar pessoa nova em cena
-    const newOnScreen = curr.filter(id => !prev.includes(id))
-    if (newOnScreen.length > 0) {
-      const firstNew = newOnScreen[0]
-      cardRefs.current[firstNew]?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-      })
-    }
-
     prevPeopleOnScreenRef.current = peopleOnScreen
-  }, [peopleOnScreen, isPlaying])
+  }, [peopleOnScreen])
 
   async function handleExportCsv() {
     setExportLoading(true)

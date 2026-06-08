@@ -163,6 +163,17 @@ def set_primary_photo(
     return PersonResponse.model_validate(person)
 
 
+@router.delete("/people/{person_id}/frames/{filename}")
+def delete_face_frame(
+    person_id: int,
+    filename: str,
+    db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
+) -> dict:
+    person_service.delete_face_frame(db, person_id, filename)
+    return {"status": "ok", "message": "Frame deletado"}
+
+
 @router.patch("/people/{person_id}", response_model=PersonResponse)
 def update_person(
     person_id: int,
