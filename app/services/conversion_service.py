@@ -85,7 +85,7 @@ def get_video_duration_seconds(file_path: Path) -> float | None:
     return None
 
 
-def _recover_raw_h264_stream(input_path: Path, output_h264_path: Path) -> bool:
+def _stream_avcc_to_annexb(input_path: Path, stdin_pipe) -> bool:
     try:
         with open(input_path, "rb") as f_in:
             header = f_in.read(1024)
@@ -95,24 +95,23 @@ def _recover_raw_h264_stream(input_path: Path, output_h264_path: Path) -> bool:
                 return False
             f_in.seek(idx + 4)
             
-            with open(output_h264_path, "wb") as f_out:
-                count = 0
-                while True:
-                    len_bytes = f_in.read(4)
-                    if not len_bytes or len(len_bytes) < 4:
-                        break
-                    length = int.from_bytes(len_bytes, byteorder="big")
-                    if length == 0 or length > 50000000:
-                        break
-                    nal_data = f_in.read(length)
-                    if len(nal_data) < length:
-                        break
-                    f_out.write(b"\x00\x00\x00\x01" + nal_data)
-                    count += 1
-                logger.info(f"recovery: extraídos {count} NAL units para formato Annex B")
-                return count > 0
+            count = 0
+            while True:
+                len_bytes = f_in.read(4)
+                if not len_bytes or len(len_bytes) < 4:
+                    break
+                length = int.from_bytes(len_bytes, byteorder="big")
+                if length == 0 or length > 50000000:
+                    break
+                nal_data = f_in.read(length)
+                if len(nal_data) < length:
+                    break
+                stdin_pipe.write(b"\x00\x00\x00\x01" + nal_data)
+                count += 1
+            logger.info(f"recovery: transmitidos {count} NAL units para o ffmpeg")
+            return count > 0
     except Exception as e:
-        logger.error(f"recovery: erro ao analisar avcC: {e}")
+        logger.error(f"recovery: erro ao transmitir avcC: {e}")
         return False
 
 
@@ -155,32 +154,42 @@ def repair_mp4_moov(input_path: Path) -> Path:
         logger.error(f"Erro ao reparar: {error}")
         
         if "moov atom not found" in error:
-            temp_h264 = input_path.parent / (input_path.stem + "_temp.h264")
             temp_mp4 = input_path.parent / (input_path.stem + "_temp.mp4")
             logger.info(f"Tentando recuperar stream raw H264 de {input_path.name}...")
-            if _recover_raw_h264_stream(input_path, temp_h264):
-                mux_cmd = [
-                    settings.FFMPEG_PATH,
-                    "-y",
-                    "-f", "h264",
-                    "-i", str(temp_h264),
-                    "-c", "copy",
-                    "-movflags", "faststart",
-                    str(temp_mp4)
-                ]
-                mux_result = subprocess.run(mux_cmd, capture_output=True, timeout=3600)
-                if mux_result.returncode == 0:
-                    if temp_h264.exists():
-                        temp_h264.unlink()
+            
+            mux_cmd = [
+                settings.FFMPEG_PATH,
+                "-y",
+                "-f", "h264",
+                "-i", "-",
+                "-c", "copy",
+                "-movflags", "faststart",
+                str(temp_mp4)
+            ]
+            
+            try:
+                process = subprocess.Popen(
+                    mux_cmd,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
+                
+                success = _stream_avcc_to_annexb(input_path, process.stdin)
+                process.stdin.close()
+                
+                stdout, stderr = process.communicate(timeout=3600)
+                
+                if success and process.returncode == 0:
                     input_path.unlink()
                     temp_mp4.rename(input_path)
-                    logger.info(f"Recuperação bem-sucedida: {input_path.name}")
+                    logger.info(f"Recuperação bem-sucedida por streaming: {input_path.name}")
                     return input_path
                 else:
-                    logger.error(f"Erro ao remuxar stream recuperada: {mux_result.stderr.decode()}")
+                    logger.error(f"Erro ao remuxar stream por streaming: {stderr.decode()}")
+            except Exception as stream_err:
+                logger.error(f"Erro durante o streaming da recuperação: {stream_err}")
             
-            if temp_h264.exists():
-                temp_h264.unlink()
             if temp_mp4.exists():
                 temp_mp4.unlink()
 

@@ -227,18 +227,25 @@ def test_repair_mp4_moov_falls_back_to_h264_recovery_on_missing_moov(tmp_path):
     test_file.write_bytes(content)
     
     with patch("app.services.conversion_service.FFMPEG_AVAILABLE", True):
-        with patch("app.services.conversion_service.subprocess.run") as mock_run:
-            def run_side_effect(cmd, **kwargs):
-                if "-f" in cmd and "h264" in cmd:
-                    out_path = Path(cmd[-1])
-                    out_path.write_bytes(b"recovered mp4")
-                    return MagicMock(returncode=0)
-                else:
-                    return MagicMock(returncode=1, stderr=b"moov atom not found")
-            mock_run.side_effect = run_side_effect
+        with patch("app.services.conversion_service.subprocess.run") as mock_run, \
+             patch("app.services.conversion_service.subprocess.Popen") as mock_popen:
+             
+            mock_run.return_value = MagicMock(returncode=1, stderr=b"moov atom not found")
+            
+            mock_process = MagicMock()
+            mock_process.returncode = 0
+            mock_popen.return_value = mock_process
+            
+            def side_effect(*args, **kwargs):
+                # Escrever o arquivo de saída temporário esperado
+                temp_mp4 = tmp_path / "video_temp.mp4"
+                temp_mp4.write_bytes(b"recovered mp4")
+                return b"", b""
+            mock_process.communicate.side_effect = side_effect
             
             result = repair_mp4_moov(test_file)
             assert result == test_file
             assert test_file.read_bytes() == b"recovered mp4"
+
 
 
