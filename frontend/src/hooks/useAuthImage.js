@@ -9,7 +9,7 @@ export function useAuthImage(filename, cacheTag = '') {
 
     let objectUrl = null
 
-    api.get(`/faces/${filename}`, { responseType: 'blob' })
+    api.get(`/faces/${filename}?t=${cacheTag}`, { responseType: 'blob' })
       .then((res) => {
         objectUrl = URL.createObjectURL(res.data)
         setSrc(objectUrl)

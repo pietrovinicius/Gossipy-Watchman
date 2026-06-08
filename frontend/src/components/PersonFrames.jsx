@@ -74,9 +74,9 @@ export default function PersonFrames({ personId }) {
     api.get(`/people/${personId}/frames`)
       .then((res) => {
         console.log('[PersonFrames] fetchFrames resposta:', res.data)
-        setFrames(res.data)
-        // Incrementar counter para forçar refetch de imagens (cache-busting)
+        // Incrementar counter PRIMEIRO para forçar refetch com novo cacheTag
         setRefreshCounter(c => c + 1)
+        setFrames(res.data)
       })
       .catch((err) => {
         console.error('[PersonFrames] fetchFrames erro:', err)

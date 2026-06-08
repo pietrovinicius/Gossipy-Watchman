@@ -29,11 +29,11 @@ describe('useAuthImage', () => {
     expect(result.current).toBeNull()
   })
 
-  it('chama api.get com path correto', async () => {
+  it('chama api.get com path correto e inclui cache-bust parameter', async () => {
     api.get.mockResolvedValue({ data: new Blob(['img'], { type: 'image/jpeg' }) })
     const { result } = renderHook(() => useAuthImage('1.jpg'))
     await act(async () => {})
-    expect(api.get).toHaveBeenCalledWith('/faces/1.jpg', { responseType: 'blob' })
+    expect(api.get).toHaveBeenCalledWith('/faces/1.jpg?t=', { responseType: 'blob' })
   })
 
   it('retorna object URL após resposta bem-sucedida', async () => {

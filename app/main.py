@@ -1,10 +1,15 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.settings import settings
+
+# Configurar logging DEBUG temporariamente
+logging.basicConfig(level=logging.DEBUG)
+logging.getLogger("app").setLevel(logging.DEBUG)
 from app.core.ws_manager import ws_manager
 from app.db import init_db
 from app.db.migrations.migration_v1_13 import run as migration_v1_13

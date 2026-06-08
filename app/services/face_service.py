@@ -1,8 +1,11 @@
+import logging
 import cv2
 import face_recognition
 import numpy as np
 
 from app.core.settings import settings
+
+logger = logging.getLogger(__name__)
 
 
 def extract_embeddings(frame: np.ndarray) -> list[np.ndarray]:
@@ -12,7 +15,18 @@ def extract_embeddings(frame: np.ndarray) -> list[np.ndarray]:
         number_of_times_to_upsample=settings.FACE_UPSAMPLE,
         model=settings.FACE_DETECTION_MODEL,
     )
+    logger.debug(
+        f"[EXTRACT] faces_detectadas={len(locations)} "
+        f"model={settings.FACE_DETECTION_MODEL} "
+        f"upsample={settings.FACE_UPSAMPLE}"
+    )
     encodings = face_recognition.face_encodings(rgb, locations)
+    logger.debug(f"[EXTRACT] embeddings_gerados={len(encodings)}")
+    for i, enc in enumerate(encodings):
+        logger.debug(
+            f"[EXTRACT] embedding[{i}] shape={enc.shape} dtype={enc.dtype} "
+            f"norm={np.linalg.norm(enc):.4f}"
+        )
     return list(encodings)
 
 
@@ -27,11 +41,34 @@ def find_matching_person(
     known_vecs = [emb for _, emb in known_embeddings]
     distances: np.ndarray = face_recognition.face_distance(known_vecs, embedding)
 
+    logger.debug(
+        f"[MATCH] embedding_buscado shape={embedding.shape} dtype={embedding.dtype} "
+        f"norm={np.linalg.norm(embedding):.4f}"
+    )
+    logger.debug(
+        f"[MATCH] comparando contra {len(known_vecs)} embeddings conhecidos "
+        f"threshold={tolerance:.4f}"
+    )
+
+    for i, (person_id, dist) in enumerate(zip([pid for pid, _ in known_embeddings], distances)):
+        logger.debug(
+            f"[MATCH] person_id={person_id} distancia={dist:.4f} "
+            f"aceito={'SIM' if dist < tolerance else 'NAO'}"
+        )
+
     best_idx = int(np.argmin(distances))
     best_dist = float(distances[best_idx])
 
     if best_dist > tolerance:
+        logger.info(
+            f"[MATCH REJEITADO] melhor_distancia={best_dist:.4f} > "
+            f"threshold={tolerance:.4f} → nova_pessoa"
+        )
         return None, None
 
     person_id = known_embeddings[best_idx][0]
+    logger.info(
+        f"[MATCH ACEITO] person_id={person_id} distancia={best_dist:.4f} < "
+        f"threshold={tolerance:.4f}"
+    )
     return person_id, best_dist

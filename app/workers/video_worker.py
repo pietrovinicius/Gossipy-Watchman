@@ -95,10 +95,18 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
 
                 if person_id is None:
                     person_counter += 1
+                    logger.info(
+                        f"[WORKER] frame={segundo:.1f}s NOVA_PESSOA → "
+                        f"Desconhecido #{person_counter}"
+                    )
                     # Recorte da face (frame inteiro por simplificação; Sprint 3 pode refinar)
                     face_crop = frame
                     person_service.save_new_person(db, embedding, face_crop, person_index=person_counter)
                 else:
+                    logger.info(
+                        f"[WORKER] frame={segundo:.1f}s PESSOA_CONHECIDA person_id={person_id} "
+                        f"distancia={distance:.4f}"
+                    )
                     appearance = appearance_service.upsert_appearance(
                         db,
                         person_id=person_id,
