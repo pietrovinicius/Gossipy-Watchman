@@ -154,11 +154,16 @@ def find_matching_person(
     embedding: np.ndarray,
     known_embeddings: list[tuple[int, np.ndarray]],
     tolerance: float = settings.FACE_RECOGNITION_TOLERANCE,
+    k: int = settings.FACE_KNN_K,
 ) -> tuple[int | None, float | None]:
+    """Vota entre os k vizinhos mais próximos (dentro do tolerance) em vez de
+    aceitar cegamente o vizinho mais próximo isolado (argmin) — reduz falsos
+    positivos causados por pessoas super-representadas no banco de embeddings."""
     if not known_embeddings:
         return None, None
 
     known_vecs = [emb for _, emb in known_embeddings]
+    person_ids = [pid for pid, _ in known_embeddings]
     distances: np.ndarray = face_recognition.face_distance(known_vecs, embedding)
 
     logger.debug(
@@ -167,28 +172,30 @@ def find_matching_person(
     )
     logger.debug(
         f"[MATCH] comparando contra {len(known_vecs)} embeddings conhecidos "
-        f"threshold={tolerance:.4f}"
+        f"k={k} threshold={tolerance:.4f}"
     )
 
-    for i, (person_id, dist) in enumerate(zip([pid for pid, _ in known_embeddings], distances)):
-        logger.debug(
-            f"[MATCH] person_id={person_id} distancia={dist:.4f} "
-            f"aceito={'SIM' if dist < tolerance else 'NAO'}"
-        )
+    candidates = sorted(zip(person_ids, distances), key=lambda pair: pair[1])
+    within_tolerance = [(pid, float(dist)) for pid, dist in candidates if dist <= tolerance]
 
-    best_idx = int(np.argmin(distances))
-    best_dist = float(distances[best_idx])
-
-    if best_dist > tolerance:
+    if not within_tolerance:
         logger.info(
-            f"[MATCH REJEITADO] melhor_distancia={best_dist:.4f} > "
+            f"[MATCH REJEITADO] melhor_distancia={float(candidates[0][1]):.4f} > "
             f"threshold={tolerance:.4f} → nova_pessoa"
         )
         return None, None
 
-    person_id = known_embeddings[best_idx][0]
+    top_k = within_tolerance[:k]
+    votes: dict[int, list[float]] = {}
+    for pid, dist in top_k:
+        votes.setdefault(pid, []).append(dist)
+        logger.debug(f"[MATCH] voto person_id={pid} distancia={dist:.4f}")
+
+    winner_id, winner_votes = max(votes.items(), key=lambda item: (len(item[1]), -min(item[1])))
+    winner_dist = min(winner_votes)
+
     logger.info(
-        f"[MATCH ACEITO] person_id={person_id} distancia={best_dist:.4f} < "
-        f"threshold={tolerance:.4f}"
+        f"[MATCH ACEITO] person_id={winner_id} distancia={winner_dist:.4f} "
+        f"votos={len(winner_votes)}/{len(top_k)} < threshold={tolerance:.4f}"
     )
-    return person_id, best_dist
+    return winner_id, winner_dist

@@ -187,3 +187,57 @@ def test_find_matching_picks_closest():
 
     assert person_id == 2
     assert dist == pytest.approx(0.2)
+
+
+# ── find_matching_person — votação k-NN ──────────────────────────────────────
+
+def test_find_matching_majority_vote_overrides_nearest_neighbor():
+    """3 vizinhos mais próximos votam: pessoa 1 vence por maioria mesmo
+    sem ser o vizinho mais próximo isolado."""
+    from app.services.face_service import find_matching_person
+
+    target = make_embedding()
+    known = [(1, make_embedding()), (2, make_embedding()), (1, make_embedding())]
+
+    with patch("app.services.face_service.face_recognition.face_distance",
+               return_value=np.array([0.1, 0.15, 0.2])):
+        person_id, dist = find_matching_person(target, known, tolerance=0.6, k=3)
+
+    assert person_id == 1
+    assert dist == pytest.approx(0.1)
+
+
+def test_find_matching_knn_ignores_neighbors_above_tolerance():
+    from app.services.face_service import find_matching_person
+
+    target = make_embedding()
+    known = [(1, make_embedding()), (2, make_embedding()), (3, make_embedding())]
+
+    with patch("app.services.face_service.face_recognition.face_distance",
+               return_value=np.array([0.1, 0.9, 0.95])):
+        person_id, dist = find_matching_person(target, known, tolerance=0.6, k=3)
+
+    assert person_id == 1
+    assert dist == pytest.approx(0.1)
+
+
+def test_find_matching_knn_all_above_tolerance_returns_none():
+    from app.services.face_service import find_matching_person
+
+    target = make_embedding()
+    known = [(1, make_embedding()), (2, make_embedding())]
+
+    with patch("app.services.face_service.face_recognition.face_distance",
+               return_value=np.array([0.7, 0.8])):
+        person_id, dist = find_matching_person(target, known, tolerance=0.6, k=3)
+
+    assert person_id is None
+    assert dist is None
+
+
+def test_find_matching_uses_settings_knn_k_default():
+    from app.services.face_service import find_matching_person
+    import inspect
+
+    params = inspect.signature(find_matching_person).parameters
+    assert params["k"].default == settings.FACE_KNN_K
