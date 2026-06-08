@@ -67,6 +67,72 @@ def _get_session_factory(engine):
     return sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
+def _process_track(
+    db,
+    video_id: int,
+    track,
+    person_counter: int,
+    alerted_in_this_video: set[int],
+) -> int:
+    """Resolve a identidade de um track (aparição contínua) e persiste o
+    resultado: pessoa nova ou aparição/alerta de pessoa conhecida.
+
+    Retorna o `person_counter` atualizado.
+    """
+    mean_embedding = track.mean_embedding()
+    best_crop = track.get_best_crop()
+
+    known = person_service.get_all_embeddings(db)
+    person_id, distance = face_service.find_matching_person(mean_embedding, known)
+
+    if person_id is None:
+        person_counter += 1
+        logger.info(
+            f"[WORKER] track={track.start_time:.1f}s-{track.last_seen:.1f}s "
+            f"({track.sample_count} amostras) NOVA_PESSOA → Desconhecido #{person_counter}"
+        )
+        person_service.save_new_person(db, mean_embedding, best_crop, person_index=person_counter)
+        return person_counter
+
+    logger.info(
+        f"[WORKER] track={track.start_time:.1f}s-{track.last_seen:.1f}s "
+        f"({track.sample_count} amostras) PESSOA_CONHECIDA person_id={person_id} "
+        f"distancia={distance:.4f}"
+    )
+    appearance = appearance_service.upsert_appearance(
+        db,
+        person_id=person_id,
+        video_id=video_id,
+        timestamp=float(track.start_time),
+        confidence=distance,
+    )
+    person_service.save_face_sample(db, person_id, appearance.id, best_crop)
+
+    person = db.get(Person, person_id)
+    if person and person.category == PersonCategory.monitorado.value:
+        if person_id not in alerted_in_this_video:
+            alerted_in_this_video.add(person_id)
+            alert = alert_service.create_alert(
+                db=db,
+                person_id=person_id,
+                video_id=video_id,
+                timestamp_in_video=float(track.start_time),
+                message=f"Pessoa monitorada detectada: {person.name}",
+            )
+            _broadcast_sync(video_id, {
+                "event": "watchlist_alert",
+                "video_id": video_id,
+                "person_id": person_id,
+                "person_name": person.name,
+                "alert_id": alert.id,
+                "timestamp_in_video": float(track.start_time),
+                "message": f"ALERTA: {person.name} detectado",
+                "severity": "high",
+            })
+
+    return person_counter
+
+
 def process_video(video_id: int, video_path: Path, _engine=None) -> None:
     # _engine permite injeção em testes sem patch de create_engine
     _owns_engine = _engine is None
@@ -86,6 +152,7 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
         person_counter = db.query(Video).count()  # heurística simples para índice inicial
         alerted_in_this_video: set[int] = set()
         first_frame = True
+        tracker = face_service.FaceTracker()
 
         for segundo, frame in frame_service.extract_frames(video_path):
             # Salvar primeiro frame como thumbnail
@@ -99,57 +166,15 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
                 except Exception:
                     logger.warning(f"[WORKER] falha ao salvar thumbnail para video_id={video_id}", exc_info=True)
                 first_frame = False
+
             embeddings = face_service.extract_embeddings(frame)
-
             for embedding, location in embeddings:
-                known = person_service.get_all_embeddings(db)
-                person_id, distance = face_service.find_matching_person(embedding, known)
-
-                if person_id is None:
-                    person_counter += 1
-                    logger.info(
-                        f"[WORKER] frame={segundo:.1f}s NOVA_PESSOA → "
-                        f"Desconhecido #{person_counter}"
-                    )
-                    # Recorte da face (frame inteiro por simplificação; Sprint 3 pode refinar)
-                    face_crop = frame
-                    person_service.save_new_person(db, embedding, face_crop, person_index=person_counter)
-                else:
-                    logger.info(
-                        f"[WORKER] frame={segundo:.1f}s PESSOA_CONHECIDA person_id={person_id} "
-                        f"distancia={distance:.4f}"
-                    )
-                    appearance = appearance_service.upsert_appearance(
-                        db,
-                        person_id=person_id,
-                        video_id=video_id,
-                        timestamp=float(segundo),
-                        confidence=distance,
-                    )
-                    person_service.save_face_sample(db, person_id, appearance.id, frame)
-                    person = db.get(Person, person_id)
-                    if person and person.category == PersonCategory.monitorado.value:
-                        if person_id not in alerted_in_this_video:
-                            alerted_in_this_video.add(person_id)
-                            alert = alert_service.create_alert(
-                                db=db,
-                                person_id=person_id,
-                                video_id=video_id,
-                                timestamp_in_video=float(segundo),
-                                message=f"Pessoa monitorada detectada: {person.name}",
-                            )
-                            _broadcast_sync(video_id, {
-                                "event": "watchlist_alert",
-                                "video_id": video_id,
-                                "person_id": person_id,
-                                "person_name": person.name,
-                                "alert_id": alert.id,
-                                "timestamp_in_video": float(segundo),
-                                "message": f"ALERTA: {person.name} detectado",
-                                "severity": "high",
-                            })
+                tracker.add_detection(embedding, location, frame, timestamp=float(segundo))
 
             _broadcast_sync(video_id, {"event": "frame", "second": segundo, "video_id": video_id})
+
+        for track in tracker.flush():
+            person_counter = _process_track(db, video_id, track, person_counter, alerted_in_this_video)
 
         video = db.get(Video, video_id)
         video.status = VideoStatus.CONCLUIDO

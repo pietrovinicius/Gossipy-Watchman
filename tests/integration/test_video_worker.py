@@ -49,6 +49,27 @@ def get_video_status(engine, video_id: int) -> VideoStatus:
     return status
 
 
+def _make_monitored_person(engine) -> int:
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    p = Person(name="Suspeito", profile_image_path="faces/99.jpg",
+               category=PersonCategory.monitorado.value)
+    session.add(p)
+    session.commit()
+    pid = p.id
+    session.close()
+    return pid
+
+
+# Frames próximos o bastante para formarem um único track (gap <= FACE_TRACK_GAP_TOLERANCE)
+# e em quantidade >= FACE_TRACK_MIN_SAMPLES para o track não ser descartado.
+TRACK_FRAMES = [(0, "f0"), (1, "f1")]
+
+
+def _frame_iter(fake_frame):
+    return iter([(seg, fake_frame) for seg, _ in TRACK_FRAMES])
+
+
 # ── status transitions ────────────────────────────────────────────────────────
 
 def test_status_changes_to_processando_then_concluido(video_in_db):
@@ -75,19 +96,20 @@ def test_status_changes_to_erro_on_exception(video_in_db):
     assert get_video_status(engine, video_id) == VideoStatus.ERRO
 
 
-# ── face new → save_new_person ────────────────────────────────────────────────
+# ── track novo → save_new_person ──────────────────────────────────────────────
 
-def test_new_face_calls_save_new_person(video_in_db):
+def test_new_track_calls_save_new_person(video_in_db):
     from app.workers.video_worker import process_video
 
     engine, video_id = video_in_db
     embedding = np.random.rand(128)
     fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    location = (0, 120, 120, 0)
 
     with patch("app.workers.video_worker.frame_service.extract_frames",
-               return_value=iter([(0, fake_frame)])), \
+               return_value=_frame_iter(fake_frame)), \
          patch("app.workers.video_worker.face_service.extract_embeddings",
-               return_value=[(embedding, (0, 120, 120, 0))]), \
+               return_value=[(embedding, location)]), \
          patch("app.workers.video_worker.person_service.get_all_embeddings",
                return_value=[]), \
          patch("app.workers.video_worker.face_service.find_matching_person",
@@ -99,19 +121,44 @@ def test_new_face_calls_save_new_person(video_in_db):
     mock_save.assert_called_once()
 
 
-# ── face known → upsert_appearance ───────────────────────────────────────────
-
-def test_known_face_calls_upsert_appearance(video_in_db):
+def test_short_track_is_discarded_and_does_not_create_person(video_in_db):
+    """Track com menos amostras que FACE_TRACK_MIN_SAMPLES é descartado —
+    não deve gerar pessoa nem aparição."""
     from app.workers.video_worker import process_video
 
     engine, video_id = video_in_db
     embedding = np.random.rand(128)
     fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    location = (0, 120, 120, 0)
 
     with patch("app.workers.video_worker.frame_service.extract_frames",
-               return_value=iter([(2, fake_frame)])), \
+               return_value=iter([(0, fake_frame)])), \
          patch("app.workers.video_worker.face_service.extract_embeddings",
-               return_value=[(embedding, (0, 120, 120, 0))]), \
+               return_value=[(embedding, location)]), \
+         patch("app.workers.video_worker.person_service.get_all_embeddings",
+               return_value=[]), \
+         patch("app.workers.video_worker.face_service.find_matching_person") as mock_match, \
+         patch("app.workers.video_worker.person_service.save_new_person") as mock_save:
+        process_video(video_id, Path("video.mp4"), _engine=engine)
+
+    mock_match.assert_not_called()
+    mock_save.assert_not_called()
+
+
+# ── track conhecido → upsert_appearance ───────────────────────────────────────
+
+def test_known_track_calls_upsert_appearance(video_in_db):
+    from app.workers.video_worker import process_video
+
+    engine, video_id = video_in_db
+    embedding = np.random.rand(128)
+    fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    location = (0, 120, 120, 0)
+
+    with patch("app.workers.video_worker.frame_service.extract_frames",
+               return_value=_frame_iter(fake_frame)), \
+         patch("app.workers.video_worker.face_service.extract_embeddings",
+               return_value=[(embedding, location)]), \
          patch("app.workers.video_worker.person_service.get_all_embeddings",
                return_value=[(7, embedding)]), \
          patch("app.workers.video_worker.face_service.find_matching_person",
@@ -126,19 +173,36 @@ def test_known_face_calls_upsert_appearance(video_in_db):
     assert person_id_arg == 7
 
 
+def test_matching_uses_track_mean_embedding(video_in_db):
+    """find_matching_person deve receber o embedding médio do track,
+    não o embedding de um frame isolado."""
+    from app.workers.video_worker import process_video
+
+    engine, video_id = video_in_db
+    emb1 = np.random.rand(128)
+    emb2 = np.random.rand(128)
+    fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    location = (0, 120, 120, 0)
+
+    with patch("app.workers.video_worker.frame_service.extract_frames",
+               return_value=_frame_iter(fake_frame)), \
+         patch("app.workers.video_worker.face_service.extract_embeddings",
+               side_effect=[[(emb1, location)], [(emb2, location)]]), \
+         patch("app.workers.video_worker.person_service.get_all_embeddings",
+               return_value=[]), \
+         patch("app.workers.video_worker.face_service.find_matching_person",
+               return_value=(None, None)) as mock_match, \
+         patch("app.workers.video_worker.person_service.save_new_person",
+               return_value=MagicMock(id=99)):
+        process_video(video_id, Path("video.mp4"), _engine=engine)
+
+    mock_match.assert_called_once()
+    used_embedding = mock_match.call_args[0][0]
+    expected_mean = np.mean([emb1, emb2], axis=0)
+    assert np.allclose(used_embedding, expected_mean)
+
+
 # ── watchlist: alertas para Monitorado ───────────────────────────────────────
-
-def _make_monitored_person(engine) -> int:
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    p = Person(name="Suspeito", profile_image_path="faces/99.jpg",
-               category=PersonCategory.monitorado.value)
-    session.add(p)
-    session.commit()
-    pid = p.id
-    session.close()
-    return pid
-
 
 def test_monitorado_dispara_create_alert(video_in_db):
     from app.workers.video_worker import process_video
@@ -147,11 +211,12 @@ def test_monitorado_dispara_create_alert(video_in_db):
     person_id = _make_monitored_person(engine)
     embedding = np.random.rand(128)
     fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    location = (0, 120, 120, 0)
 
     with patch("app.workers.video_worker.frame_service.extract_frames",
-               return_value=iter([(1, fake_frame)])), \
+               return_value=_frame_iter(fake_frame)), \
          patch("app.workers.video_worker.face_service.extract_embeddings",
-               return_value=[(embedding, (0, 120, 120, 0))]), \
+               return_value=[(embedding, location)]), \
          patch("app.workers.video_worker.person_service.get_all_embeddings",
                return_value=[(person_id, embedding)]), \
          patch("app.workers.video_worker.face_service.find_matching_person",
@@ -183,11 +248,12 @@ def test_funcionario_nao_dispara_alerta(video_in_db):
 
     embedding = np.random.rand(128)
     fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    location = (0, 120, 120, 0)
 
     with patch("app.workers.video_worker.frame_service.extract_frames",
-               return_value=iter([(1, fake_frame)])), \
+               return_value=_frame_iter(fake_frame)), \
          patch("app.workers.video_worker.face_service.extract_embeddings",
-               return_value=[(embedding, (0, 120, 120, 0))]), \
+               return_value=[(embedding, location)]), \
          patch("app.workers.video_worker.person_service.get_all_embeddings",
                return_value=[(person_id, embedding)]), \
          patch("app.workers.video_worker.face_service.find_matching_person",
@@ -201,18 +267,23 @@ def test_funcionario_nao_dispara_alerta(video_in_db):
 
 
 def test_alerta_criado_apenas_uma_vez_por_pessoa_por_video(video_in_db):
+    """2 tracks da mesma pessoa monitorada (gap > tolerância entre eles)
+    → apenas 1 alerta no vídeo todo."""
     from app.workers.video_worker import process_video
 
     engine, video_id = video_in_db
     person_id = _make_monitored_person(engine)
     embedding = np.random.rand(128)
     fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    location = (0, 120, 120, 0)
 
-    # 3 frames com a mesma pessoa → apenas 1 alerta
+    # track 1: segundos 0,1 — track 2: segundos 10,11 (gap=9s > FACE_TRACK_GAP_TOLERANCE)
+    frames = iter([(0, fake_frame), (1, fake_frame), (10, fake_frame), (11, fake_frame)])
+
     with patch("app.workers.video_worker.frame_service.extract_frames",
-               return_value=iter([(1, fake_frame), (2, fake_frame), (3, fake_frame)])), \
+               return_value=frames), \
          patch("app.workers.video_worker.face_service.extract_embeddings",
-               return_value=[(embedding, (0, 120, 120, 0))]), \
+               return_value=[(embedding, location)]), \
          patch("app.workers.video_worker.person_service.get_all_embeddings",
                return_value=[(person_id, embedding)]), \
          patch("app.workers.video_worker.face_service.find_matching_person",
