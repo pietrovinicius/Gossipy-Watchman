@@ -5,6 +5,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.95.0] — 2026-06-08
+
+### Adicionado
+- **feat(services)**: Migrada toda a arquitetura de detecção e reconhecimento facial para rodar nativamente via OpenCV DNN com os modelos ultra-leves **YuNet** (detecção) e **SFace** (reconhecimento/embeddings).
+- **feat(services)**: Adicionada rotina de download automático (`app/core/model_downloader.py`) no lifespan do FastAPI para baixar os pesos dos modelos diretamente do Hugging Face.
+- **feat(services)**: Removidas por completo as dependências das bibliotecas `face_recognition` e `dlib` (e a limitação do `setuptools<71`), reduzindo drasticamente o consumo de memória RAM e processamento de CPU, além de simplificar a compilação e o setup do ambiente local.
+- **feat(services)**: Adicionada detecção automática do codec de vídeo (HEVC/H.265 ou H.264) nas primeiras NAL units contidas na box `mdat` quando o `moov` atom não é encontrado no início do arquivo.
+- **feat(services)**: Modificado o fallback de reparo do stream bruto no `ffmpeg` para passar dinamicamente o parâmetro `-f hevc` ou `-f h264` conforme o codec detectado. Isso corrige o erro de broken pipe e impossibilidade de leitura de vídeos HEVC sem moov vindos de câmeras de segurança.
+
+### Corrigido
+- **fix(db)**: Corrige o erro de OperationalError (no such column: videos.thumbnail_path) ao tentar listar vídeos em bancos de dados existentes onde o campo `thumbnail_path` não havia sido criado. Adiciona a migração automatizada `migration_v1_35` para criar a coluna `thumbnail_path` na tabela `videos` caso esteja ausente, com testes de unidade correspondentes.
+- **fix(services)**: Corrige o erro de falha no reparo (exit status 183) ao processar vídeos MP4 cujos cabeçalhos/metadados "moov atom" foram completamente omitidos ou perdidos (gravações de câmeras de segurança interrompidas de maneira abrupta). Adiciona uma rotina de recuperação por fallback que extrai a stream H.264 crua (Annex B) do bloco "mdat" do arquivo e a reconstrói usando ffmpeg, tornando o vídeo legível pelo OpenCV e restaurando seu processamento.
+- **fix(services)**: Implementa a funcionalidade de reparo automático de arquivos de vídeo MP4 sem o "moov atom" no início (comum em arquivos de câmera de segurança gravados de forma assíncrona ou interrompidos). O worker do vídeo passa a tentar reparar o arquivo com ffmpeg (faststart) caso o OpenCV não consiga abrir o stream original. Adiciona cobertura completa de testes unitários e de integração correspondentes.
+
+### Alterado
+- **refactor(services)**: Otimiza a rotina de recuperação por fallback de vídeos MP4 sem o "moov atom". Em vez de extrair e gravar um arquivo temporário intermediário `.h264` em disco (o que causava falhas do tipo 'No space left on device' para arquivos grandes de 1.4 GB+), a rotina passa a processar e transmitir a stream raw H.264 (Annex B) diretamente para a entrada padrão (`stdin`) do processo `ffmpeg` via streaming de pipe (`subprocess.Popen`).
+
 ## [1.9.5] — 2026-06-08
 
 ### Encerramento — Sprint 16: Melhorias de Precisão no Reconhecimento Facial
