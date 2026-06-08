@@ -21,7 +21,7 @@ def test_storage_faces_is_path():
 def test_face_recognition_tolerance_default():
     from app.core.settings import Settings
     s = Settings(_env_file=None)
-    assert s.FACE_RECOGNITION_TOLERANCE == 0.6
+    assert s.FACE_RECOGNITION_TOLERANCE == 1.1
     assert isinstance(s.FACE_RECOGNITION_TOLERANCE, float)
 
 

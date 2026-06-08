@@ -27,7 +27,7 @@ def get_face_models(input_size: tuple[int, int]):
             model=str(YUNET_PATH),
             config="",
             input_size=input_size,
-            score_threshold=0.8,
+            score_threshold=0.6,
             nms_threshold=0.3
         )
         _current_input_size = input_size
@@ -100,6 +100,10 @@ def extract_embeddings(frame: np.ndarray) -> list[tuple[np.ndarray, tuple]]:
             aligned = recognizer.alignCrop(frame, face)
             feat = recognizer.feature(aligned)
             embedding = feat.flatten().astype(np.float64)
+            # Normalização L2 para assegurar que a distância Euclidiana seja comparável
+            norm = np.linalg.norm(embedding)
+            if norm > 0:
+                embedding = embedding / norm
             results.append((embedding, location))
         except Exception as e:
             logger.error(f"Erro ao extrair embedding de face: {e}")

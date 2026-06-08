@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     STORAGE_EMPLOYEES: Path = Path("storage/employees")
 
     # Visão computacional
-    FACE_RECOGNITION_TOLERANCE: float = 0.6
+    FACE_RECOGNITION_TOLERANCE: float = 1.1
     FRAMES_PER_SECOND_SAMPLE: int = 2
     FACE_DETECTION_MODEL: str = "cnn"
     FACE_UPSAMPLE: int = 1

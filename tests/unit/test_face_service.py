@@ -10,7 +10,8 @@ def make_bgr_frame() -> np.ndarray:
 
 
 def make_embedding() -> np.ndarray:
-    return np.random.rand(128).astype(np.float64)
+    emb = np.random.rand(128).astype(np.float64)
+    return emb / np.linalg.norm(emb)
 
 
 def make_face_location(size: int = 120) -> tuple:
@@ -264,3 +265,32 @@ def test_find_matching_uses_settings_knn_k_default():
 
     params = inspect.signature(find_matching_person).parameters
     assert params["k"].default == settings.FACE_KNN_K
+
+
+def test_extract_embeddings_returns_l2_normalized():
+    from app.services.face_service import extract_embeddings
+    
+    # Geramos um embedding não normalizado no mock (todos 5.0, norma = ~56.56)
+    raw_emb = np.ones(128).astype(np.float64) * 5.0
+    faces_arr = np.zeros((1, 15), dtype=np.float32)
+    faces_arr[0, 0:4] = [0, 0, 120, 120]
+    
+    with patch("cv2.FaceDetectorYN.create") as mock_det_create, \
+         patch("cv2.FaceRecognizerSF.create") as mock_rec_create, \
+         patch("app.services.face_service.is_good_quality_frame", return_value=True):
+        
+        mock_det = MagicMock()
+        mock_det.detect.return_value = (1, faces_arr)
+        mock_det_create.return_value = mock_det
+        
+        mock_rec = MagicMock()
+        mock_rec.feature.return_value = raw_emb.reshape(1, 128)
+        mock_rec_create.return_value = mock_rec
+        
+        result = extract_embeddings(make_bgr_frame())
+        
+    assert len(result) == 1
+    embedding = result[0][0]
+    # O embedding retornado pelo face_service deve ser normalizado L2
+    assert np.allclose(np.linalg.norm(embedding), 1.0)
+
