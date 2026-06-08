@@ -214,8 +214,14 @@ export default function VideoDetail() {
   }, [id])
 
   useEffect(() => {
+    setDetail(null)
+    setCurrentTime(0)
+    setSeekTo(null)
+    setVideoDuration(0)
+    setIsPlaying(false)
+    setError('')
     fetchDetail()
-  }, [fetchDetail])
+  }, [id, fetchDetail])
 
   const status = detail?.video?.status
   const isProcessing = status === 'Pendente' || status === 'Processando'
@@ -313,6 +319,7 @@ export default function VideoDetail() {
         {/* Player */}
         {detail && token && (
           <VideoPlayer
+            key={id}
             videoId={parseInt(id)}
             token={token}
             onTimeUpdate={setCurrentTime}
