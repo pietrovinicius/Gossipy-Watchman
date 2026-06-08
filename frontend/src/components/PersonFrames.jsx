@@ -4,7 +4,9 @@ import api from '../services/api'
 import { useAuthImage } from '../hooks/useAuthImage'
 
 function FrameThumb({ frame, onSetPrimary, onDelete, settingFilename, deletingFilename }) {
-  const imgSrc = useAuthImage(frame.filename)
+  // Cache-busting: quando is_primary muda, invalida cache no hook para refetch
+  const cacheTag = frame.is_primary ? 'principal' : ''
+  const imgSrc = useAuthImage(frame.filename, cacheTag)
   const isSetting = settingFilename === frame.filename
   const isDeleting = deletingFilename === frame.filename
 

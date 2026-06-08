@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../services/api'
 
-export function useAuthImage(filename) {
+export function useAuthImage(filename, cacheTag = '') {
   const [src, setSrc] = useState(null)
 
   useEffect(() => {
@@ -19,7 +19,7 @@ export function useAuthImage(filename) {
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
-  }, [filename])
+  }, [filename, cacheTag])
 
   return src
 }
