@@ -30,14 +30,22 @@ function VideoCard({ video, onDelete, onReprocess, onExport, loading, loadingAct
 
   return (
     <div className="bg-card rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-all duration-200 flex flex-col h-full">
-      {/* Placeholder + Badge */}
+      {/* Thumbnail + Badge */}
       <div
         className="relative w-full pt-[56.25%] bg-slate-100 dark:bg-slate-800 cursor-pointer overflow-hidden group"
         onClick={() => navigate(`/videos/${video.id}`)}
       >
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Film className="w-12 h-12 text-slate-400 dark:text-slate-600" />
-        </div>
+        {video.thumbnail_path ? (
+          <img
+            src={`${import.meta.env.VITE_API_URL}/videos/${video.id}/thumbnail`}
+            alt={video.file_name}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Film className="w-12 h-12 text-slate-400 dark:text-slate-600" />
+          </div>
+        )}
         <div className={`absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center`}>
           <div className="text-center">
             <div className="text-white text-lg">▶</div>

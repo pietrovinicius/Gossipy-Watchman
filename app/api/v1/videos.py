@@ -194,3 +194,22 @@ def get_video_status(
     if video is None:
         raise HTTPException(status_code=404, detail="Vídeo não encontrado")
     return VideoStatusResponse.model_validate(video)
+
+
+@router.get("/videos/{video_id}/thumbnail", response_model=None)
+def get_video_thumbnail(
+    video_id: int,
+    db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
+):
+    video = video_service.get_video_by_id(db, video_id)
+    if video is None:
+        raise HTTPException(status_code=404, detail="Vídeo não encontrado")
+    if not video.thumbnail_path:
+        raise HTTPException(status_code=404, detail="Thumbnail não disponível")
+
+    thumbnail_file = Path(video.thumbnail_path)
+    if not thumbnail_file.exists():
+        raise HTTPException(status_code=404, detail="Arquivo de thumbnail não encontrado")
+
+    return FileResponse(thumbnail_file, media_type="image/jpeg")

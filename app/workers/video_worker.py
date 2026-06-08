@@ -85,8 +85,20 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
 
         person_counter = db.query(Video).count()  # heurística simples para índice inicial
         alerted_in_this_video: set[int] = set()
+        first_frame = True
 
         for segundo, frame in frame_service.extract_frames(video_path):
+            # Salvar primeiro frame como thumbnail
+            if first_frame:
+                try:
+                    thumbnail_path = settings.STORAGE_VIDEOS / f"{video_id}_thumbnail.jpg"
+                    cv2.imwrite(str(thumbnail_path), frame)
+                    video.thumbnail_path = str(thumbnail_path)
+                    db.commit()
+                    logger.info(f"[WORKER] thumbnail salvo: {thumbnail_path}")
+                except Exception:
+                    logger.warning(f"[WORKER] falha ao salvar thumbnail para video_id={video_id}", exc_info=True)
+                first_frame = False
             embeddings = face_service.extract_embeddings(frame)
 
             for embedding in embeddings:

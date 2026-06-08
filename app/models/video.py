@@ -29,6 +29,7 @@ class Video(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
     )
+    thumbnail_path: Mapped[str | None] = mapped_column(String(512), nullable=True, default=None)
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime, nullable=True, default=None
     )

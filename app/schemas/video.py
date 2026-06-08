@@ -18,6 +18,7 @@ class VideoResponse(BaseModel):
     file_path: str
     status: VideoStatus
     uploaded_at: datetime
+    thumbnail_path: str | None = None
     deleted_at: datetime | None = None
 
 
@@ -75,6 +76,7 @@ class VideoCardResponse(BaseModel):
     file_path: str
     status: VideoStatus
     uploaded_at: datetime
+    thumbnail_path: str | None = None
     deleted_at: datetime | None = None
     people_count: int
     people_previews: list[PersonPreview]
