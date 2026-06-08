@@ -62,6 +62,94 @@ def extract_embeddings(frame: np.ndarray) -> list[tuple[np.ndarray, tuple]]:
     return list(zip(encodings, good_locations))
 
 
+class FaceTrack:
+    """Agrega detecções de uma mesma aparição contínua de rosto no vídeo."""
+
+    def __init__(self, start_time: float):
+        self.start_time = start_time
+        self.last_seen = start_time
+        self.embeddings: list[np.ndarray] = []
+        self._frames_data: list[dict] = []
+
+    def add_frame_data(
+        self,
+        embedding: np.ndarray,
+        location: tuple[int, int, int, int],
+        frame: np.ndarray,
+        timestamp: float,
+    ) -> None:
+        self.embeddings.append(embedding)
+        self._frames_data.append(
+            {"location": location, "frame": frame, "timestamp": timestamp}
+        )
+        self.last_seen = timestamp
+
+    @property
+    def sample_count(self) -> int:
+        return len(self.embeddings)
+
+    def mean_embedding(self) -> np.ndarray:
+        return np.mean(self.embeddings, axis=0)
+
+    def get_best_crop(self) -> np.ndarray:
+        """Recorte do frame com maior área de rosto (proxy de melhor qualidade)."""
+        def face_area(data: dict) -> int:
+            top, right, bottom, left = data["location"]
+            return (right - left) * (bottom - top)
+
+        best = max(self._frames_data, key=face_area)
+        top, right, bottom, left = best["location"]
+        return best["frame"][top:bottom, left:right]
+
+
+class FaceTracker:
+    """Agrupa detecções consecutivas em tracks, descartando aparições muito curtas."""
+
+    def __init__(
+        self,
+        gap_tolerance: float = settings.FACE_TRACK_GAP_TOLERANCE,
+        min_samples: int = settings.FACE_TRACK_MIN_SAMPLES,
+    ):
+        self.gap_tolerance = gap_tolerance
+        self.min_samples = min_samples
+        self.active_track: FaceTrack | None = None
+        self.closed_tracks: list[FaceTrack] = []
+
+    def add_detection(
+        self,
+        embedding: np.ndarray,
+        location: tuple[int, int, int, int],
+        frame: np.ndarray,
+        timestamp: float,
+    ) -> None:
+        if self.active_track is None:
+            self.active_track = FaceTrack(start_time=timestamp)
+        elif timestamp - self.active_track.last_seen > self.gap_tolerance:
+            self._close_active_track()
+            self.active_track = FaceTrack(start_time=timestamp)
+
+        self.active_track.add_frame_data(embedding, location, frame, timestamp)
+
+    def _close_active_track(self) -> None:
+        if self.active_track is not None and self.active_track.sample_count >= self.min_samples:
+            self.closed_tracks.append(self.active_track)
+            logger.debug(
+                f"[TRACKER] track fechado start={self.active_track.start_time:.1f}s "
+                f"last_seen={self.active_track.last_seen:.1f}s "
+                f"samples={self.active_track.sample_count}"
+            )
+        elif self.active_track is not None:
+            logger.debug(
+                f"[TRACKER] track descartado (samples={self.active_track.sample_count} "
+                f"< min_samples={self.min_samples})"
+            )
+        self.active_track = None
+
+    def flush(self) -> list[FaceTrack]:
+        self._close_active_track()
+        return self.closed_tracks
+
+
 def find_matching_person(
     embedding: np.ndarray,
     known_embeddings: list[tuple[int, np.ndarray]],
