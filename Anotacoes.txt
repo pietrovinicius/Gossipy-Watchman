@@ -583,6 +583,38 @@ Progresso do processamento:
   WebSocket notifica o frontend em tempo real via /ws/video/{id}
 
 ================================================================
+SPRINT 16 — PRECISÃO DE RECONHECIMENTO FACIAL (v1.9.1–v1.9.4)
+================================================================
+
+Três melhorias cirúrgicas no pipeline para reduzir falsos positivos:
+
+1. Filtro de qualidade de frame (is_good_quality_frame):
+   - Descarta rostos < FACE_MIN_SIZE_PX (60px) ou borrados
+     (variância Laplaciana < FACE_BLUR_THRESHOLD = 100.0)
+   - extract_embeddings agora retorna list[(embedding, location)]
+
+2. Agregação por aparição contínua (FaceTrack/FaceTracker):
+   - Agrupa detecções consecutivas (gap ≤ FACE_TRACK_GAP_TOLERANCE = 2.0s)
+   - Descarta tracks com < FACE_TRACK_MIN_SAMPLES (2) amostras
+   - Identidade resolvida 1x por track usando mean_embedding() —
+     muito mais estável que embedding de frame isolado
+   - get_best_crop() salva o recorte do frame com maior área de rosto
+
+3. Votação k-NN (find_matching_person):
+   - Em vez de aceitar cegamente o vizinho mais próximo (argmin),
+     pega os FACE_KNN_K (3) vizinhos dentro da tolerância e vota
+     por maioria de person_id — reduz viés de pessoas
+     super-representadas no banco de embeddings
+
+Settings novas (.env): FACE_MIN_SIZE_PX, FACE_BLUR_THRESHOLD,
+FACE_TRACK_GAP_TOLERANCE, FACE_TRACK_MIN_SAMPLES, FACE_KNN_K
+
+Teste manual (vídeo 5, 2026-06-08): 5 tracks formados, 0 descartados,
+1 pessoa nova + 4 aparições conhecidas, todas resolvidas via k-NN
+com 1 voto/match (banco continha só 1 pessoa). Nenhum frame descartado
+pelo filtro de qualidade (footage de boa qualidade).
+
+================================================================
 CONTATO E REPOSITÓRIO
 ================================================================
 Desenvolvido por: Pietro Vinicius Lima
