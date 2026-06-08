@@ -165,6 +165,8 @@ function PersonCard({ person, isOnScreen, onSeekTo, cardRef }) {
 export default function VideoDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const idRef = useRef(id)
+  idRef.current = id
   const [detail, setDetail] = useState(null)
   const [error, setError] = useState('')
   const [exportLoading, setExportLoading] = useState(false)
@@ -207,10 +209,19 @@ export default function VideoDetail() {
   }
 
   const fetchDetail = useCallback(() => {
+    const requestedId = id
     setError('')
-    return api.get(`/videos/${id}/detail`)
-      .then((res) => setDetail(res.data))
-      .catch((err) => setError(err.message))
+    return api.get(`/videos/${requestedId}/detail`)
+      .then((res) => {
+        // Descarta respostas que chegam fora de ordem (ex.: navegação rápida entre vídeos):
+        // só aplica se a página ainda estiver no vídeo que originou esta requisição.
+        if (idRef.current !== requestedId) return
+        setDetail(res.data)
+      })
+      .catch((err) => {
+        if (idRef.current !== requestedId) return
+        setError(err.message)
+      })
   }, [id])
 
   useEffect(() => {
