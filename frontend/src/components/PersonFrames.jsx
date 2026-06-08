@@ -121,7 +121,7 @@ export default function PersonFrames({ personId }) {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {frames.map((frame) => (
               <FrameThumb
-                key={frame.filename}
+                key={`${frame.filename}_${frame.is_primary}`}
                 frame={frame}
                 onSetPrimary={handleSetPrimary}
                 onDelete={handleDeleteFrame}
