@@ -11,6 +11,12 @@ from app.models.person import Person, PersonCategory
 from app.models.video import Video, VideoStatus
 
 
+@pytest.fixture(autouse=True)
+def mock_can_opencv_read():
+    with patch("app.services.conversion_service.can_opencv_read", return_value=True) as mock:
+        yield mock
+
+
 @pytest.fixture
 def db_engine():
     engine = create_engine(

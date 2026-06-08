@@ -149,6 +149,45 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
         db.commit()
         _broadcast_sync(video_id, {"event": "status", "status": "Processando", "video_id": video_id})
 
+        from app.services.conversion_service import (
+            can_opencv_read, repair_mp4_moov
+        )
+        from app.services.video_service import update_video_status
+
+        # Verificar se OpenCV consegue ler o arquivo
+        if not can_opencv_read(video_path):
+            logger.warning(
+                f"[video_id={video_id}] OpenCV não consegue ler "
+                f"{video_path.name} — tentando reparar moov atom"
+            )
+            _broadcast_sync(video_id, {
+                "event": "converting",
+                "video_id": video_id,
+                "status": "Reparando",
+                "message": "Reparando formato do vídeo (moov atom)..."
+            })
+            try:
+                video_path = repair_mp4_moov(video_path)
+                logger.info(
+                    f"[video_id={video_id}] Reparo concluído: "
+                    f"{video_path.name}"
+                )
+            except Exception as e:
+                logger.error(
+                    f"[video_id={video_id}] Falha no reparo: {e}"
+                )
+                update_video_status(db, video_id, VideoStatus.ERRO)
+                _broadcast_sync(video_id, {
+                    "event": "error",
+                    "video_id": video_id,
+                    "status": "Erro",
+                    "message": (
+                        "Não foi possível reparar o arquivo de vídeo. "
+                        "Tente converter para MP4 com ffmpeg antes do upload."
+                    )
+                })
+                return
+
         person_counter = db.query(Video).count()  # heurística simples para índice inicial
         alerted_in_this_video: set[int] = set()
         first_frame = True

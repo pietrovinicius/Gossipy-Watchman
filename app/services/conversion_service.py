@@ -83,3 +83,68 @@ def get_video_duration_seconds(file_path: Path) -> float | None:
     except Exception as e:
         logger.warning(f"ffprobe falhou: {e}")
     return None
+
+
+def repair_mp4_moov(input_path: Path) -> Path:
+    """
+    Reescreve o arquivo MP4 com moov atom no início (faststart).
+    Necessário para arquivos de câmera de segurança que gravam
+    o moov atom no final do arquivo.
+
+    Retorna o path do arquivo reparado.
+    Lança RuntimeError se ffmpeg não disponível.
+    Lança subprocess.CalledProcessError se reparo falhar.
+    """
+    if not FFMPEG_AVAILABLE:
+        raise RuntimeError("ffmpeg necessário para reparar arquivo MP4.")
+
+    output_path = input_path.parent / (
+        input_path.stem + "_faststart.mp4"
+    )
+
+    cmd = [
+        settings.FFMPEG_PATH,
+        "-i", str(input_path),
+        "-c", "copy",
+        "-movflags", "faststart",
+        "-y",
+        str(output_path)
+    ]
+
+    logger.info(f"Reparando moov atom: {input_path.name}")
+
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        timeout=3600
+    )
+
+    if result.returncode != 0:
+        error = result.stderr.decode()
+        logger.error(f"Erro ao reparar: {error}")
+        raise subprocess.CalledProcessError(
+            result.returncode, cmd, result.stdout, result.stderr
+        )
+
+    # Substituir o original pelo reparado
+    input_path.unlink()
+    output_path.rename(input_path)
+
+    logger.info(f"Reparo concluído: {input_path.name}")
+    return input_path
+
+
+def can_opencv_read(file_path: Path) -> bool:
+    """
+    Verifica se o OpenCV consegue abrir o arquivo de vídeo.
+    Retorna False se o arquivo estiver corrompido ou
+    com moov atom no final.
+    """
+    import cv2
+    cap = cv2.VideoCapture(str(file_path))
+    readable = cap.isOpened()
+    frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    cap.release()
+    # Frame count <= 0 indica arquivo ilegível mesmo se isOpened()
+    return readable and frame_count > 0
+

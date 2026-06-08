@@ -3,7 +3,8 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 import subprocess
 from app.services.conversion_service import (
-    needs_conversion, convert_to_mp4, get_video_duration_seconds
+    needs_conversion, convert_to_mp4, get_video_duration_seconds,
+    can_opencv_read, repair_mp4_moov
 )
 
 
@@ -97,3 +98,123 @@ def test_get_video_duration_seconds_returns_none_on_error(tmp_path):
             mock_run.side_effect = Exception("ffprobe error")
             result = get_video_duration_seconds(test_file)
             assert result is None
+
+
+# ── can_opencv_read ───────────────────────────────────────────────────────────
+
+def test_can_opencv_read_false_when_not_opened():
+    from app.services.conversion_service import can_opencv_read
+    with patch("cv2.VideoCapture") as mock_vc:
+        mock_cap = MagicMock()
+        mock_cap.isOpened.return_value = False
+        mock_vc.return_value = mock_cap
+        
+        result = can_opencv_read(Path("video.mp4"))
+        assert result is False
+        mock_cap.release.assert_called_once()
+
+
+def test_can_opencv_read_false_when_frame_count_zero_or_less():
+    from app.services.conversion_service import can_opencv_read
+    import cv2
+    with patch("cv2.VideoCapture") as mock_vc:
+        mock_cap = MagicMock()
+        mock_cap.isOpened.return_value = True
+        mock_cap.get.return_value = 0  # frame_count <= 0
+        mock_vc.return_value = mock_cap
+        
+        result = can_opencv_read(Path("video.mp4"))
+        assert result is False
+        mock_cap.get.assert_called_once_with(cv2.CAP_PROP_FRAME_COUNT)
+        mock_cap.release.assert_called_once()
+
+
+def test_can_opencv_read_true_for_valid_video():
+    from app.services.conversion_service import can_opencv_read
+    import cv2
+    with patch("cv2.VideoCapture") as mock_vc:
+        mock_cap = MagicMock()
+        mock_cap.isOpened.return_value = True
+        mock_cap.get.return_value = 100  # frame_count > 0
+        mock_vc.return_value = mock_cap
+        
+        result = can_opencv_read(Path("video.mp4"))
+        assert result is True
+        mock_cap.get.assert_called_once_with(cv2.CAP_PROP_FRAME_COUNT)
+        mock_cap.release.assert_called_once()
+
+
+# ── repair_mp4_moov ───────────────────────────────────────────────────────────
+
+def test_repair_mp4_moov_calls_ffmpeg_with_faststart_flags(tmp_path):
+    from app.services.conversion_service import repair_mp4_moov
+    
+    test_file = tmp_path / "video.mp4"
+    test_file.write_bytes(b"fake video")
+    
+    with patch("app.services.conversion_service.FFMPEG_AVAILABLE", True):
+        with patch("app.services.conversion_service.subprocess.run") as mock_run:
+            def side_effect(cmd, **kwargs):
+                output_path_str = cmd[-1]
+                Path(output_path_str).write_bytes(b"repaired video")
+                return MagicMock(returncode=0)
+                
+            mock_run.side_effect = side_effect
+            
+            result = repair_mp4_moov(test_file)
+            
+            assert mock_run.called
+            call_args = mock_run.call_args[0][0]
+            assert "-movflags" in call_args
+            assert "faststart" in call_args
+            assert "-c" in call_args
+            assert "copy" in call_args
+            assert result == test_file
+
+
+def test_repair_mp4_moov_replaces_original_file(tmp_path):
+    from app.services.conversion_service import repair_mp4_moov
+    
+    test_file = tmp_path / "video.mp4"
+    test_file.write_bytes(b"original")
+    
+    with patch("app.services.conversion_service.FFMPEG_AVAILABLE", True):
+        with patch("app.services.conversion_service.subprocess.run") as mock_run:
+            def side_effect(cmd, **kwargs):
+                output_path_str = cmd[-1]
+                Path(output_path_str).write_bytes(b"repaired")
+                return MagicMock(returncode=0)
+            mock_run.side_effect = side_effect
+            
+            result = repair_mp4_moov(test_file)
+            
+            assert result.exists()
+            assert result.read_bytes() == b"repaired"
+            temp_file = tmp_path / "video_faststart.mp4"
+            assert not temp_file.exists()
+
+
+def test_repair_mp4_moov_raises_runtime_error_if_ffmpeg_unavailable(tmp_path):
+    from app.services.conversion_service import repair_mp4_moov
+    test_file = tmp_path / "video.mp4"
+    
+    with patch("app.services.conversion_service.FFMPEG_AVAILABLE", False):
+        with pytest.raises(RuntimeError) as exc:
+            repair_mp4_moov(test_file)
+        assert "ffmpeg necessário" in str(exc.value)
+
+
+def test_repair_mp4_moov_raises_called_process_error_if_ffmpeg_fails(tmp_path):
+    from app.services.conversion_service import repair_mp4_moov
+    test_file = tmp_path / "video.mp4"
+    test_file.write_bytes(b"fake")
+    
+    with patch("app.services.conversion_service.FFMPEG_AVAILABLE", True):
+        with patch("app.services.conversion_service.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=1,
+                stderr=b"ffmpeg failure"
+            )
+            with pytest.raises(subprocess.CalledProcessError):
+                repair_mp4_moov(test_file)
+
