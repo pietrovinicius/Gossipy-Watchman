@@ -310,6 +310,18 @@ def test_search_videos_without_filters_returns_all(db):
     assert len(result["items"]) == 2
 
 
+def test_search_videos_includes_thumbnail_path(db):
+    from app.services.video_service import create_video_record, search_videos
+
+    v1 = create_video_record(db, "clip1.mp4", "storage/videos/clip1.mp4")
+    v1.thumbnail_path = "storage/videos/1_thumbnail.jpg"
+    db.commit()
+
+    result = search_videos(db)
+
+    assert result["items"][0]["thumbnail_path"] == "storage/videos/1_thumbnail.jpg"
+
+
 def test_search_videos_with_query_filters_by_name(db):
     from app.services.video_service import create_video_record, search_videos
 

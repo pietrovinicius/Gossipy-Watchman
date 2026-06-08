@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -8,6 +9,8 @@ from sqlalchemy.orm import Session
 from app.models.appearance import Appearance
 from app.models.person import Person
 from app.models.video import Video, VideoStatus
+
+logger = logging.getLogger(__name__)
 
 
 def create_video_record(db: Session, file_name: str, file_path: str) -> Video:
@@ -100,6 +103,10 @@ def get_video_detail(db: Session, video_id: int) -> dict | None:
         .filter(Appearance.video_id == video_id)
         .all()
     )
+
+    logger.debug(f"[GET_VIDEO_DETAIL] video_id={video_id} total_appearances={len(rows)}")
+    for appearance, person in rows:
+        logger.debug(f"[GET_VIDEO_DETAIL] appearance_id={appearance.id} video_id={appearance.video_id} person_id={person.id} timestamp={appearance.timestamp_start}-{appearance.timestamp_end}")
 
     grouped: dict[int, dict] = {}
     for appearance, person in rows:
@@ -252,6 +259,7 @@ def search_videos(
                 "file_path": video.file_path,
                 "status": video.status,
                 "uploaded_at": video.uploaded_at,
+                "thumbnail_path": video.thumbnail_path,
                 "deleted_at": video.deleted_at,
                 "people_count": people_count,
                 "people_previews": [
