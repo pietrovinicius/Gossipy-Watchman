@@ -5,6 +5,86 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.9.5] — 2026-06-08
+
+### Encerramento — Sprint 16: Melhorias de Precisão no Reconhecimento Facial
+
+- **chore**: verificação final da sprint — 398 testes backend + 195 testes frontend passando, build de produção ok. Teste manual de processamento (vídeo id=5): 5 tracks formados, 0 descartados, 0 frames descartados pelo filtro de qualidade, 1 pessoa nova + 4 aparições conhecidas resolvidas via votação k-NN. `Anotacoes.txt` documenta as três melhorias entregues.
+
+## [1.9.4] — 2026-06-08
+
+### Alterado
+
+- **refactor(worker)**: integração do `FaceTracker` no pipeline de `process_video`. Identidade agora resolvida uma vez por track completo (via novo helper `_process_track`) usando `mean_embedding()` e `get_best_crop()`, em vez de frame a frame — elimina ruído de detecções pontuais e ataca diretamente o bug "vídeo X mostra pessoas do vídeo Y". Suíte de integração reescrita (9 testes). Suíte completa: 398 testes passando.
+
+## [1.9.3] — 2026-06-08
+
+### Adicionado
+
+- **feat(face_service)**: votação k-NN em `find_matching_person`, substituindo argmin simples — filtra candidatos dentro de `tolerance`, vota entre os `k` (`FACE_KNN_K=3`) vizinhos mais próximos, vencedor por maioria (empate por menor distância). Reduz falsos positivos de pessoas super-representadas no banco. 5 novos testes. Suíte: 396 testes passando.
+
+## [1.9.2] — 2026-06-08
+
+### Adicionado
+
+- **feat(face_service)**: `FaceTrack`/`FaceTracker` — agregação de embeddings por aparição contínua. `mean_embedding()` reduz ruído de frames isolados; `get_best_crop()` seleciona o recorte de maior área de rosto; tracks com menos de `FACE_TRACK_MIN_SAMPLES` (2) amostras são descartados. 12 novos testes. Suíte: 392 testes passando.
+
+## [1.9.1] — 2026-06-08
+
+### Adicionado
+
+- **feat(face_service)**: filtro de qualidade de frame `is_good_quality_frame` — descarta rostos menores que `FACE_MIN_SIZE_PX` (60px) ou borrados (variância do Laplaciano abaixo de `FACE_BLUR_THRESHOLD`=100.0) antes da extração de embeddings. `extract_embeddings` refatorada para retornar `list[tuple[embedding, location]]`. Novas settings `FACE_MIN_SIZE_PX`, `FACE_BLUR_THRESHOLD`, `FACE_TRACK_GAP_TOLERANCE`, `FACE_TRACK_MIN_SAMPLES`, `FACE_KNN_K` em `.env.example`. 6 novos testes + 4 mocks de integração ajustados. Suíte: 381 testes passando.
+
+## [1.9.0] — 2026-06-08
+
+### Documentação
+
+- **docs**: adicionada entrada da Sprint 16 (Melhorias de Precisão no Reconhecimento Facial) ao cronograma de sprints — agregação por track, votação k-NN, filtro de qualidade de frame.
+
+## [1.8.12] — 2026-06-07
+
+### Corrigido
+
+- **fix(frontend)**: race condition em `VideoDetail.jsx` — "vídeo X exibe pessoas reconhecidas no vídeo Y" ao navegar rapidamente entre páginas. `fetchDetail` comparava resposta contra `id` capturado em closure (sempre igual); corrigido comparando contra `idRef.current`, descartando respostas de requisições obsoletas. Removidos `console.log`/`console.error` de debug. Novo teste `VideoDetailRaceCondition.test.jsx`.
+
+## [1.8.11] — 2026-06-07
+
+### Corrigido
+
+- **fix(frontend)**: thumbnail de vídeo aparecia quebrada — `<img src>` não envia header `Authorization` e o endpoint exige JWT. Criado hook `useAuthVideoThumbnail` (busca via `api.get` como blob + object URL, mesmo padrão de `useAuthImage`). `VideosCatalog.jsx` migrado para o novo hook.
+
+## [1.8.10] — 2026-06-07
+
+### Corrigido
+
+- **fix(backend)**: `search_videos` não incluía `thumbnail_path` na resposta do catálogo — página de Vídeos sempre exibia ícone genérico mesmo com thumbnail gerada. Campo agora incluído, permitindo que `VideosCatalog.jsx` renderize a imagem real do primeiro frame.
+
+## [1.8.9] — 2026-06-07
+
+### Adicionado
+
+- **feat**: thumbnails de vídeos — novo campo `thumbnail_path` no modelo `Video`, worker extrai e salva o 1º frame de cada vídeo processado, endpoint `GET /videos/{id}/thumbnail`, frontend exibe preview no card (fallback: ícone de filme). Migration manual `ALTER TABLE videos ADD COLUMN thumbnail_path`. 375 testes passando.
+
+## [1.8.8] — 2026-06-07
+
+### Corrigido
+
+- **fix(frontend)**: exclusão de pessoa em `PersonDetail.jsx` agora navega para `/people` após sucesso (antes permanecia em tela vazia). Novo teste de navegação pós-delete.
+
+## [1.8.7] — 2026-06-07
+
+### Corrigido
+
+- **fix(frontend)**: `PersonFrames.jsx` — botão "Definir como principal" corrigido, adicionada deleção de frames individuais (`DELETE /people/{id}/frames/{filename}` com validação contra path traversal e proteção da foto principal). `VideoDetail.jsx` — removido auto-scroll durante reprodução.
+- **fix(frontend)**: `Upload.jsx` — `setProgress(0)` não existia (hook retorna `reset`); corrigido para `resetProgress()`, restaurando seleção de arquivo em `/upload`.
+- **fix(frontend)**: `VideoDetail.jsx` — reset completo de estado ao trocar `videoId` (evitava mistura visual de dados entre vídeos); `VideoPlayer` recebe `key={id}` para remontagem forçada.
+
+## [1.0.1] — 2026-06-07
+
+### Corrigido
+
+- **fix(frontend)**: "Definir como principal" não persistia em `PersonDetail` — `useAuthImage` agora inclui cache-bust (`?t=${cacheTag}`) na URL da imagem, forçando refetch quando o arquivo muda em disco. Reordenado update de estado em `PersonFrames.jsx` para garantir `cacheTag` atualizado antes do refetch.
+
 ## [1.0.0] — 2026-06-06
 
 ### Adicionado
