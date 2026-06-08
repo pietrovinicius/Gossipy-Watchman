@@ -85,6 +85,46 @@ def get_video_duration_seconds(file_path: Path) -> float | None:
     return None
 
 
+def _detect_codec_from_first_nal(input_path: Path) -> str:
+    """
+    Detecta se o stream é h264 ou hevc a partir das primeiras NAL units após a box mdat.
+    Retorna "h264" por padrão/caso falhe.
+    """
+    try:
+        with open(input_path, "rb") as f:
+            header = f.read(1024)
+            idx = header.find(b"mdat")
+            if idx == -1:
+                return "h264"
+            f.seek(idx + 4)
+            # Analisa até 10 NAL units para identificar o codec
+            for _ in range(10):
+                len_bytes = f.read(4)
+                if not len_bytes or len(len_bytes) < 4:
+                    break
+                length = int.from_bytes(len_bytes, byteorder="big")
+                if length <= 0 or length > 50000000:
+                    break
+                nal_data = f.read(length)
+                if len(nal_data) < length:
+                    break
+                if not nal_data:
+                    continue
+                first_byte = nal_data[0]
+                hevc_type = (first_byte & 0x7E) >> 1
+                h264_type = first_byte & 0x1F
+                
+                if hevc_type in (32, 33, 34, 19, 20):
+                    logger.info(f"detection: codec detectado como hevc (NAL type={hevc_type})")
+                    return "hevc"
+                if h264_type in (7, 8, 5):
+                    logger.info(f"detection: codec detectado como h264 (NAL type={h264_type})")
+                    return "h264"
+    except Exception as e:
+        logger.warning(f"Erro ao detectar codec de NAL: {e}")
+    return "h264"
+
+
 def _stream_avcc_to_annexb(input_path: Path, stdin_pipe) -> bool:
     try:
         with open(input_path, "rb") as f_in:
@@ -154,13 +194,14 @@ def repair_mp4_moov(input_path: Path) -> Path:
         logger.error(f"Erro ao reparar: {error}")
         
         if "moov atom not found" in error:
+            codec = _detect_codec_from_first_nal(input_path)
             temp_mp4 = input_path.parent / (input_path.stem + "_temp.mp4")
-            logger.info(f"Tentando recuperar stream raw H264 de {input_path.name}...")
+            logger.info(f"Tentando recuperar stream raw {codec.upper()} de {input_path.name}...")
             
             mux_cmd = [
                 settings.FFMPEG_PATH,
                 "-y",
-                "-f", "h264",
+                "-f", codec,
                 "-i", "-",
                 "-c", "copy",
                 "-movflags", "faststart",
@@ -171,22 +212,22 @@ def repair_mp4_moov(input_path: Path) -> Path:
                 process = subprocess.Popen(
                     mux_cmd,
                     stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
                 )
                 
                 success = _stream_avcc_to_annexb(input_path, process.stdin)
                 process.stdin.close()
                 
-                stdout, stderr = process.communicate(timeout=3600)
+                returncode = process.wait(timeout=3600)
                 
-                if success and process.returncode == 0:
+                if success and returncode == 0:
                     input_path.unlink()
                     temp_mp4.rename(input_path)
                     logger.info(f"Recuperação bem-sucedida por streaming: {input_path.name}")
                     return input_path
                 else:
-                    logger.error(f"Erro ao remuxar stream por streaming: {stderr.decode()}")
+                    logger.error(f"Erro ao remuxar stream por streaming (ffmpeg retornou {returncode})")
             except Exception as stream_err:
                 logger.error(f"Erro durante o streaming da recuperação: {stream_err}")
             

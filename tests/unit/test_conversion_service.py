@@ -233,19 +233,71 @@ def test_repair_mp4_moov_falls_back_to_h264_recovery_on_missing_moov(tmp_path):
             mock_run.return_value = MagicMock(returncode=1, stderr=b"moov atom not found")
             
             mock_process = MagicMock()
-            mock_process.returncode = 0
             mock_popen.return_value = mock_process
             
             def side_effect(*args, **kwargs):
                 # Escrever o arquivo de saída temporário esperado
                 temp_mp4 = tmp_path / "video_temp.mp4"
                 temp_mp4.write_bytes(b"recovered mp4")
-                return b"", b""
-            mock_process.communicate.side_effect = side_effect
+                return 0
+            mock_process.wait.side_effect = side_effect
             
             result = repair_mp4_moov(test_file)
             assert result == test_file
             assert test_file.read_bytes() == b"recovered mp4"
+
+
+def test_detect_codec_from_first_nal_hevc(tmp_path):
+    from app.services.conversion_service import _detect_codec_from_first_nal
+    test_file = tmp_path / "hevc_video.mp4"
+    # mdat seguido de NAL de 4 bytes com first_byte 0x40 (hevc_type = 32 VPS)
+    content = b"fakeheader_mdat" + b"\x00\x00\x00\x04\x40\x00\x00\x00"
+    test_file.write_bytes(content)
+    assert _detect_codec_from_first_nal(test_file) == "hevc"
+
+
+def test_detect_codec_from_first_nal_h264(tmp_path):
+    from app.services.conversion_service import _detect_codec_from_first_nal
+    test_file = tmp_path / "h264_video.mp4"
+    # mdat seguido de NAL de 4 bytes com first_byte 0x67 (h264_type = 7 SPS)
+    content = b"fakeheader_mdat" + b"\x00\x00\x00\x04\x67\x00\x00\x00"
+    test_file.write_bytes(content)
+    assert _detect_codec_from_first_nal(test_file) == "h264"
+
+
+def test_repair_mp4_moov_falls_back_to_hevc_recovery_on_missing_moov(tmp_path):
+    from app.services.conversion_service import repair_mp4_moov
+    
+    test_file = tmp_path / "video.mp4"
+    # hevc_type = 32 (VPS)
+    content = b"fakeheader_mdat" + b"\x00\x00\x00\x04\x40\x00\x00\x00"
+    test_file.write_bytes(content)
+    
+    with patch("app.services.conversion_service.FFMPEG_AVAILABLE", True):
+        with patch("app.services.conversion_service.subprocess.run") as mock_run, \
+             patch("app.services.conversion_service.subprocess.Popen") as mock_popen:
+             
+            mock_run.return_value = MagicMock(returncode=1, stderr=b"moov atom not found")
+            
+            mock_process = MagicMock()
+            mock_popen.return_value = mock_process
+            
+            def side_effect(*args, **kwargs):
+                temp_mp4 = tmp_path / "video_temp.mp4"
+                temp_mp4.write_bytes(b"recovered hevc mp4")
+                return 0
+            mock_process.wait.side_effect = side_effect
+            
+            result = repair_mp4_moov(test_file)
+            assert result == test_file
+            assert test_file.read_bytes() == b"recovered hevc mp4"
+            
+            # Verificar se popen foi chamado com -f hevc
+            assert mock_popen.called
+            called_args = mock_popen.call_args[0][0]
+            idx_f = called_args.index("-f")
+            assert called_args[idx_f + 1] == "hevc"
+
 
 
 
