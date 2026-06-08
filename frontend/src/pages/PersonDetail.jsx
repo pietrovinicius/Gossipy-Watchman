@@ -120,9 +120,8 @@ export default function PersonDetail() {
   async function handleDeletePerson() {
     setActionErr('')
     try {
-      const res = await api.delete(`/people/${id}`)
-      setPerson(res.data)
-      setDeleteModalOpen(false)
+      await api.delete(`/people/${id}`)
+      navigate('/people')
     } catch (err) {
       setActionErr(err.response?.data?.detail ?? err.message)
       setDeleteModalOpen(false)
