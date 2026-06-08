@@ -3,9 +3,9 @@ import { ImageOff, Star, Trash2 } from 'lucide-react'
 import api from '../services/api'
 import { useAuthImage } from '../hooks/useAuthImage'
 
-function FrameThumb({ frame, onSetPrimary, onDelete, settingFilename, deletingFilename }) {
-  // Cache-busting: quando is_primary muda, invalida cache no hook para refetch
-  const cacheTag = frame.is_primary ? 'principal' : ''
+function FrameThumb({ frame, onSetPrimary, onDelete, settingFilename, deletingFilename, refreshCounter }) {
+  // Cache-busting: counter incrementa cada vez que frames muda, força refetch
+  const cacheTag = `${frame.is_primary ? 'primary' : ''}_${refreshCounter}`
   const imgSrc = useAuthImage(frame.filename, cacheTag)
   const isSetting = settingFilename === frame.filename
   const isDeleting = deletingFilename === frame.filename
@@ -67,12 +67,16 @@ export default function PersonFrames({ personId }) {
     console.log('[PersonFrames] frames estado mudou:', frames)
   }, [frames])
 
+  const [refreshCounter, setRefreshCounter] = useState(0)
+
   const fetchFrames = useCallback(() => {
     setLoadErr('')
     api.get(`/people/${personId}/frames`)
       .then((res) => {
         console.log('[PersonFrames] fetchFrames resposta:', res.data)
         setFrames(res.data)
+        // Incrementar counter para forçar refetch de imagens (cache-busting)
+        setRefreshCounter(c => c + 1)
       })
       .catch((err) => {
         console.error('[PersonFrames] fetchFrames erro:', err)
@@ -143,6 +147,7 @@ export default function PersonFrames({ personId }) {
                 onDelete={handleDeleteFrame}
                 settingFilename={settingFilename}
                 deletingFilename={deletingFilename}
+                refreshCounter={refreshCounter}
               />
             ))}
           </div>
