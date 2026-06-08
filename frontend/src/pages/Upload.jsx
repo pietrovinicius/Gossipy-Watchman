@@ -28,7 +28,7 @@ export default function Upload() {
     setResult(null)
     setError('')
     setExtError('')
-    setProgress(0)
+    resetProgress()
     if (!ALLOWED.includes(getExt(f.name))) {
       setExtError(`Formato não suportado: "${getExt(f.name)}". Use .mp4, .avi, .mkv, .mov ou .ts.`)
       setFile(null)
