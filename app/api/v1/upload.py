@@ -91,12 +91,6 @@ async def upload_video(
         try:
             logger.info(f"[video_id={video_record.id}] Convertendo {suffix}")
             converted_path = convert_to_mp4(dest_path, settings.STORAGE_VIDEOS)
-            dest_path.unlink(missing_ok=True)
-            final_path = converted_path
-            video_service.update_file_name(
-                db, video_record.id,
-                f"{Path(file.filename).stem}_converted.mp4"
-            )
         except Exception as e:
             logger.error(f"[video_id={video_record.id}] Erro na conversão: {e}")
             dest_path.unlink(missing_ok=True)
@@ -106,6 +100,12 @@ async def upload_video(
                 status_code=422,
                 detail=f"Não foi possível converter o arquivo. {str(e)}"
             )
+        dest_path.unlink(missing_ok=True)
+        final_path = converted_path
+        video_service.update_file_name(
+            db, video_record.id,
+            f"{Path(file.filename).stem}_converted.mp4"
+        )
 
     video_service.update_file_path(db, video_record.id, str(final_path))
     db.refresh(video_record)

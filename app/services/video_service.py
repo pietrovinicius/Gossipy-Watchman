@@ -95,6 +95,16 @@ def reprocess_video(db: Session, video_id: int) -> Video | None:
     return video
 
 
+def update_file_name(db: Session, video_id: int, file_name: str) -> Video | None:
+    video = db.get(Video, video_id)
+    if video is None:
+        return None
+    video.file_name = file_name
+    db.commit()
+    db.refresh(video)
+    return video
+
+
 def update_file_path(db: Session, video_id: int, file_path: str) -> Video | None:
     video = db.get(Video, video_id)
     if video is None:

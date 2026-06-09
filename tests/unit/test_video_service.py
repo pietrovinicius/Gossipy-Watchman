@@ -296,6 +296,21 @@ def test_reprocess_video_returns_none_for_unknown_id(db):
     assert reprocess_video(db, 9999) is None
 
 
+# ── update_file_name ─────────────────────────────────────────────────────────
+
+def test_update_file_name_persists_new_name(db):
+    from app.services.video_service import create_video_record, update_file_name
+    video = create_video_record(db, "original.dav", "storage/videos/abc.dav")
+    updated = update_file_name(db, video.id, "original_converted.mp4")
+    assert updated is not None
+    assert updated.file_name == "original_converted.mp4"
+
+
+def test_update_file_name_returns_none_for_unknown_id(db):
+    from app.services.video_service import update_file_name
+    assert update_file_name(db, 9999, "x.mp4") is None
+
+
 # ── search_videos ────────────────────────────────────────────────────────────
 
 def test_search_videos_without_filters_returns_all(db):
