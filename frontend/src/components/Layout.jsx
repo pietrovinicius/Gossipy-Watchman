@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import api from '../services/api'
 import { useTheme } from '../contexts/ThemeContext'
+import { LanguageToggle } from './LanguageToggle'
 
 function ThemeToggle() {
   const { theme, toggleTheme } = useTheme()
@@ -112,6 +113,7 @@ export default function Layout({ children }) {
 
       {/* Tema + Logout */}
       <div className="px-2 pb-4 border-t border-border pt-4 space-y-1">
+        <LanguageToggle />
         <ThemeToggle />
         <button
           onClick={handleLogout}
