@@ -398,10 +398,17 @@ def merge_people(
             {"person_id": primary_id}
         )
 
-        # remove embeddings e foto principal do secundário
-        for npy_path in settings.STORAGE_FACES.glob(f"{sec_id}_embedding_*.npy"):
-            npy_path.unlink(missing_ok=True)
-            logger.info("merge_people: removido %s", npy_path)
+        # copia embeddings do secundário para o primário (até o limite) antes de deletar
+        primary_embs = sorted(settings.STORAGE_FACES.glob(f"{primary_id}_embedding_*.npy"))
+        cap = settings.FACE_MAX_EMBEDDINGS_PER_PERSON
+        for src in sorted(settings.STORAGE_FACES.glob(f"{sec_id}_embedding_*.npy")):
+            if len(primary_embs) < cap:
+                dst = settings.STORAGE_FACES / f"{primary_id}_embedding_{len(primary_embs)}.npy"
+                shutil.copy2(src, dst)
+                primary_embs.append(dst)
+                logger.info("merge_people: copiado %s → %s", src.name, dst.name)
+            src.unlink(missing_ok=True)
+            logger.info("merge_people: removido %s", src)
         jpg_path = settings.STORAGE_FACES / f"{sec_id}.jpg"
         if jpg_path.exists():
             jpg_path.unlink()

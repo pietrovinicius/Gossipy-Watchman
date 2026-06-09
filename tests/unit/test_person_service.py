@@ -833,3 +833,81 @@ def test_save_face_sample_adds_embedding_when_below_limit(tmp_path, monkeypatch)
     save_face_sample(mock_db, person_id=3, appearance_id=99, face_crop=face_crop, embedding=embedding)
 
     assert (tmp_path / "3_embedding_1.npy").exists()
+
+
+# ── Task 4 V3: merge_people copia embeddings do secundário para primário ──────
+
+def test_merge_people_copia_embeddings_do_secundario(tmp_path):
+    """merge_people deve copiar .npy do secundário para o primário antes de deletar."""
+    from app.services.person_service import merge_people
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    p1 = Person(name="Principal")
+    p2 = Person(name="Secundário")
+    db.add_all([p1, p2])
+    db.commit()
+
+    emb_primary = np.array([1.0, 0.0], dtype=np.float32)
+    np.save(tmp_path / f"{p1.id}_embedding_0.npy", emb_primary)
+
+    emb_secondary = np.array([0.0, 1.0], dtype=np.float32)
+    np.save(tmp_path / f"{p2.id}_embedding_0.npy", emb_secondary)
+
+    with patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+        mock_settings.FACE_MAX_EMBEDDINGS_PER_PERSON = 5
+        merge_people(db, p1.id, [p2.id])
+
+    primary_embs = sorted(tmp_path.glob(f"{p1.id}_embedding_*.npy"))
+    assert len(primary_embs) == 2, (
+        f"Esperado 2 embeddings no primário após merge, obtido {len(primary_embs)} — "
+        "embedding do secundário foi deletado sem copiar para o primário"
+    )
+
+    secondary_embs = list(tmp_path.glob(f"{p2.id}_embedding_*.npy"))
+    assert len(secondary_embs) == 0
+
+    db.close()
+    engine.dispose()
+
+
+def test_merge_people_respeita_limite_max_embeddings(tmp_path):
+    """merge_people não deve ultrapassar FACE_MAX_EMBEDDINGS_PER_PERSON no primário."""
+    from app.services.person_service import merge_people
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    p1 = Person(name="Principal")
+    p2 = Person(name="Secundário")
+    db.add_all([p1, p2])
+    db.commit()
+
+    # Primário já tem 4 embeddings; limite = 5 → pode absorver apenas 1 do secundário
+    for i in range(4):
+        np.save(tmp_path / f"{p1.id}_embedding_{i}.npy", np.zeros(2, dtype=np.float32))
+    for i in range(3):
+        np.save(tmp_path / f"{p2.id}_embedding_{i}.npy", np.ones(2, dtype=np.float32))
+
+    with patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+        mock_settings.FACE_MAX_EMBEDDINGS_PER_PERSON = 5
+        merge_people(db, p1.id, [p2.id])
+
+    primary_embs = sorted(tmp_path.glob(f"{p1.id}_embedding_*.npy"))
+    assert len(primary_embs) <= 5, (
+        f"Primário não deve exceder o limite de 5 embeddings, obtido {len(primary_embs)}"
+    )
+
+    db.close()
+    engine.dispose()
