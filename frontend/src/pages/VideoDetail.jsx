@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import {
   ArrowLeft, Download, Loader2, AlertCircle, UserCircle, ExternalLink,
   Users, Film, Clock, Activity, Trash2, RotateCcw, RotateCw, PlayCircle,
@@ -331,6 +331,7 @@ function AddPersonModal({ isOpen, onClose, onSubmit, currentTime, isSubmitting, 
 export default function VideoDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const idRef = useRef(id)
   idRef.current = id
   const [detail, setDetail] = useState(null)
@@ -343,7 +344,7 @@ export default function VideoDetail() {
   const [addPersonModalOpen, setAddPersonModalOpen] = useState(false)
   const [addPersonSubmitting, setAddPersonSubmitting] = useState(false)
   const [addPersonErr, setAddPersonErr] = useState('')
-  const [seekTo, setSeekTo] = useState(null)
+  const [seekTo, setSeekTo] = useState(location.state?.seekTo ?? null)
   const [pauseSeekTo, setPauseSeekTo] = useState(null)
   const [currentTime, setCurrentTime] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)

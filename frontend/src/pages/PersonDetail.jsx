@@ -18,8 +18,12 @@ function fmt3(n) {
   return n != null ? Number(n).toFixed(3) : '—'
 }
 
-function fmtSec(s) {
-  return s != null ? `${Number(s).toFixed(1)}s` : '—'
+function fmtTime(s) {
+  if (s == null) return '—'
+  const total = Math.floor(Number(s))
+  const min = Math.floor(total / 60)
+  const sec = total % 60
+  return `${min}:${sec.toString().padStart(2, '0')}`
 }
 
 function fmtDate(d) {
@@ -533,8 +537,18 @@ export default function PersonDetail() {
                           <ExternalLink className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
                         </button>
                       </td>
-                      <td className="px-4 py-3 text-text-muted font-mono text-xs">{fmtSec(a.timestamp_start)}</td>
-                      <td className="px-4 py-3 text-text-muted font-mono text-xs">{fmtSec(a.timestamp_end)}</td>
+                      <td className="px-4 py-3 font-mono text-xs">
+                        <button
+                          type="button"
+                          data-testid={`timeline-seek-${a.video_id}-${a.id}`}
+                          onClick={() => navigate(`/videos/${a.video_id}`, { state: { seekTo: a.timestamp_start } })}
+                          className="text-primary hover:underline cursor-pointer"
+                          title="Ir para este momento no vídeo"
+                        >
+                          {fmtTime(a.timestamp_start)}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-text-muted font-mono text-xs">{fmtTime(a.timestamp_end)}</td>
                       <td className="px-4 py-3 text-text-muted font-mono text-xs">{fmt3(a.confidence)}</td>
                     </tr>
                   ))

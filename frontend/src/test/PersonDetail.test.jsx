@@ -192,3 +192,39 @@ describe('PersonDetail — navegação cruzada para vídeo', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/videos/42')
   })
 })
+
+describe('PersonDetail — formato de tempo MM:SS na timeline', () => {
+  beforeEach(async () => {
+    vi.resetModules()
+    vi.clearAllMocks()
+    const api = (await import('../services/api')).default
+    api.get.mockImplementation((url) => {
+      if (url.includes('/timeline')) return Promise.resolve({ data: MOCK_TIMELINE })
+      if (url.includes('/frames')) return Promise.resolve({ data: [] })
+      if (url.includes('/stats')) return Promise.resolve({ data: MOCK_STATS })
+      if (url.includes('/quality')) return Promise.resolve({ data: {} })
+      return Promise.resolve({ data: MOCK_PERSON })
+    })
+  })
+
+  it('exibe timestamp como MM:SS (não como "Xs")', async () => {
+    await renderPersonDetail()
+    await waitFor(() => screen.getByText('reuniao.mp4'))
+    // timestamp_start=1.0 → "0:01", NÃO "1.0s"
+    expect(screen.getByText('0:01')).toBeTruthy()
+    expect(screen.queryByText('1.0s')).toBeNull()
+  })
+
+  it('Início é um botão clicável que navega ao vídeo com seekTo no state', async () => {
+    await renderPersonDetail()
+    await waitFor(() => screen.getByText('reuniao.mp4'))
+
+    const inicioBtn = screen.getByTestId('timeline-seek-42-10')
+    fireEvent.click(inicioBtn)
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/videos/42',
+      expect.objectContaining({ state: expect.objectContaining({ seekTo: 1.0 }) })
+    )
+  })
+})

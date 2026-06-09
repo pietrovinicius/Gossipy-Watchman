@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, UserCircle, ChevronRight, GitMerge, ScanFace, X, Loader2, Link, Trash2, RotateCcw, Eye } from 'lucide-react'
+import { Search, UserCircle, ChevronRight, GitMerge, ScanFace, X, Loader2, Link, Trash2, RotateCcw, Eye, LayoutGrid, Table2, ChevronUp, ChevronDown } from 'lucide-react'
 import Layout from '../components/Layout'
 import InlineEdit from '../components/InlineEdit'
 import CategoryBadge from '../components/CategoryBadge'
@@ -122,6 +122,9 @@ export default function People() {
   const [showDeleted, setShowDeleted] = useState(false)
   const [personToDelete, setPersonToDelete] = useState(null)
 
+  const [viewMode, setViewMode] = useState('grid')
+  const [sortDir, setSortDir] = useState('asc')
+
   // face search
   const { results: faceResults, loading: faceLoading, error: faceError, queryTimeMs, search: faceSearch, reset: faceReset } = useFaceSearch()
   const [faceSearchOpen, setFaceSearchOpen] = useState(false)
@@ -214,9 +217,12 @@ export default function People() {
     }
   }
 
-  const filtered = people?.filter((p) =>
+  const filtered = (people?.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
-  ) ?? []
+  ) ?? []).slice().sort((a, b) => {
+    const cmp = a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
+    return sortDir === 'asc' ? cmp : -cmp
+  })
 
   return (
     <Layout>
@@ -350,6 +356,32 @@ export default function People() {
           />
         </div>
 
+        {/* View toggle */}
+        <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 w-fit">
+          <button
+            onClick={() => setViewMode('grid')}
+            aria-label="Visão em grade"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors
+                        ${viewMode === 'grid'
+                          ? 'bg-primary text-white'
+                          : 'text-text-muted hover:text-text-base'}`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" aria-hidden="true" />
+            Grade
+          </button>
+          <button
+            onClick={() => setViewMode('table')}
+            aria-label="Visão em tabela"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors
+                        ${viewMode === 'table'
+                          ? 'bg-primary text-white'
+                          : 'text-text-muted hover:text-text-base'}`}
+          >
+            <Table2 className="w-3.5 h-3.5" aria-hidden="true" />
+            Tabela
+          </button>
+        </div>
+
         {mergeMode && (
           <p className="text-xs text-text-muted bg-surface border border-border rounded-lg px-3 py-2">
             Selecione 2 ou mais perfis. Depois defina qual é o perfil principal antes de mesclar.
@@ -360,7 +392,7 @@ export default function People() {
           <p role="alert" className="text-error-color text-sm">{error}</p>
         )}
 
-        {/* Grid */}
+        {/* Content */}
         {people === null ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }, (_, i) => (
@@ -373,6 +405,66 @@ export default function People() {
             <p className="text-sm">
               {search ? 'Nenhuma pessoa encontrada para esta busca.' : 'Nenhuma pessoa catalogada ainda.'}
             </p>
+          </div>
+        ) : viewMode === 'table' ? (
+          <div className="card p-0 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left px-4 py-2.5 font-medium">
+                      <button
+                        data-testid="sort-by-name"
+                        onClick={() => setSortDir((d) => d === 'asc' ? 'desc' : 'asc')}
+                        className="flex items-center gap-1 text-text-muted hover:text-text-base transition-colors cursor-pointer"
+                      >
+                        Nome
+                        {sortDir === 'asc'
+                          ? <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />
+                          : <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />}
+                      </button>
+                    </th>
+                    <th className="text-left px-4 py-2.5 text-text-muted font-medium">Categoria</th>
+                    <th className="text-left px-4 py-2.5 text-text-muted font-medium">Cadastrado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((p) => (
+                    <tr
+                      key={p.id}
+                      onClick={() => !mergeMode && navigate(`/people/${p.id}`)}
+                      className={`border-b border-border/50 transition-colors duration-150
+                                  ${mergeMode ? '' : 'hover:bg-surface/60 cursor-pointer'}
+                                  ${p.deleted_at ? 'opacity-50' : ''}`}
+                    >
+                      <td className="px-4 py-3 font-medium text-text-base">
+                        {mergeMode && (
+                          <input
+                            type="checkbox"
+                            checked={selected.includes(p.id)}
+                            onChange={() => toggleSelect(p.id)}
+                            className="mr-2 accent-primary"
+                            aria-label={selected.includes(p.id) ? `Desmarcar ${p.name}` : `Selecionar ${p.name}`}
+                          />
+                        )}
+                        {p.name}
+                        {p.deleted_at && (
+                          <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-error-color/20 text-error-color">
+                            Excluído
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <CategoryBadge category={p.category} />
+                      </td>
+                      <td className="px-4 py-3 text-text-muted text-xs">
+                        {new Date(p.created_at).toLocaleDateString('pt-BR')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
