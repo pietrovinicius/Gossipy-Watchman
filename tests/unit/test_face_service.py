@@ -172,10 +172,11 @@ def test_extract_embeddings_one_face_returns_one_tuple():
         result = extract_embeddings(make_bgr_frame())
 
     assert len(result) == 1
-    embedding, location, det_score = result[0]
+    embedding, location, det_score, bbox = result[0]
     assert embedding.shape == (512,)
     assert len(location) == 4  # (top, right, bottom, left)
     assert isinstance(det_score, float)
+    assert bbox.shape == (4,)
 
 
 def test_extract_embeddings_discards_low_det_score():

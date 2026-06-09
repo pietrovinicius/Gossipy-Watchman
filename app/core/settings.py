@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     # Agregação por aparição contínua (track)
     FACE_TRACK_GAP_TOLERANCE: float = 2.0
     FACE_TRACK_MIN_SAMPLES: int = 2
+    FACE_TRACK_IOU_THRESHOLD: float = 0.3
 
     # k-NN voting
     FACE_KNN_K: int = 3

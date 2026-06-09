@@ -206,6 +206,8 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
                             f"motion_ratio={motion_ratio:.4f} run_detection={run_detection}"
                         )
 
+            tracker._close_stale_tracks(float(timestamp_real))
+
             if run_detection:
                 h, w = frame.shape[:2]
                 if w > settings.INSIGHTFACE_HIGH_RES_THRESHOLD:
@@ -218,9 +220,10 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
                 else:
                     frame_detect = frame
                 embeddings = face_service.extract_embeddings(frame_detect)
-                for embedding, location, det_score in embeddings:
+                for embedding, location, det_score, bbox in embeddings:
                     tracker.add_detection(embedding, location, frame_detect,
-                                          timestamp=float(timestamp_real), det_score=det_score)
+                                          timestamp=float(timestamp_real),
+                                          det_score=det_score, bbox=bbox)
                 if settings.MOTION_GATING_ENABLED:
                     prev_gray = gray
                     last_forced_detection = float(timestamp_real)

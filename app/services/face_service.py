@@ -77,7 +77,10 @@ def is_good_quality_frame(
     return bool(variance >= blur_threshold)
 
 
-def extract_embeddings(frame: np.ndarray) -> list[tuple[np.ndarray, tuple, float]]:
+def extract_embeddings(
+    frame: np.ndarray,
+) -> list[tuple[np.ndarray, tuple, float, np.ndarray]]:
+    """Retorna lista de (embedding, location, det_score, bbox) por face detectada."""
     app = get_face_app()
     faces = app.get(frame)
 
@@ -90,7 +93,7 @@ def extract_embeddings(frame: np.ndarray) -> list[tuple[np.ndarray, tuple, float
         pose = face.pose if hasattr(face, "pose") else None
         if not is_good_quality_frame(location, frame, det_score=score, pose=pose):
             continue
-        result.append((face.embedding, location, score))
+        result.append((face.embedding, location, score, face.bbox.copy()))
 
     logger.debug(
         "[EXTRACT] faces_boa_qualidade=%d descartadas=%d",
@@ -98,6 +101,21 @@ def extract_embeddings(frame: np.ndarray) -> list[tuple[np.ndarray, tuple, float
         len(faces) - len(result),
     )
     return result
+
+
+def _iou(bbox_a: np.ndarray, bbox_b: np.ndarray) -> float:
+    """IoU entre dois bboxes [x1, y1, x2, y2]."""
+    ax1, ay1, ax2, ay2 = float(bbox_a[0]), float(bbox_a[1]), float(bbox_a[2]), float(bbox_a[3])
+    bx1, by1, bx2, by2 = float(bbox_b[0]), float(bbox_b[1]), float(bbox_b[2]), float(bbox_b[3])
+    inter_x1 = max(ax1, bx1)
+    inter_y1 = max(ay1, by1)
+    inter_x2 = min(ax2, bx2)
+    inter_y2 = min(ay2, by2)
+    inter_area = max(0.0, inter_x2 - inter_x1) * max(0.0, inter_y2 - inter_y1)
+    area_a = (ax2 - ax1) * (ay2 - ay1)
+    area_b = (bx2 - bx1) * (by2 - by1)
+    union = area_a + area_b - inter_area
+    return inter_area / union if union > 0 else 0.0
 
 
 class FaceTrack:
@@ -143,17 +161,25 @@ class FaceTrack:
 
 
 class FaceTracker:
-    """Agrupa detecções consecutivas em tracks, descartando aparições muito curtas."""
+    """Agrupa detecções consecutivas em tracks por IoU, suportando múltiplas faces simultâneas."""
 
     def __init__(
         self,
         gap_tolerance: float = settings.FACE_TRACK_GAP_TOLERANCE,
         min_samples: int = settings.FACE_TRACK_MIN_SAMPLES,
+        iou_threshold: float = settings.FACE_TRACK_IOU_THRESHOLD,
     ):
         self.gap_tolerance = gap_tolerance
         self.min_samples = min_samples
-        self.active_track: FaceTrack | None = None
+        self.iou_threshold = iou_threshold
+        self.active_tracks: list[tuple[np.ndarray, FaceTrack]] = []
         self.closed_tracks: list[FaceTrack] = []
+
+    @property
+    def active_track(self) -> FaceTrack | None:
+        """Compatibilidade retroativa: retorna o único track ativo, ou None."""
+        non_expired = [t for _, t in self.active_tracks]
+        return non_expired[0] if len(non_expired) == 1 else None
 
     def add_detection(
         self,
@@ -162,37 +188,66 @@ class FaceTracker:
         frame: np.ndarray,
         timestamp: float,
         det_score: float = 1.0,
+        bbox: np.ndarray | None = None,
     ) -> None:
-        if self.active_track is None:
-            self.active_track = FaceTrack(start_time=timestamp)
-        elif timestamp - self.active_track.last_seen > self.gap_tolerance:
-            self._close_active_track()
-            self.active_track = FaceTrack(start_time=timestamp)
+        self._close_stale_tracks(timestamp)
 
-        self.active_track.add_frame_data(embedding, location, frame, timestamp, det_score=det_score)
+        best_idx = -1
+        best_iou = 0.0
 
-    def _close_active_track(self) -> None:
-        if (
-            self.active_track is not None
-            and self.active_track.sample_count >= self.min_samples
-        ):
-            self.closed_tracks.append(self.active_track)
-            logger.debug(
-                "[TRACKER] track fechado start=%.1fs last_seen=%.1fs samples=%d",
-                self.active_track.start_time,
-                self.active_track.last_seen,
-                self.active_track.sample_count,
-            )
-        elif self.active_track is not None:
-            logger.debug(
-                "[TRACKER] track descartado samples=%d < min_samples=%d",
-                self.active_track.sample_count,
-                self.min_samples,
-            )
-        self.active_track = None
+        if bbox is not None:
+            for i, (last_bbox, track) in enumerate(self.active_tracks):
+                iou = _iou(last_bbox, bbox)
+                if iou > best_iou:
+                    best_iou = iou
+                    best_idx = i
+        else:
+            # Modo legado (sem bbox): associar ao primeiro track ativo disponível
+            if self.active_tracks:
+                best_idx = 0
+                best_iou = 1.0
+
+        if best_iou >= self.iou_threshold and best_idx >= 0:
+            last_bbox, track = self.active_tracks[best_idx]
+            track.add_frame_data(embedding, location, frame, timestamp, det_score=det_score)
+            if bbox is not None:
+                self.active_tracks[best_idx] = (bbox, track)
+        else:
+            new_track = FaceTrack(start_time=timestamp)
+            new_track.add_frame_data(embedding, location, frame, timestamp, det_score=det_score)
+            placeholder = bbox if bbox is not None else np.zeros(4, dtype=np.float32)
+            self.active_tracks.append((placeholder, new_track))
+            logger.debug("[TRACKER] novo track iniciado em t=%.1fs", timestamp)
+
+    def _close_stale_tracks(self, current_time: float) -> None:
+        still_active = []
+        for last_bbox, track in self.active_tracks:
+            if current_time - track.last_seen > self.gap_tolerance:
+                if track.sample_count >= self.min_samples:
+                    self.closed_tracks.append(track)
+                    logger.debug(
+                        "[TRACKER] track fechado start=%.1fs last_seen=%.1fs samples=%d",
+                        track.start_time, track.last_seen, track.sample_count,
+                    )
+                else:
+                    logger.debug(
+                        "[TRACKER] track descartado samples=%d < min_samples=%d",
+                        track.sample_count, self.min_samples,
+                    )
+            else:
+                still_active.append((last_bbox, track))
+        self.active_tracks = still_active
 
     def flush(self) -> list[FaceTrack]:
-        self._close_active_track()
+        for _, track in self.active_tracks:
+            if track.sample_count >= self.min_samples:
+                self.closed_tracks.append(track)
+            else:
+                logger.debug(
+                    "[TRACKER] track descartado no flush samples=%d < min_samples=%d",
+                    track.sample_count, self.min_samples,
+                )
+        self.active_tracks = []
         return self.closed_tracks
 
 

@@ -146,3 +146,103 @@ def test_face_tracker_uses_settings_defaults():
 
     assert tracker.gap_tolerance == settings.FACE_TRACK_GAP_TOLERANCE
     assert tracker.min_samples == settings.FACE_TRACK_MIN_SAMPLES
+
+
+# ── Task 1: multi-face com IoU ────────────────────────────────────────────────
+
+def make_l2_emb(seed: int = 0) -> np.ndarray:
+    rng = np.random.default_rng(seed)
+    v = rng.random(512).astype(np.float32)
+    return v / np.linalg.norm(v)
+
+
+def test_iou_retorna_zero_para_bboxes_sem_sobreposicao():
+    from app.services.face_service import _iou
+
+    a = np.array([0, 0, 100, 100], dtype=np.float32)
+    b = np.array([200, 0, 300, 100], dtype=np.float32)
+    assert _iou(a, b) == 0.0
+
+
+def test_iou_retorna_um_para_bboxes_identicas():
+    from app.services.face_service import _iou
+
+    a = np.array([10, 20, 110, 120], dtype=np.float32)
+    assert abs(_iou(a, a) - 1.0) < 1e-6
+
+
+def test_iou_parcial():
+    from app.services.face_service import _iou
+
+    a = np.array([0, 0, 100, 100], dtype=np.float32)
+    b = np.array([50, 0, 150, 100], dtype=np.float32)
+    iou = _iou(a, b)
+    assert 0.0 < iou < 1.0
+
+
+def test_tracker_cria_dois_tracks_para_duas_faces_simultaneas():
+    """Duas faces sem sobreposição → dois tracks separados."""
+    from app.services.face_service import FaceTracker
+
+    tracker = FaceTracker(gap_tolerance=2.0, min_samples=1)
+    bbox1 = np.array([0, 0, 100, 100], dtype=np.float32)
+    bbox2 = np.array([200, 0, 300, 100], dtype=np.float32)
+    frame = make_frame()
+    loc = (0, 100, 100, 0)
+
+    tracker.add_detection(make_l2_emb(1), loc, frame, timestamp=1.0, bbox=bbox1)
+    tracker.add_detection(make_l2_emb(2), loc, frame, timestamp=1.0, bbox=bbox2)
+
+    assert len(tracker.active_tracks) == 2
+
+
+def test_tracker_associa_face_ao_track_com_maior_iou():
+    """Segunda detecção na mesma posição deve estender o track existente."""
+    from app.services.face_service import FaceTracker
+
+    tracker = FaceTracker(gap_tolerance=5.0, min_samples=1)
+    bbox = np.array([10, 10, 110, 110], dtype=np.float32)
+    frame = make_frame()
+    loc = (10, 110, 110, 10)
+
+    tracker.add_detection(make_l2_emb(1), loc, frame, timestamp=1.0, bbox=bbox)
+    tracker.add_detection(make_l2_emb(2), loc, frame, timestamp=2.0, bbox=bbox)
+
+    assert len(tracker.active_tracks) == 1
+    _, track = tracker.active_tracks[0]
+    assert track.sample_count == 2
+
+
+def test_close_stale_tracks_fecha_tracks_expirados():
+    """_close_stale_tracks deve mover tracks expirados para closed_tracks."""
+    from app.services.face_service import FaceTracker
+
+    tracker = FaceTracker(gap_tolerance=2.0, min_samples=1)
+    bbox = np.array([0, 0, 100, 100], dtype=np.float32)
+    frame = make_frame()
+    loc = (0, 100, 100, 0)
+
+    tracker.add_detection(make_l2_emb(1), loc, frame, timestamp=0.0, bbox=bbox)
+    # detectar t=10.0 — gap 10 > 2.0
+    tracker._close_stale_tracks(current_time=10.0)
+
+    assert len(tracker.closed_tracks) == 1
+    assert len(tracker.active_tracks) == 0
+
+
+def test_flush_com_multiple_tracks():
+    """flush deve fechar todos os tracks ativos."""
+    from app.services.face_service import FaceTracker
+
+    tracker = FaceTracker(gap_tolerance=5.0, min_samples=1)
+    frame = make_frame()
+    loc = (0, 100, 100, 0)
+    bbox1 = np.array([0, 0, 100, 100], dtype=np.float32)
+    bbox2 = np.array([200, 0, 300, 100], dtype=np.float32)
+
+    tracker.add_detection(make_l2_emb(1), loc, frame, timestamp=1.0, bbox=bbox1)
+    tracker.add_detection(make_l2_emb(2), loc, frame, timestamp=1.0, bbox=bbox2)
+
+    closed = tracker.flush()
+    assert len(closed) == 2
+    assert len(tracker.active_tracks) == 0
