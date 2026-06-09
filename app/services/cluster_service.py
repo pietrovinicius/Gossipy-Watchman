@@ -41,11 +41,12 @@ def run_clusterization(db: Session) -> None:
         logger.info("run_clusterization: perfis elegíveis insuficientes (%s) para clusterização", n)
         return
 
-    # 5. Calcula distâncias e monta o grafo de adjacência (Single Linkage / Connected Components)
+    # 5. Calcula distâncias coseno e monta o grafo de adjacência (Single Linkage / Connected Components)
+    # ArcFace embeddings são L2-normalizados → coseno = 1 - dot(a, b)
     adj = {i: [] for i in range(n)}
     for i in range(n):
         for j in range(i + 1, n):
-            dist = np.linalg.norm(active_embeddings[i][1] - active_embeddings[j][1])
+            dist = float(1.0 - np.dot(active_embeddings[i][1], active_embeddings[j][1]))
             if dist < settings.FACE_RECOGNITION_TOLERANCE:
                 adj[i].append(j)
                 adj[j].append(i)

@@ -82,3 +82,43 @@ def test_confidence_not_downgraded(db_session):
     app_obj = upsert_appearance(session, person_id, video_id, timestamp=6.0, confidence=0.5)
 
     assert app_obj.confidence == pytest.approx(0.2)
+
+
+# ── Task 6: gap tolerance deve vir de settings, não hardcoded ─────────────────
+
+def test_upsert_usa_gap_tolerance_de_settings(db_session):
+    """Aparição a 8s deve ser estendida quando gap_tolerance=10s via settings."""
+    from unittest.mock import patch
+    from app.services.appearance_service import upsert_appearance
+    from app.models import Appearance
+    session, person_id, video_id = db_session
+
+    with patch("app.services.appearance_service.settings") as mock_s:
+        mock_s.FACE_TRACK_GAP_TOLERANCE = 10.0
+        upsert_appearance(session, person_id, video_id, timestamp=0.0, confidence=0.1)
+        app2 = upsert_appearance(session, person_id, video_id, timestamp=8.0, confidence=0.2)
+
+    appearances = session.query(Appearance).filter(
+        Appearance.person_id == person_id,
+        Appearance.video_id == video_id,
+    ).all()
+    assert len(appearances) == 1, (
+        "8s deve ser dentro do gap de 10s → mesma aparição estendida; "
+        "se 2 registros, gap_tolerance está hardcoded em 2.0"
+    )
+    assert app2.timestamp_end == pytest.approx(8.0)
+
+
+def test_upsert_cria_nova_aparicao_quando_gap_settings_excedido(db_session):
+    """Aparição a 15s deve criar novo registro quando gap_tolerance=10s."""
+    from unittest.mock import patch
+    from app.services.appearance_service import upsert_appearance
+    from app.models import Appearance
+    session, person_id, video_id = db_session
+
+    with patch("app.services.appearance_service.settings") as mock_s:
+        mock_s.FACE_TRACK_GAP_TOLERANCE = 10.0
+        app1 = upsert_appearance(session, person_id, video_id, timestamp=0.0, confidence=0.1)
+        app2 = upsert_appearance(session, person_id, video_id, timestamp=15.0, confidence=0.2)
+
+    assert app1.id != app2.id

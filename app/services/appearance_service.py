@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
+from app.core.settings import settings
 from app.models.appearance import Appearance
 from app.models.video import Video
 
@@ -17,8 +18,6 @@ class AppearanceWithVideo:
     confidence: float
     file_name: str
 
-_GAP_TOLERANCE_SECONDS = 2.0
-
 
 def upsert_appearance(
     db: Session,
@@ -27,6 +26,7 @@ def upsert_appearance(
     timestamp: float,
     confidence: float,
 ) -> Appearance:
+    gap = settings.FACE_TRACK_GAP_TOLERANCE
     # Aparição "open" (timestamp_end=None) só corresponde se o start estiver dentro da tolerância.
     # Aparição "fechada" corresponde se o end estiver dentro da tolerância.
     existing = (
@@ -36,11 +36,11 @@ def upsert_appearance(
             Appearance.video_id == video_id,
             (
                 (Appearance.timestamp_end == None)  # noqa: E711
-                & (Appearance.timestamp_start >= timestamp - _GAP_TOLERANCE_SECONDS)
+                & (Appearance.timestamp_start >= timestamp - gap)
             )
             | (
                 (Appearance.timestamp_end != None)  # noqa: E711
-                & (Appearance.timestamp_end >= timestamp - _GAP_TOLERANCE_SECONDS)
+                & (Appearance.timestamp_end >= timestamp - gap)
             ),
         )
         .order_by(Appearance.timestamp_start.desc())
