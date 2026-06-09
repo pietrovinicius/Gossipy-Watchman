@@ -12,6 +12,16 @@ class PersonCategory(str, Enum):
     monitorado = "Monitorado"
 
 
+class PersonEmployeeInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    registration: str
+    department: str | None
+    role: str | None
+    active: bool
+
+
 class PersonResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -22,6 +32,7 @@ class PersonResponse(BaseModel):
     notes: str | None = None
     category: str = PersonCategory.desconhecido.value
     deleted_at: datetime | None = None
+    employee: PersonEmployeeInfo | None = None
 
     @field_validator("category", mode="before")
     @classmethod

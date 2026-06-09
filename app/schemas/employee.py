@@ -2,6 +2,13 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
+class PromoteToEmployeeRequest(BaseModel):
+    registration: str = Field(..., min_length=1)
+    department: str | None = None
+    role: str | None = None
+    notes: str | None = None
+
+
 class EmployeeCreate(BaseModel):
     name: str = Field(..., min_length=1)
     registration: str = Field(..., min_length=1)

@@ -12,7 +12,9 @@ from app.schemas.person import (
     PrimaryPhotoRequest,
     ProfileQualityResponse,
 )
+from app.schemas.employee import EmployeeResponse, PromoteToEmployeeRequest
 from app.services import person_service, cluster_service
+from app.services.employee_service import promote_person_to_employee
 from app.schemas.cluster import ClusterGroupResponse
 from app.services.auth_service import get_current_user
 
@@ -51,6 +53,19 @@ def get_clusters(
 
 # CRITICAL: /people/merge, /people/{id}/restore MUST precede /people/{person_id}
 # FastAPI treats literal path segments as int params if order is reversed
+@router.post("/people/{person_id}/promote", response_model=EmployeeResponse, status_code=201)
+def promote_person(
+    person_id: int,
+    body: PromoteToEmployeeRequest,
+    db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
+) -> EmployeeResponse:
+    employee = promote_person_to_employee(
+        db, person_id, body.registration, body.department, body.role, body.notes
+    )
+    return EmployeeResponse.model_validate(employee)
+
+
 @router.post("/people/{person_id}/restore", response_model=PersonResponse)
 def restore_person(
     person_id: int,

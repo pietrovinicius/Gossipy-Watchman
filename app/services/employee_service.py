@@ -123,6 +123,41 @@ def update_employee(
     return employee
 
 
+def promote_person_to_employee(
+    db: Session,
+    person_id: int,
+    registration: str,
+    department: str | None,
+    role: str | None,
+    notes: str | None,
+) -> Employee:
+    person = db.query(Person).filter_by(id=person_id).first()
+    if not person:
+        raise HTTPException(status_code=404, detail="Pessoa não encontrada")
+
+    if person.employee is not None:
+        raise HTTPException(status_code=409, detail="Pessoa já é funcionária")
+
+    existing = db.query(Employee).filter_by(registration=registration).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Matrícula já cadastrada")
+
+    employee = Employee(
+        name=person.name,
+        registration=registration,
+        department=department,
+        role=role,
+        notes=notes,
+        photo_path=person.profile_image_path,
+        person_id=person.id,
+        active=1,
+    )
+    db.add(employee)
+    db.commit()
+    db.refresh(employee)
+    return employee
+
+
 def deactivate_employee(db: Session, employee_id: int) -> Employee | None:
     employee = db.query(Employee).filter_by(id=employee_id).first()
     if not employee:

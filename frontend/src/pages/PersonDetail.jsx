@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, UserCircle, Pencil, Check, X, AlertCircle, Download, Loader2, ExternalLink, Trash2, RotateCcw } from 'lucide-react'
+import { ArrowLeft, UserCircle, Pencil, Check, X, AlertCircle, Download, Loader2, ExternalLink, Trash2, RotateCcw, BadgeCheck } from 'lucide-react'
 import Layout from '../components/Layout'
 import CategoryBadge from '../components/CategoryBadge'
 import ConfirmModal from '../components/ConfirmModal'
@@ -52,6 +52,14 @@ export default function PersonDetail() {
   const [photoModalOpen, setPhotoModalOpen] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [actionErr, setActionErr] = useState('')
+
+  // promote to employee state
+  const [promoteOpen, setPromoteOpen] = useState(false)
+  const [promoteRegistration, setPromoteRegistration] = useState('')
+  const [promoteDepartment, setPromoteDepartment] = useState('')
+  const [promoteRole, setPromoteRole] = useState('')
+  const [promoteErr, setPromoteErr] = useState('')
+  const [promoting, setPromoting] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -136,6 +144,29 @@ export default function PersonDetail() {
       setNameInput(res.data.name)
     } catch (err) {
       setActionErr(err.response?.data?.detail ?? err.message)
+    }
+  }
+
+  async function handlePromote() {
+    if (!promoteRegistration.trim()) { setPromoteErr('Matrícula é obrigatória.'); return }
+    setPromoting(true)
+    setPromoteErr('')
+    try {
+      await api.post(`/people/${id}/promote`, {
+        registration: promoteRegistration.trim(),
+        department: promoteDepartment.trim() || null,
+        role: promoteRole.trim() || null,
+      })
+      const res = await api.get(`/people/${id}`)
+      setPerson(res.data)
+      setPromoteOpen(false)
+      setPromoteRegistration('')
+      setPromoteDepartment('')
+      setPromoteRole('')
+    } catch (err) {
+      setPromoteErr(err.response?.data?.detail ?? err.message)
+    } finally {
+      setPromoting(false)
     }
   }
 
@@ -336,15 +367,97 @@ export default function PersonDetail() {
                   {metaErr && <p className="text-xs text-error-color">{metaErr}</p>}
                 </div>
               ) : (
-                <div className="flex items-start gap-3">
-                  <CategoryBadge category={person.category} />
-                  {person.notes && (
-                    <p className="text-xs text-text-muted italic">{person.notes}</p>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-start gap-3">
+                    <CategoryBadge category={person.category} />
+                    {person.notes && (
+                      <p className="text-xs text-text-muted italic">{person.notes}</p>
+                    )}
+                    <button onClick={() => setEditingMeta(true)} aria-label="Editar categoria e notas"
+                      className="text-text-muted hover:text-primary transition-colors duration-200 cursor-pointer flex-shrink-0 ml-auto">
+                      <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+                    </button>
+                  </div>
+
+                  {/* Employee status or promote button */}
+                  {person.employee ? (
+                    <div className="flex items-center gap-2 text-xs text-success" data-testid="employee-badge">
+                      <BadgeCheck className="w-3.5 h-3.5" aria-hidden="true" />
+                      <span>Funcionário — Matrícula <strong>{person.employee.registration}</strong></span>
+                      {person.employee.department && <span className="text-text-muted">· {person.employee.department}</span>}
+                      {person.employee.role && <span className="text-text-muted">· {person.employee.role}</span>}
+                    </div>
+                  ) : person.category === 'Funcionário' && (
+                    promoteOpen ? (
+                      <div className="space-y-2 pt-1 border border-border rounded-xl p-3 bg-surface" data-testid="promote-form">
+                        <p className="text-xs font-semibold text-text-base">Promover a Funcionário</p>
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs text-text-muted w-24 flex-shrink-0">Matrícula*</label>
+                          <input
+                            type="text"
+                            value={promoteRegistration}
+                            onChange={(e) => setPromoteRegistration(e.target.value)}
+                            placeholder="ex: MAT001"
+                            aria-label="Matrícula"
+                            data-testid="promote-registration-input"
+                            className="flex-1 bg-bg border border-border rounded-lg px-2 py-1.5 text-sm
+                                       text-text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs text-text-muted w-24 flex-shrink-0">Departamento</label>
+                          <input
+                            type="text"
+                            value={promoteDepartment}
+                            onChange={(e) => setPromoteDepartment(e.target.value)}
+                            placeholder="ex: TI"
+                            aria-label="Departamento"
+                            className="flex-1 bg-bg border border-border rounded-lg px-2 py-1.5 text-sm
+                                       text-text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs text-text-muted w-24 flex-shrink-0">Cargo</label>
+                          <input
+                            type="text"
+                            value={promoteRole}
+                            onChange={(e) => setPromoteRole(e.target.value)}
+                            placeholder="ex: Analista"
+                            aria-label="Cargo"
+                            className="flex-1 bg-bg border border-border rounded-lg px-2 py-1.5 text-sm
+                                       text-text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                        {promoteErr && <p className="text-xs text-error-color" role="alert">{promoteErr}</p>}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handlePromote}
+                            disabled={promoting}
+                            data-testid="promote-confirm-btn"
+                            className="btn-primary text-xs px-3 py-1.5"
+                          >
+                            {promoting ? 'Salvando…' : 'Confirmar'}
+                          </button>
+                          <button
+                            onClick={() => { setPromoteOpen(false); setPromoteErr('') }}
+                            className="text-xs px-3 py-1.5 border border-border rounded-lg text-text-muted hover:text-text-base"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setPromoteOpen(true)}
+                        data-testid="promote-btn"
+                        className="self-start flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
+                                   border-primary/40 text-primary hover:bg-primary/10 transition-colors"
+                      >
+                        <BadgeCheck className="w-3.5 h-3.5" aria-hidden="true" />
+                        Promover a Funcionário
+                      </button>
+                    )
                   )}
-                  <button onClick={() => setEditingMeta(true)} aria-label="Editar categoria e notas"
-                    className="text-text-muted hover:text-primary transition-colors duration-200 cursor-pointer flex-shrink-0 ml-auto">
-                    <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
-                  </button>
                 </div>
               )}
             </div>

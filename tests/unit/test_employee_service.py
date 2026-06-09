@@ -214,3 +214,82 @@ class TestDeactivateEmployee:
 
         assert result is not None
         assert mock_db.commit.called
+
+
+class TestPromotePersonToEmployee:
+
+    def test_promote_creates_employee_linked_to_person(self, mock_db):
+        from app.services.employee_service import promote_person_to_employee
+
+        mock_person = MagicMock(id=5, name="Ana", profile_image_path="storage/faces/ana.jpg", employee=None)
+
+        call_count = {"n": 0}
+
+        def query_side_effect(model):
+            call_count["n"] += 1
+            m = MagicMock()
+            if call_count["n"] == 1:
+                # Person lookup
+                m.filter_by.return_value.first.return_value = mock_person
+            else:
+                # Employee registration duplicate check
+                m.filter_by.return_value.first.return_value = None
+            return m
+
+        mock_db.query.side_effect = query_side_effect
+
+        result = promote_person_to_employee(mock_db, 5, "MAT100", "RH", "Analista", None)
+
+        assert result is not None
+        assert mock_db.add.called
+        assert mock_db.commit.called
+
+    def test_promote_person_not_found_raises_404(self, mock_db):
+        from app.services.employee_service import promote_person_to_employee
+        from fastapi import HTTPException
+
+        mock_db.query.return_value.filter_by.return_value.first.return_value = None
+
+        with pytest.raises(HTTPException) as exc:
+            promote_person_to_employee(mock_db, 99, "MAT100", None, None, None)
+
+        assert exc.value.status_code == 404
+
+    def test_promote_already_employee_raises_409(self, mock_db):
+        from app.services.employee_service import promote_person_to_employee
+        from fastapi import HTTPException
+
+        mock_person = MagicMock(id=5, name="Ana", employee=MagicMock())
+        mock_db.query.return_value.filter_by.return_value.first.return_value = mock_person
+
+        with pytest.raises(HTTPException) as exc:
+            promote_person_to_employee(mock_db, 5, "MAT100", None, None, None)
+
+        assert exc.value.status_code == 409
+        assert "já é funcionária" in exc.value.detail
+
+    def test_promote_duplicate_registration_raises_409(self, mock_db):
+        from app.services.employee_service import promote_person_to_employee
+        from fastapi import HTTPException
+
+        mock_person = MagicMock(id=5, name="Ana", employee=None)
+        existing_emp = MagicMock(registration="MAT100")
+
+        call_count = {"n": 0}
+
+        def query_side_effect(model):
+            call_count["n"] += 1
+            m = MagicMock()
+            if call_count["n"] == 1:
+                m.filter_by.return_value.first.return_value = mock_person
+            else:
+                m.filter_by.return_value.first.return_value = existing_emp
+            return m
+
+        mock_db.query.side_effect = query_side_effect
+
+        with pytest.raises(HTTPException) as exc:
+            promote_person_to_employee(mock_db, 5, "MAT100", None, None, None)
+
+        assert exc.value.status_code == 409
+        assert "Matrícula" in exc.value.detail
