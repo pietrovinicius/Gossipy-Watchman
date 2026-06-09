@@ -5,6 +5,137 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.20.0] — 2026-06-09
+
+### Adicionado
+- **feat(video-detail)**: split layout de duas colunas — VideoPlayer em coluna `sticky` à esquerda (58%) e cards de pessoas em coluna scrollável à direita (42%). Elimina necessidade de scroll para ver o vídeo e os cards simultaneamente durante análise de identificação. Header e summary cards mantidos em largura total acima do split. `max-w-4xl` → `max-w-7xl` para aproveitar telas largas (monitores de vigilância). 2 novos testes RED→GREEN.
+
+---
+
+## [2.19.0] — 2026-06-09
+
+### Corrigido
+- **fix(videoplayer)**: sincronização barra de presença ↔ cards de pessoa. Causa raiz: segmentos "Desconhecido" usavam cor `#6B7280` (gray-500), indistinguível do fundo cinza da barra. Clique no que parecia ser o fundo acertava um segmento adjacente em outro timestamp. Correções: (1) cor Desconhecido `#6B7280` → `#334155` (slate-800); (2) `onClick` no fundo da barra com guarda `e.target !== e.currentTarget` para seek proporcional via `clientX`; (3) `handleSegmentSeek` usa `getPeopleOnScreen(ts)` para determinar o card correto a scrollar. 3 novos testes.
+
+---
+
+## [2.18.0] — 2026-06-09
+
+### Adicionado
+- **feat(people)**: toggle Grade/Tabela abaixo do campo de busca. Visão de tabela exibe colunas Nome (ordenável A→Z/Z→A via ChevronDown/Up), Categoria e Cadastrado. Ordenação também aplicada na visão grade.
+- **feat(timeline)**: coluna "Início" na Timeline de aparições de `PersonDetail` exibe timestamps em `MM:SS` (ex.: 3618.4s → "60:18") e é clicável, navegando para `/videos/{video_id}` com `state.seekTo = timestamp_start`.
+- **feat(video-detail)**: `VideoDetail` lê `location.state?.seekTo` na inicialização — ao chegar via clique no "Início" da timeline, o player salta automaticamente para o instante correto.
+
+---
+
+## [2.17.0] — 2026-06-09
+
+### Corrigido
+- **fix(upload)**: corrige 400 Bad Request ao enviar qualquer arquivo. Causa raiz: `handleUpload` definia `Content-Type: multipart/form-data` manualmente sem o `boundary` — python-multipart exige o boundary para parsear o body. Fix: remove o header manual (Axios detecta FormData e injeta o boundary correto). `setError(err.message)` → `setError(err.response?.data?.detail ?? err.message)`. `reset()`: `setProgress(0)` (ReferenceError) → `resetProgress()`. 3 novos testes.
+
+---
+
+## [2.16.0] — 2026-06-09
+
+### Corrigido
+- **fix(videoplayer)**: velocidades > 16x (25x, 50x, 100x) agora funcionam via `setInterval` com `HIGH_SPEED_INTERVAL_MS = 200ms`. Browsers limitam `playbackRate` a 16x (Chrome) ou 8x (Firefox) silenciosamente. A cada tick avança `speed × 0.2s` em `currentTime`. Ao atingir `duration`, intervalo para. Ao retornar para ≤ 16x, chama `play()` automaticamente. 3 novos testes.
+
+---
+
+## [2.15.0] — 2026-06-09
+
+### Adicionado
+- **feat(people)**: fluxo "Promover a Funcionário" em `PersonDetail`. Quando `category === "Funcionário"` e `person.employee === null`, exibe botão de promoção. Formulário inline com Matrícula (required), Departamento, Cargo. `POST /api/v1/people/{id}/promote` cria `Employee` vinculado sem nova foto/embedding. `PersonResponse` inclui `employee: PersonEmployeeInfo | None`. Backend valida existência, duplicidade de matrícula e promoção dupla (404/409). 5 testes frontend + 4 testes backend.
+
+---
+
+## [2.14.0] — 2026-06-09
+
+### Adicionado
+- **feat(videodetail)**: botões seek+pause dinâmicos — um por aparição visível. Antes: um único botão `[▶] [28:56]`. Agora: `[▶] [28:56] [29:09] [29:55]`. `data-testid` atualizado para `seek-pause-{person_id}-{appearance_id}`. Se timeline recolhida, mostra apenas as 3 primeiras; ao expandir, exibe todas.
+
+---
+
+## [2.13.0] — 2026-06-09
+
+### Adicionado
+- **feat(videodetail)**: timestamp clicável seek+pause e barra de presença scroll para card. Ícone ▶ → seek + play; texto `MM:SS` ao lado → seek + pause (`pauseSeekTo` prop). `onSegmentSeek(person_id, timestamp)` em `VideoPlayer` → `handleSegmentSeek` em `VideoDetail` → `cardRefs.current[person_id].scrollIntoView()`. Clique no segmento da barra pula o instante E rola para o card da pessoa.
+
+---
+
+## [2.12.0] — 2026-06-09
+
+### Corrigido
+- **fix(videodetail)**: `bg-background` não existe no Tailwind config → wrapper sticky era transparente. Substituído por `bg-bg` (token correto). `shadow-sm` adicionado para separação visual durante scroll.
+
+---
+
+## [2.11.0] — 2026-06-09
+
+### Adicionado
+- **feat(player)**: legenda de pessoas retrátil quando `people.length > 5`. Botão `legend-toggle` exibe "Ver legenda (N pessoas)" / "Recolher legenda". Elimina quebra de layout com 67+ nomes empilhados. Legenda sempre visível para ≤ 5 pessoas.
+
+---
+
+## [2.10.0] — 2026-06-09
+
+### Adicionado
+- **feat(videodetail)**: player sticky (`sticky top-0 z-20 bg-bg pb-3 shadow-sm`) — visível durante scroll dos cards; `data-testid="player-sticky-wrapper"`. Formato `MM:SS` (substituiu `fmtSec` que retornava `"1208.4s"`). Auto-scroll: `handleSeekClick` chama `scrollIntoView({ behavior: 'smooth', block: 'start' })` ao clicar em timestamp da timeline.
+
+---
+
+## [2.09.0] — 2026-06-09
+
+### Adicionado
+- **feat(player)**: velocidades 50x e 100x adicionadas. Array: `[0.5, 1, 1.5, 2, 6, 10, 25, 50, 100]`. 100% client-side via `playbackRate`.
+
+---
+
+## [2.08.0] — 2026-06-09
+
+### Adicionado
+- **feat(export)**: reformula CSV para relatório de vigilância CCTV. 20 colunas (era 9), delimitador `;` (compatibilidade Excel/BR). Colunas: `aparicao_num`, `inicio_formatado`/`fim_formatado` (MM:SS), `presente_por_s`/`presente_por_formatado`, `primeira_vez_s`/`primeira_vez_formatado`, `ultima_vez_s`/`ultima_vez_formatado`, `total_aparicoes_no_video`, `total_presente_no_video_s`, `video_data_upload`. Subquery SQLAlchemy calcula agregados em única passagem.
+
+---
+
+## [2.07.0] — 2026-06-09
+
+### Corrigido
+- **fix(detection)**: parâmetros calibrados para câmeras CCTV montadas em teto/parede. `FACE_MAX_PITCH_DEG` 30→55°, `FACE_MAX_YAW_DEG` 40→65°, `INSIGHTFACE_DET_SCORE` 0.7→0.45, `FACE_BLUR_THRESHOLD` 100→40, `FACE_MIN_SIZE_PX` 60→40px, `INSIGHTFACE_DET_SIZE` 640→1024, `FACE_TRACK_MIN_SAMPLES` 2→1. Causa raiz: filtro de pitch descartava silenciosamente rostos vistos do topo.
+
+---
+
+## [2.06.0] — 2026-06-09
+
+### Adicionado
+- **feat(player)**: velocidades 6x, 10x e 25x adicionadas ao `VideoPlayer`. Array expandido de `[0.5, 1, 1.5, 2]` para `[0.5, 1, 1.5, 2, 6, 10, 25]`. Client-side, zero impacto no backend.
+
+---
+
+## [2.05.0] — 2026-06-09
+
+### Corrigido
+- **fix(video_service)**: `update_file_name` não existia — toda conversão de `.dav`/`.mkv`/`.mov`/`.ts` terminava em `AttributeError → 422`. Implementado seguindo padrão de `update_file_path`.
+- **fix(upload)**: bloco `except` da conversão deletava `*_converted.mp4` mesmo quando ffmpeg tinha concluído com sucesso e o erro era em operação posterior. Reestruturado: `except` envolve apenas `convert_to_mp4`.
+
+---
+
+## [2.04.0] — 2026-06-09
+
+### Corrigido
+- **fix(upload)**: `os.remove(dest_path, missing_ok=True)` → `dest_path.unlink(missing_ok=True)` (assinatura inválida causava `TypeError → HTTP 500`). `import os` removido.
+- **fix(upload)**: arquivo convertido parcial não era limpo em falha de conversão — adicionado `converted_partial.unlink(missing_ok=True)` no bloco `except`.
+- **fix(conversion_service)**: `.dav` com timestamps descontínuos causava "Non-monotonic DTS". Adicionado `_FORMAT_EXTRA_ARGS = {".dav": ["-avoid_negative_ts", "make_zero"]}` injetado em `convert_to_mp4`.
+
+---
+
+## [2.03.0] — 2026-06-09
+
+### Adicionado
+- **feat(upload)**: suporte ao formato `.dav` (Dahua Technology — câmeras CFTV). `CONVERTIBLE_FORMATS` inclui `.dav`; convertido via `ffmpeg -c copy`. `_ALLOWED_EXTENSIONS` aceita `.dav` (validação de magic bytes pulada — formato sem padrão definido). Frontend: `.dav` adicionado à lista `ALLOWED`, ao `accept` do input e às mensagens de texto. 3 novos testes RED→GREEN.
+
+---
+
 ## [2.02.0] — 2026-06-09
 
 ### Corrigido
