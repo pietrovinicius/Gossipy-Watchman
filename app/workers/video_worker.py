@@ -70,7 +70,8 @@ def _process_track(
         db,
         person_id=person_id,
         video_id=video_id,
-        timestamp=float(track.start_time),
+        timestamp_start=float(track.start_time),
+        timestamp_end=float(track.last_seen),
         confidence=distance,
     )
     person_service.save_face_sample(db, person_id, appearance.id, best_crop, embedding=mean_embedding)

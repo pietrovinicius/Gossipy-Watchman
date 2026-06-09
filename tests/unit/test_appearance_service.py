@@ -31,11 +31,12 @@ def test_first_appearance_creates_new_record(db_session):
     from app.services.appearance_service import upsert_appearance
     session, person_id, video_id = db_session
 
-    app_obj = upsert_appearance(session, person_id, video_id, timestamp=5.0, confidence=0.3)
+    app_obj = upsert_appearance(session, person_id, video_id,
+                                timestamp_start=5.0, timestamp_end=5.0, confidence=0.3)
 
     assert app_obj.id is not None
     assert app_obj.timestamp_start == 5.0
-    assert app_obj.timestamp_end is None
+    assert app_obj.timestamp_end == pytest.approx(5.0)
     assert app_obj.confidence == 0.3
 
 
@@ -43,21 +44,21 @@ def test_continuous_appearance_extends_timestamp_end(db_session):
     from app.services.appearance_service import upsert_appearance
     session, person_id, video_id = db_session
 
-    upsert_appearance(session, person_id, video_id, timestamp=5.0, confidence=0.3)
-    app_obj = upsert_appearance(session, person_id, video_id, timestamp=6.5, confidence=0.25)
+    upsert_appearance(session, person_id, video_id, timestamp_start=5.0, timestamp_end=5.0, confidence=0.3)
+    app_obj = upsert_appearance(session, person_id, video_id, timestamp_start=6.5, timestamp_end=6.5, confidence=0.25)
 
     appearances = session.query(Appearance).all()
     assert len(appearances) == 1
-    assert app_obj.timestamp_end == 6.5
+    assert app_obj.timestamp_end == pytest.approx(6.5)
 
 
 def test_gap_creates_new_record(db_session):
     from app.services.appearance_service import upsert_appearance
     session, person_id, video_id = db_session
 
-    upsert_appearance(session, person_id, video_id, timestamp=5.0, confidence=0.3)
+    upsert_appearance(session, person_id, video_id, timestamp_start=5.0, timestamp_end=5.0, confidence=0.3)
     # gap de 10s — acima da tolerância de 2s
-    app_obj2 = upsert_appearance(session, person_id, video_id, timestamp=17.0, confidence=0.4)
+    app_obj2 = upsert_appearance(session, person_id, video_id, timestamp_start=17.0, timestamp_end=17.0, confidence=0.4)
 
     appearances = session.query(Appearance).all()
     assert len(appearances) == 2
@@ -68,8 +69,8 @@ def test_confidence_updated_if_better(db_session):
     from app.services.appearance_service import upsert_appearance
     session, person_id, video_id = db_session
 
-    upsert_appearance(session, person_id, video_id, timestamp=5.0, confidence=0.5)
-    app_obj = upsert_appearance(session, person_id, video_id, timestamp=6.0, confidence=0.2)
+    upsert_appearance(session, person_id, video_id, timestamp_start=5.0, timestamp_end=5.0, confidence=0.5)
+    app_obj = upsert_appearance(session, person_id, video_id, timestamp_start=6.0, timestamp_end=6.0, confidence=0.2)
 
     assert app_obj.confidence == pytest.approx(0.2)
 
@@ -78,8 +79,8 @@ def test_confidence_not_downgraded(db_session):
     from app.services.appearance_service import upsert_appearance
     session, person_id, video_id = db_session
 
-    upsert_appearance(session, person_id, video_id, timestamp=5.0, confidence=0.2)
-    app_obj = upsert_appearance(session, person_id, video_id, timestamp=6.0, confidence=0.5)
+    upsert_appearance(session, person_id, video_id, timestamp_start=5.0, timestamp_end=5.0, confidence=0.2)
+    app_obj = upsert_appearance(session, person_id, video_id, timestamp_start=6.0, timestamp_end=6.0, confidence=0.5)
 
     assert app_obj.confidence == pytest.approx(0.2)
 
@@ -95,8 +96,8 @@ def test_upsert_usa_gap_tolerance_de_settings(db_session):
 
     with patch("app.services.appearance_service.settings") as mock_s:
         mock_s.FACE_TRACK_GAP_TOLERANCE = 10.0
-        upsert_appearance(session, person_id, video_id, timestamp=0.0, confidence=0.1)
-        app2 = upsert_appearance(session, person_id, video_id, timestamp=8.0, confidence=0.2)
+        upsert_appearance(session, person_id, video_id, timestamp_start=0.0, timestamp_end=0.0, confidence=0.1)
+        app2 = upsert_appearance(session, person_id, video_id, timestamp_start=8.0, timestamp_end=8.0, confidence=0.2)
 
     appearances = session.query(Appearance).filter(
         Appearance.person_id == person_id,
@@ -118,7 +119,59 @@ def test_upsert_cria_nova_aparicao_quando_gap_settings_excedido(db_session):
 
     with patch("app.services.appearance_service.settings") as mock_s:
         mock_s.FACE_TRACK_GAP_TOLERANCE = 10.0
-        app1 = upsert_appearance(session, person_id, video_id, timestamp=0.0, confidence=0.1)
-        app2 = upsert_appearance(session, person_id, video_id, timestamp=15.0, confidence=0.2)
+        app1 = upsert_appearance(session, person_id, video_id, timestamp_start=0.0, timestamp_end=0.0, confidence=0.1)
+        app2 = upsert_appearance(session, person_id, video_id, timestamp_start=15.0, timestamp_end=15.0, confidence=0.2)
 
     assert app1.id != app2.id
+
+
+# ── Task 1 V3: timestamp_end deve refletir track.last_seen ────────────────────
+
+def test_upsert_grava_timestamp_end_correto(db_session):
+    """timestamp_end deve refletir fim real do track, não start."""
+    from app.services.appearance_service import upsert_appearance
+    session, person_id, video_id = db_session
+
+    app = upsert_appearance(
+        session, person_id, video_id,
+        timestamp_start=5.0, timestamp_end=12.0, confidence=0.2,
+    )
+    assert app.timestamp_start == pytest.approx(5.0)
+    assert app.timestamp_end == pytest.approx(12.0)
+
+
+def test_upsert_estende_para_cobrir_dois_tracks_proximos(db_session):
+    """Dois tracks separados por gap < tolerance devem ser mesclados."""
+    from app.services.appearance_service import upsert_appearance
+    from app.models import Appearance
+    session, person_id, video_id = db_session
+
+    # track 1: 0→8s
+    upsert_appearance(session, person_id, video_id,
+                      timestamp_start=0.0, timestamp_end=8.0, confidence=0.2)
+    # track 2: 9→15s (gap=1s < tolerance=2s → deve mesclar)
+    upsert_appearance(session, person_id, video_id,
+                      timestamp_start=9.0, timestamp_end=15.0, confidence=0.3)
+
+    appearances = session.query(Appearance).filter(
+        Appearance.person_id == person_id, Appearance.video_id == video_id
+    ).all()
+    assert len(appearances) == 1
+    assert appearances[0].timestamp_end == pytest.approx(15.0)
+
+
+def test_upsert_cria_novo_registro_quando_gap_excedido_novo(db_session):
+    """Dois tracks separados por gap > tolerance → dois registros distintos."""
+    from app.services.appearance_service import upsert_appearance
+    from app.models import Appearance
+    session, person_id, video_id = db_session
+
+    upsert_appearance(session, person_id, video_id,
+                      timestamp_start=0.0, timestamp_end=5.0, confidence=0.2)
+    upsert_appearance(session, person_id, video_id,
+                      timestamp_start=10.0, timestamp_end=15.0, confidence=0.3)
+
+    appearances = session.query(Appearance).filter(
+        Appearance.person_id == person_id, Appearance.video_id == video_id
+    ).all()
+    assert len(appearances) == 2

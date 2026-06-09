@@ -23,12 +23,11 @@ def upsert_appearance(
     db: Session,
     person_id: int,
     video_id: int,
-    timestamp: float,
+    timestamp_start: float,
+    timestamp_end: float,
     confidence: float,
 ) -> Appearance:
     gap = settings.FACE_TRACK_GAP_TOLERANCE
-    # Aparição "open" (timestamp_end=None) só corresponde se o start estiver dentro da tolerância.
-    # Aparição "fechada" corresponde se o end estiver dentro da tolerância.
     existing = (
         db.query(Appearance)
         .filter(
@@ -36,11 +35,11 @@ def upsert_appearance(
             Appearance.video_id == video_id,
             (
                 (Appearance.timestamp_end == None)  # noqa: E711
-                & (Appearance.timestamp_start >= timestamp - gap)
+                & (Appearance.timestamp_start >= timestamp_start - gap)
             )
             | (
                 (Appearance.timestamp_end != None)  # noqa: E711
-                & (Appearance.timestamp_end >= timestamp - gap)
+                & (Appearance.timestamp_end >= timestamp_start - gap)
             ),
         )
         .order_by(Appearance.timestamp_start.desc())
@@ -48,7 +47,8 @@ def upsert_appearance(
     )
 
     if existing is not None:
-        existing.timestamp_end = timestamp
+        existing_end = existing.timestamp_end if existing.timestamp_end is not None else existing.timestamp_start
+        existing.timestamp_end = max(existing_end, timestamp_end)
         if confidence < existing.confidence:
             existing.confidence = confidence
         db.commit()
@@ -57,8 +57,8 @@ def upsert_appearance(
     new_appearance = Appearance(
         person_id=person_id,
         video_id=video_id,
-        timestamp_start=timestamp,
-        timestamp_end=None,
+        timestamp_start=timestamp_start,
+        timestamp_end=timestamp_end,
         confidence=confidence,
     )
     db.add(new_appearance)
