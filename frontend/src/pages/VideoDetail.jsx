@@ -519,34 +519,8 @@ export default function VideoDetail() {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Player */}
-        {detail && token && (
-          <div
-            ref={playerRef}
-            data-testid="player-sticky-wrapper"
-            className="sticky top-0 z-20 bg-bg pb-3 shadow-sm"
-          >
-            <VideoPlayer
-              key={id}
-              videoId={parseInt(id)}
-              token={token}
-              onTimeUpdate={setCurrentTime}
-              seekTo={seekTo}
-              pauseSeekTo={pauseSeekTo}
-              people={detail.people}
-              duration={videoDuration}
-              currentTime={currentTime}
-              onSeek={setSeekTo}
-              onSegmentSeek={handleSegmentSeek}
-              onDurationChange={handleDurationChange}
-              onPlay={handlePlayClick}
-              onPause={handlePauseClick}
-            />
-          </div>
-        )}
-
-        {/* Header */}
+      <div className="max-w-7xl mx-auto space-y-4">
+        {/* Header — full width */}
         <div>
           <button
             onClick={() => navigate('/dashboard')}
@@ -629,6 +603,90 @@ export default function VideoDetail() {
           {actionErr && <p role="alert" className="text-xs text-error-color mt-1">{actionErr}</p>}
         </div>
 
+        {/* Summary cards — full width */}
+        {detail === null ? (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }, (_, i) => <div key={i} className="card h-20 animate-pulse" />)}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <SummaryCard icon={Users} label="Pessoas identificadas" value={detail.summary.total_people}
+              color="bg-primary/20 text-primary" />
+            <SummaryCard icon={Activity} label="Total de aparições" value={detail.summary.total_appearances}
+              color="bg-purple-500/15 text-purple-400" />
+            <SummaryCard icon={Clock} label="Tempo coberto" value={fmtDuration(detail.summary.duration_covered)}
+              color="bg-warning/20 text-warning" />
+            <SummaryCard icon={Film} label="Status" value={<StatusBadge status={detail.summary.processing_status} />}
+              color="bg-success/20 text-success" />
+          </div>
+        )}
+
+        {/* Split layout: player left (sticky) + people right */}
+        <div data-testid="split-layout" className="flex gap-6 items-start">
+          {/* Left column: player — sticky */}
+          <div
+            ref={playerRef}
+            data-testid="player-sticky-wrapper"
+            className="sticky top-4 self-start w-[58%] min-w-0"
+          >
+            {detail && token && (
+              <VideoPlayer
+                key={id}
+                videoId={parseInt(id)}
+                token={token}
+                onTimeUpdate={setCurrentTime}
+                seekTo={seekTo}
+                pauseSeekTo={pauseSeekTo}
+                people={detail.people}
+                duration={videoDuration}
+                currentTime={currentTime}
+                onSeek={setSeekTo}
+                onSegmentSeek={handleSegmentSeek}
+                onDurationChange={handleDurationChange}
+                onPlay={handlePlayClick}
+                onPause={handlePauseClick}
+              />
+            )}
+            {detail === null && <div className="card h-64 animate-pulse" />}
+          </div>
+
+          {/* Right column: people panel */}
+          <div data-testid="people-panel" className="w-[42%] min-w-0 space-y-4">
+            <h2 className="text-sm font-semibold text-text-base">Pessoas neste vídeo</h2>
+
+            {detail === null ? (
+              <div className="space-y-4">
+                {Array.from({ length: 3 }, (_, i) => <div key={i} className="card h-32 animate-pulse" />)}
+              </div>
+            ) : isProcessing ? (
+              <div className="card flex flex-col items-center justify-center gap-3 py-12 text-text-muted">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" aria-hidden="true" />
+                <p className="text-sm">Vídeo ainda sendo processado. Aguarde...</p>
+              </div>
+            ) : detail.people.length === 0 ? (
+              <div className="card text-center py-12 space-y-2">
+                <p className="text-sm text-text-base">Nenhuma face identificada neste vídeo.</p>
+                <p className="text-xs text-text-muted">
+                  Dica: se esperava encontrar pessoas, tente ajustar o FACE_RECOGNITION_TOLERANCE no .env para um valor maior.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {detail.people.map((person) => (
+                  <PersonCard
+                    key={person.person_id}
+                    person={person}
+                    isOnScreen={peopleOnScreen?.some(p => p.person_id === person.person_id)}
+                    onSeekTo={handleSeekClick}
+                    onSeekAndPause={handleSeekAndPause}
+                    cardRef={(el) => { cardRefs.current[person.person_id] = el }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         <AddPersonModal
           isOpen={addPersonModalOpen}
           onClose={() => setAddPersonModalOpen(false)}
@@ -658,60 +716,6 @@ export default function VideoDetail() {
           onConfirm={handleReprocessVideo}
           onCancel={() => setReprocessModalOpen(false)}
         />
-
-        {/* Summary cards */}
-        {detail === null ? (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }, (_, i) => <div key={i} className="card h-20 animate-pulse" />)}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <SummaryCard icon={Users} label="Pessoas identificadas" value={detail.summary.total_people}
-              color="bg-primary/20 text-primary" />
-            <SummaryCard icon={Activity} label="Total de aparições" value={detail.summary.total_appearances}
-              color="bg-purple-500/15 text-purple-400" />
-            <SummaryCard icon={Clock} label="Tempo coberto" value={fmtDuration(detail.summary.duration_covered)}
-              color="bg-warning/20 text-warning" />
-            <SummaryCard icon={Film} label="Status" value={<StatusBadge status={detail.summary.processing_status} />}
-              color="bg-success/20 text-success" />
-          </div>
-        )}
-
-        {/* People section */}
-        <div>
-          <h2 className="text-sm font-semibold text-text-base mb-3">Pessoas neste vídeo</h2>
-
-          {detail === null ? (
-            <div className="space-y-4">
-              {Array.from({ length: 3 }, (_, i) => <div key={i} className="card h-32 animate-pulse" />)}
-            </div>
-          ) : isProcessing ? (
-            <div className="card flex flex-col items-center justify-center gap-3 py-12 text-text-muted">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" aria-hidden="true" />
-              <p className="text-sm">Vídeo ainda sendo processado. Aguarde...</p>
-            </div>
-          ) : detail.people.length === 0 ? (
-            <div className="card text-center py-12 space-y-2">
-              <p className="text-sm text-text-base">Nenhuma face identificada neste vídeo.</p>
-              <p className="text-xs text-text-muted">
-                Dica: se esperava encontrar pessoas, tente ajustar o FACE_RECOGNITION_TOLERANCE no .env para um valor maior.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {detail.people.map((person) => (
-                <PersonCard
-                  key={person.person_id}
-                  person={person}
-                  isOnScreen={peopleOnScreen?.some(p => p.person_id === person.person_id)}
-                  onSeekTo={handleSeekClick}
-                  onSeekAndPause={handleSeekAndPause}
-                  cardRef={(el) => { cardRefs.current[person.person_id] = el }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
       </div>
     </Layout>
   )

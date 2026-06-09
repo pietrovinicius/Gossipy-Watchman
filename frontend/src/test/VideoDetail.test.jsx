@@ -275,6 +275,39 @@ describe('VideoDetail page', () => {
     expect(scrollIntoView).toHaveBeenCalled()
   })
 
+  it('RED: layout split existe com container flex e painel de pessoas separado', async () => {
+    sessionStorage.setItem('token', 'test-token')
+    const api = (await import('../services/api')).default
+    api.get.mockResolvedValue({ data: makeDetail() })
+
+    const { container } = await renderVideoDetail()
+
+    await waitFor(() => screen.getByText('Fulano'))
+
+    const splitLayout = container.querySelector('[data-testid="split-layout"]')
+    expect(splitLayout).toBeTruthy()
+    expect(splitLayout.classList.contains('flex')).toBe(true)
+
+    const peoplePanel = container.querySelector('[data-testid="people-panel"]')
+    expect(peoplePanel).toBeTruthy()
+  })
+
+  it('RED: coluna do player está dentro do split-layout como primeiro filho', async () => {
+    sessionStorage.setItem('token', 'test-token')
+    const api = (await import('../services/api')).default
+    api.get.mockResolvedValue({ data: makeDetail() })
+
+    const { container } = await renderVideoDetail()
+
+    await waitFor(() => screen.getByText('Fulano'))
+
+    const splitLayout = container.querySelector('[data-testid="split-layout"]')
+    const playerWrapper = container.querySelector('[data-testid="player-sticky-wrapper"]')
+    expect(splitLayout).toBeTruthy()
+    expect(playerWrapper).toBeTruthy()
+    expect(splitLayout.contains(playerWrapper)).toBe(true)
+  })
+
   it('card de pessoa exibe botão de timestamp separado do ícone play (seek-pause-{pid}-{aid})', async () => {
     const api = (await import('../services/api')).default
     api.get.mockResolvedValue({ data: makeDetail() })
