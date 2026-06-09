@@ -155,7 +155,7 @@ export function VideoPlayer({
       )}
 
       <div className="flex gap-2">
-        {[0.5, 1, 1.5, 2].map((speed) => (
+        {[0.5, 1, 1.5, 2, 6, 10, 25].map((speed) => (
           <button
             key={speed}
             onClick={() => handleSpeedClick(speed)}
