@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.99.0] — 2026-06-08
+
+### Adicionado
+- **feat(services)**: Implementação de FaceTracker multi-face usando associação por IoU (Intersection-over-Union) e cálculo de bboxes para evitar a criação de perfis híbridos/inválidos quando múltiplas pessoas aparecem simultaneamente.
+- **feat(services)**: Adicionado filtro de pose facial (`max_yaw_deg`=40° e `max_pitch_deg`=30°) para descartar frames de perfil ou com inclinação extrema antes de extrair os embeddings.
+- **feat(worker)**: Implementação de escalonamento adaptativo (downscale usando `cv2.INTER_AREA` para no máximo 1920px de largura) em vídeos de altíssima resolução (4K) para melhorar a precisão da detecção do InsightFace sem perder rostos pequenos.
+
+### Corrigido
+- **fix(services)**: Substituição de distância Euclidiana por distância Coseno na clusterização DBSCAN, otimizando o agrupamento dos ArcFace embeddings L2-normalizados.
+- **fix(services)**: Correção de cálculo de gap de aparições em `appearance_service` para usar o parâmetro configurável `settings.FACE_TRACK_GAP_TOLERANCE` em vez de valor fixo.
+- **fix(services)**: Correção no cálculo dos timestamps retornados por `extract_frames` para representar segundos reais (`frame_index / fps_real`) em vez do índice de amostragem.
+- **fix(worker)**: Correção na lógica de cache local de embeddings que agora atualiza em tempo real (`known_embeddings.append`) quando novas pessoas são salvas, enriquecendo o k-NN ao longo do mesmo vídeo.
+
 ## [1.98.0] — 2026-06-08
 
 ### Adicionado
