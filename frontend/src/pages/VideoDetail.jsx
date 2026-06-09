@@ -493,7 +493,7 @@ export default function VideoDetail() {
           <div
             ref={playerRef}
             data-testid="player-sticky-wrapper"
-            className="sticky top-0 z-20 bg-background pb-3"
+            className="sticky top-0 z-20 bg-bg pb-3 shadow-sm"
           >
             <VideoPlayer
               key={id}
