@@ -1,5 +1,7 @@
 import asyncio
+import gc
 import logging
+import threading
 from pathlib import Path
 
 import cv2
@@ -15,6 +17,8 @@ from app.services import alert_service, face_service, frame_service, person_serv
 from app.services.conversion_service import get_video_duration_seconds
 
 logger = logging.getLogger(__name__)
+
+_PROCESSING_SEMAPHORE = threading.Semaphore(1)
 
 
 def _broadcast_sync(video_id: int, payload: dict) -> None:
@@ -113,6 +117,14 @@ def _process_track(
 
 
 def process_video(video_id: int, video_path: Path, _engine=None) -> None:
+    _PROCESSING_SEMAPHORE.acquire()
+    try:
+        _process_video_inner(video_id, video_path, _engine=_engine)
+    finally:
+        _PROCESSING_SEMAPHORE.release()
+
+
+def _process_video_inner(video_id: int, video_path: Path, _engine=None) -> None:
     # _engine permite injeção em testes sem patch de create_engine
     _owns_engine = _engine is None
     engine = _engine if _engine is not None else create_engine(
@@ -266,3 +278,4 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
         db.close()
         if _owns_engine:
             engine.dispose()
+        gc.collect()

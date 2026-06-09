@@ -2,6 +2,7 @@ import subprocess
 import json
 import logging
 from pathlib import Path
+from app.core.path_utils import safe_unlink
 from app.core.settings import settings
 from app.core.ffmpeg_check import FFMPEG_AVAILABLE
 
@@ -231,7 +232,7 @@ def repair_mp4_moov(input_path: Path) -> Path:
                 returncode = process.wait(timeout=3600)
                 
                 if success and returncode == 0:
-                    input_path.unlink()
+                    safe_unlink(input_path, missing_ok=False)
                     temp_mp4.rename(input_path)
                     logger.info(f"Recuperação bem-sucedida por streaming: {input_path.name}")
                     return input_path
@@ -241,14 +242,14 @@ def repair_mp4_moov(input_path: Path) -> Path:
                 logger.error(f"Erro durante o streaming da recuperação: {stream_err}")
             
             if temp_mp4.exists():
-                temp_mp4.unlink()
+                safe_unlink(temp_mp4)
 
         raise subprocess.CalledProcessError(
             result.returncode, cmd, result.stdout, result.stderr
         )
 
     # Substituir o original pelo reparado
-    input_path.unlink()
+    safe_unlink(input_path, missing_ok=False)
     output_path.rename(input_path)
 
     logger.info(f"Reparo concluído: {input_path.name}")

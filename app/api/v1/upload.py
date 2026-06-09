@@ -5,6 +5,7 @@ from uuid import uuid4
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
+from app.core.path_utils import safe_unlink
 from app.core.settings import settings
 from app.db.session import get_db
 from app.schemas.video import VideoStatusResponse
@@ -72,7 +73,7 @@ async def upload_video(
                 written += len(chunk)
                 if written > settings.MAX_UPLOAD_SIZE_BYTES:
                     f.close()
-                    dest_path.unlink(missing_ok=True)
+                    safe_unlink(dest_path)
                     raise HTTPException(
                         status_code=413,
                         detail=(
@@ -93,14 +94,14 @@ async def upload_video(
             converted_path = convert_to_mp4(dest_path, settings.STORAGE_VIDEOS)
         except Exception as e:
             logger.error(f"[video_id={video_record.id}] Erro na conversão: {e}")
-            dest_path.unlink(missing_ok=True)
+            safe_unlink(dest_path)
             converted_partial = settings.STORAGE_VIDEOS / f"{dest_path.stem}_converted.mp4"
-            converted_partial.unlink(missing_ok=True)
+            safe_unlink(converted_partial)
             raise HTTPException(
                 status_code=422,
                 detail=f"Não foi possível converter o arquivo. {str(e)}"
             )
-        dest_path.unlink(missing_ok=True)
+        safe_unlink(dest_path)
         final_path = converted_path
         video_service.update_file_name(
             db, video_record.id,

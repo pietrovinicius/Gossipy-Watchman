@@ -22,7 +22,7 @@ def get_face_app():
             raise RuntimeError("insightface não está instalado")
         _face_app = FaceAnalysis(
             name=settings.INSIGHTFACE_MODEL,
-            providers=["CoreMLExecutionProvider", "CPUExecutionProvider"],
+            providers=settings.INSIGHTFACE_PROVIDERS,
         )
         _face_app.prepare(
             ctx_id=0,

@@ -26,8 +26,9 @@ class Settings(BaseSettings):
 
     # InsightFace
     INSIGHTFACE_MODEL: str = "buffalo_l"
-    INSIGHTFACE_DET_SIZE: int = 1024
+    INSIGHTFACE_DET_SIZE: int = 640
     INSIGHTFACE_DET_SCORE: float = 0.45
+    INSIGHTFACE_PROVIDERS: list[str] = ["CPUExecutionProvider"]
     FACE_MAX_EMBEDDINGS_PER_PERSON: int = 5
     FACE_MAX_SAMPLES_PER_PERSON: int = 10
     INSIGHTFACE_HIGH_RES_THRESHOLD: int = 1920  # escala frames acima deste valor

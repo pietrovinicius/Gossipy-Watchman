@@ -103,6 +103,20 @@ def test_face_max_embeddings_per_person_default():
     assert settings.FACE_MAX_EMBEDDINGS_PER_PERSON == 5
 
 
+def test_insightface_providers_default_cpu_only():
+    """Providers padrão devem ser CPU-only para compatibilidade Windows."""
+    from app.core.settings import Settings
+    s = Settings(_env_file=None)
+    assert s.INSIGHTFACE_PROVIDERS == ["CPUExecutionProvider"]
+
+
+def test_insightface_det_size_code_default_is_640():
+    """Default no código deve ser 640 (seguro para 16GB RAM)."""
+    from app.core.settings import Settings
+    s = Settings(_env_file=None)
+    assert s.INSIGHTFACE_DET_SIZE == 640
+
+
 def test_face_recognition_tolerance_cosine():
     from app.core.settings import settings
     assert settings.FACE_RECOGNITION_TOLERANCE == 0.4

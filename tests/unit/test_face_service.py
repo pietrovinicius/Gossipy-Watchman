@@ -362,6 +362,27 @@ def test_get_face_app_returns_same_instance():
     assert mock_cls.call_count == 1
 
 
+def test_get_face_app_uses_settings_providers():
+    """face_service deve usar settings.INSIGHTFACE_PROVIDERS, não CoreML hardcoded."""
+    from app.services import face_service
+
+    face_service._face_app = None
+
+    with patch("app.services.face_service.FaceAnalysis") as mock_cls:
+        mock_instance = MagicMock()
+        mock_instance.prepare = MagicMock()
+        mock_cls.return_value = mock_instance
+        with patch("app.services.face_service.settings") as mock_settings:
+            mock_settings.INSIGHTFACE_MODEL = "buffalo_l"
+            mock_settings.INSIGHTFACE_DET_SIZE = 640
+            mock_settings.INSIGHTFACE_PROVIDERS = ["CPUExecutionProvider"]
+            face_service.get_face_app()
+        mock_cls.assert_called_once_with(
+            name="buffalo_l",
+            providers=["CPUExecutionProvider"],
+        )
+
+
 # ── FaceTrack / FaceTracker ───────────────────────────────────────────────────
 
 def test_face_tracker_aggregates_detections():

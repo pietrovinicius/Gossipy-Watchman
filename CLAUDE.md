@@ -149,7 +149,7 @@ python -m venv venv
 source venv/bin/activate          # Linux/Mac
 venv\Scripts\activate             # Windows
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --workers 1 --host 0.0.0.0 --port 8000
 
 # Testes
 pytest
