@@ -46,9 +46,9 @@ export function VideoPlayer({
       'Funcionário': '#3B82F6',
       'Visitante': '#8B5CF6',
       'Monitorado': '#EF4444',
-      'Desconhecido': '#6B7280',
+      'Desconhecido': '#334155',
     }
-    return map[category] || '#6B7280'
+    return map[category] || '#334155'
   }
 
   useEffect(() => {
@@ -150,7 +150,15 @@ export function VideoPlayer({
         <div className="space-y-2">
           <div
             data-testid="presence-bar"
-            className="relative w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full mt-3 overflow-visible"
+            className="relative w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full mt-3 overflow-visible cursor-pointer"
+            onClick={(e) => {
+              if (e.target !== e.currentTarget) return
+              const rect = e.currentTarget.getBoundingClientRect()
+              const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+              const time = ratio * videoDuration
+              handleSeek(time)
+              onSegmentSeek?.(null, time)
+            }}
           >
             {people.map((person) =>
               person.appearances.map((app) => {

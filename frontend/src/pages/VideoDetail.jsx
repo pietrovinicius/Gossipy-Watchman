@@ -392,7 +392,13 @@ export default function VideoDetail() {
 
   const handleSegmentSeek = (person_id, ts) => {
     setSeekTo(ts)
-    cardRefs.current[person_id]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const visible = getPeopleOnScreen(ts, detail?.people)
+    const targetId = (person_id != null && visible.some(p => p.person_id === person_id))
+      ? person_id
+      : (visible[0]?.person_id ?? person_id)
+    if (targetId != null) {
+      cardRefs.current[targetId]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
   }
 
   const fetchDetail = useCallback(() => {

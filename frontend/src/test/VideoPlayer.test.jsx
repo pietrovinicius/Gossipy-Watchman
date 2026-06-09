@@ -254,4 +254,52 @@ describe('VideoPlayer — Barra de Presença', () => {
     const bobStyle = window.getComputedStyle(bobSegment)
     expect(bobStyle.backgroundColor).toBe('rgb(139, 92, 246)')
   })
+
+  it('segmento Desconhecido usa cor distinta do fundo cinza da barra (não rgb(107,114,128))', () => {
+    const descPeople = [{
+      person_id: 5,
+      person_name: 'Desconhecido #1',
+      person_category: 'Desconhecido',
+      appearances: [{ id: 501, timestamp_start: 10, timestamp_end: 20, confidence: 0 }],
+    }]
+    const { container } = render(<VideoPlayer {...baseProps} people={descPeople} />)
+
+    const seg = container.querySelector('[data-testid="presence-segment-501"]')
+    const style = window.getComputedStyle(seg)
+    // Cor antiga #6B7280 = rgb(107,114,128) era indistinguível do fundo — deve ser diferente
+    expect(style.backgroundColor).not.toBe('rgb(107, 114, 128)')
+  })
+
+  it('clicar no fundo da barra (background) chama onSegmentSeek(null, tempoCalculado)', () => {
+    const mockOnSegmentSeek = vi.fn()
+    const { container } = render(
+      <VideoPlayer {...baseProps} onSegmentSeek={mockOnSegmentSeek} />
+    )
+
+    const bar = container.querySelector('[data-testid="presence-bar"]')
+
+    // Simula barra de 1000px iniciando em 0
+    bar.getBoundingClientRect = vi.fn(() => ({
+      left: 0, right: 1000, width: 1000, top: 0, bottom: 10, height: 10, x: 0, y: 0,
+    }))
+
+    // Clica em 50% da barra = 30s (duration=60)
+    fireEvent.click(bar, { clientX: 500 })
+
+    expect(mockOnSegmentSeek).toHaveBeenCalledWith(null, expect.closeTo(30, 1))
+  })
+
+  it('clicar em segmento não dispara o handler de background da barra (sem duplo evento)', () => {
+    const mockOnSegmentSeek = vi.fn()
+    const { container } = render(
+      <VideoPlayer {...baseProps} onSegmentSeek={mockOnSegmentSeek} />
+    )
+
+    const segment = container.querySelector('[data-testid="presence-segment-101"]')
+    fireEvent.click(segment)
+
+    // Deve chamar exatamente 1 vez: do segmento (person_id=1, ts=5), NÃO do background
+    expect(mockOnSegmentSeek).toHaveBeenCalledTimes(1)
+    expect(mockOnSegmentSeek).toHaveBeenCalledWith(1, 5)
+  })
 })
