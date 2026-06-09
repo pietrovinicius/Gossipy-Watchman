@@ -70,6 +70,7 @@ describe('VideoDetail page', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
+    sessionStorage.clear()
   })
 
   it('exibe skeleton durante carregamento', async () => {
@@ -187,7 +188,7 @@ describe('VideoDetail page', () => {
 
     await waitFor(() => screen.getByText('Fulano'))
     expect(screen.getByText(/ver todas as 5 aparições/i)).toBeTruthy()
-    expect(screen.queryByText('9.0s')).toBeFalsy()
+    expect(screen.queryByText('00:09')).toBeFalsy()
   })
 
   it('botão "Ver todas" expande a timeline', async () => {
@@ -209,7 +210,7 @@ describe('VideoDetail page', () => {
 
     await waitFor(() => screen.getByText('Fulano'))
     fireEvent.click(screen.getByText(/ver todas as 5 aparições/i))
-    expect(screen.getByText('9.0s')).toBeTruthy()
+    expect(screen.getByText('00:09')).toBeTruthy()
   })
 
   it('botão Exportar CSV chama downloadCsv com o blob retornado', async () => {
@@ -229,6 +230,49 @@ describe('VideoDetail page', () => {
     await waitFor(() => {
       expect(downloadCsv).toHaveBeenCalledWith(blob, expect.stringContaining('7'))
     })
+  })
+
+  it('timestamps de pessoa exibem formato MM:SS', async () => {
+    const api = (await import('../services/api')).default
+    api.get.mockResolvedValue({ data: makeDetail() })
+
+    await renderVideoDetail()
+
+    await waitFor(() => screen.getByText('Fulano'))
+    // total_seconds=5.0 → 'Presente por 00:05'; first_seen_at=1.0 → td '00:01'; last_seen_at=4.0 → td '00:04'
+    expect(screen.getByText(/Presente por 00:05/)).toBeTruthy()
+    expect(screen.getAllByText('00:01').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('00:04').length).toBeGreaterThan(0)
+  })
+
+  it('player wrapper tem classe sticky quando token está disponível', async () => {
+    sessionStorage.setItem('token', 'test-token')
+    const api = (await import('../services/api')).default
+    api.get.mockResolvedValue({ data: makeDetail() })
+
+    const { container } = await renderVideoDetail()
+
+    await waitFor(() => screen.getByText('Fulano'))
+    const wrapper = container.querySelector('[data-testid="player-sticky-wrapper"]')
+    expect(wrapper).toBeTruthy()
+    expect(wrapper.classList.contains('sticky')).toBe(true)
+  })
+
+  it('clicar em linha da timeline chama scrollIntoView no wrapper do player', async () => {
+    sessionStorage.setItem('token', 'test-token')
+    const scrollIntoView = vi.fn()
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoView
+
+    const api = (await import('../services/api')).default
+    api.get.mockResolvedValue({ data: makeDetail() })
+
+    const { container } = await renderVideoDetail()
+
+    await waitFor(() => screen.getByText('Fulano'))
+    const row = container.querySelector('tr.cursor-pointer')
+    fireEvent.click(row)
+
+    expect(scrollIntoView).toHaveBeenCalled()
   })
 
   it('estado é resetado quando videoId muda (detail null até novo fetch)', async () => {

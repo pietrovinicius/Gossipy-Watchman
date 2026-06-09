@@ -31,8 +31,12 @@ function StatusBadge({ status }) {
   return <span className={`badge ${cfg.cls}`}>{cfg.label}</span>
 }
 
-function fmtSec(s) {
-  return s != null ? `${Number(s).toFixed(1)}s` : '—'
+function fmtMmSs(s) {
+  if (s == null) return '—'
+  const total = Math.round(Number(s))
+  const m = Math.floor(total / 60)
+  const sec = total % 60
+  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
 }
 
 function fmt3(n) {
@@ -102,9 +106,9 @@ function PersonCard({ person, isOnScreen, onSeekTo, cardRef }) {
           <p className="text-xs text-text-muted">
             ID #{person.person_id} · {person.appearance_count} aparição{person.appearance_count === 1 ? '' : 'ões'}
           </p>
-          <p className="text-xs text-text-muted">Presente por {fmtSec(person.total_seconds)}</p>
-          <p className="text-xs text-text-muted">Primeira vez: {fmtSec(person.first_seen_at)} do vídeo</p>
-          <p className="text-xs text-text-muted">Última vez: {fmtSec(person.last_seen_at)} do vídeo</p>
+          <p className="text-xs text-text-muted">Presente por {fmtMmSs(person.total_seconds)}</p>
+          <p className="text-xs text-text-muted">Primeira vez: {fmtMmSs(person.first_seen_at)} do vídeo</p>
+          <p className="text-xs text-text-muted">Última vez: {fmtMmSs(person.last_seen_at)} do vídeo</p>
         </div>
       </div>
 
@@ -124,9 +128,9 @@ function PersonCard({ person, isOnScreen, onSeekTo, cardRef }) {
                 onClick={() => onSeekTo?.(a.timestamp_start)}
                 className="border-b border-border/50 last:border-b-0 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
               >
-                <td className="px-3 py-2 font-mono text-xs text-text-muted">{fmtSec(a.timestamp_start)}</td>
+                <td className="px-3 py-2 font-mono text-xs text-text-muted">{fmtMmSs(a.timestamp_start)}</td>
                 <td className="px-3 py-2 font-mono text-xs text-text-muted">
-                  {a.timestamp_end != null ? fmtSec(a.timestamp_end) : '—'}
+                  {a.timestamp_end != null ? fmtMmSs(a.timestamp_end) : '—'}
                 </td>
                 <td className="px-3 py-2 font-mono text-xs text-text-muted">{fmt3(a.confidence)}</td>
               </tr>
@@ -149,7 +153,7 @@ function PersonCard({ person, isOnScreen, onSeekTo, cardRef }) {
           className="flex items-center gap-1.5 text-xs text-primary hover:underline"
         >
           <PlayCircle className="w-3.5 h-3.5" aria-hidden="true" />
-          {fmtSec(person.first_seen_at)}
+          {fmtMmSs(person.first_seen_at)}
         </button>
         <Link
           to={`/people/${person.person_id}`}
@@ -332,6 +336,7 @@ export default function VideoDetail() {
   const [videoDuration, setVideoDuration] = useState(0)
 
   const cardRefs = useRef({})
+  const playerRef = useRef(null)
   const prevPeopleOnScreenRef = useRef([])
 
   const token = sessionStorage.getItem('token')
@@ -358,6 +363,11 @@ export default function VideoDetail() {
 
   const handleDurationChange = (duration) => {
     setVideoDuration(duration)
+  }
+
+  const handleSeekClick = (ts) => {
+    setSeekTo(ts)
+    playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   const fetchDetail = useCallback(() => {
@@ -480,20 +490,26 @@ export default function VideoDetail() {
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Player */}
         {detail && token && (
-          <VideoPlayer
-            key={id}
-            videoId={parseInt(id)}
-            token={token}
-            onTimeUpdate={setCurrentTime}
-            seekTo={seekTo}
-            people={detail.people}
-            duration={videoDuration}
-            currentTime={currentTime}
-            onSeek={setSeekTo}
-            onDurationChange={handleDurationChange}
-            onPlay={handlePlayClick}
-            onPause={handlePauseClick}
-          />
+          <div
+            ref={playerRef}
+            data-testid="player-sticky-wrapper"
+            className="sticky top-0 z-20 bg-background pb-3"
+          >
+            <VideoPlayer
+              key={id}
+              videoId={parseInt(id)}
+              token={token}
+              onTimeUpdate={setCurrentTime}
+              seekTo={seekTo}
+              people={detail.people}
+              duration={videoDuration}
+              currentTime={currentTime}
+              onSeek={setSeekTo}
+              onDurationChange={handleDurationChange}
+              onPlay={handlePlayClick}
+              onPause={handlePauseClick}
+            />
+          </div>
         )}
 
         {/* Header */}
@@ -654,7 +670,7 @@ export default function VideoDetail() {
                   key={person.person_id}
                   person={person}
                   isOnScreen={peopleOnScreen?.some(p => p.person_id === person.person_id)}
-                  onSeekTo={setSeekTo}
+                  onSeekTo={handleSeekClick}
                   cardRef={(el) => { cardRefs.current[person.person_id] = el }}
                 />
               ))}
