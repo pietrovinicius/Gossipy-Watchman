@@ -5,6 +5,45 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.02.0] — 2026-06-09
+
+### Corrigido
+- **fix(worker)**: `_process_track` criava pessoa em `people` mas não chamava `upsert_appearance` para novas pessoas — pessoa ficava sem vínculo com o vídeo em `appearances`. Resultado: `/videos/{id}/detail` mostrava N-1 pessoas enquanto `/people` mostrava N. Corrigido adicionando `upsert_appearance` no branch de nova pessoa com `confidence=0.0` e timestamps do track.
+- **fix(videos)**: `soft_delete_video` agora remove o arquivo de vídeo (`file_path`) e o thumbnail (`thumbnail_path`) do disco ao realizar o soft-delete. Se arquivo não existir, ignora silenciosamente. DB record preservado com `deleted_at` (soft delete). Face crops não removidos pois pertencem a pessoas, não ao vídeo.
+
+---
+
+## [2.01.0] — 2026-06-09
+
+### Corrigido
+- **fix(person_service)**: `set_primary_photo` atualizava `profile_image_path` via `shutil.copy2` para `{id}.jpg`, sobrescrevendo e destruindo a imagem original. Corrigido: `profile_image_path` agora aponta diretamente para o arquivo selecionado (sem cópia), preservando `{id}.jpg` intacto.
+- **fix(person_service)**: `delete_face_frame` bloqueava delete de `{id}.jpg` com check hardcoded sem considerar o primary atual. Corrigido: verifica `Path(person.profile_image_path).name` para identificar o frame principal atual.
+- **fix(frontend)**: `PersonFrames.jsx` bumpa `refreshCounter` em toda chamada de `fetchFrames`, causando redownload de todas as imagens ao trocar o principal. Corrigido: optimistic update imediato (flip de `is_primary` local), sem bump de counter. Counter bumpa apenas ao deletar frame. `key` do `FrameThumb` usa só `filename` (sem `is_primary`).
+
+### Adicionado
+- **feat(videos)**: Novo endpoint `POST /videos/{video_id}/appearances` para criar aparição manual com `person_id`, `timestamp_start`, `timestamp_end`. Frontend: botão "Adicionar pessoa" visível em vídeos com status `Concluído`; modal com busca de pessoa + campos de timestamp; detalhe do vídeo atualizado após submissão.
+
+---
+
+## [2.00.0] — 2026-06-08
+
+### Corrigido
+- **fix(appearance_service)**: `upsert_appearance` recebia um único `timestamp` (= `track.start_time`) e gravava `timestamp_end = timestamp` — campo nunca refletia o fim real da aparição. Nova assinatura: `timestamp_start: float, timestamp_end: float`. Worker passa `track.start_time` e `track.last_seen`. Aparições próximas (gap < `FACE_TRACK_GAP_TOLERANCE`) têm `timestamp_end` estendido para o máximo entre o fim existente e o novo.
+- **fix(cluster_service)**: Clusterização migrada de single linkage para complete linkage. O antigo encadeava A≈B≈C num único cluster mesmo quando `dist(A,C) > threshold`. O novo só funde clusters quando a distância máxima entre todos os pares inter-cluster é menor que o threshold, eliminando o efeito corrente.
+- **fix(person_service)**: `merge_people` deletava arquivos `.npy` do perfil secundário sem copiá-los para o primário, descartando embeddings coletados em vídeos distintos. Agora, antes de deletar, todos os embeddings do secundário são copiados para o primário (respeitando `FACE_MAX_EMBEDDINGS_PER_PERSON`).
+- **fix(worker)**: `_process_track` adicionava embedding ao cache `known_embeddings` sem limite por pessoa. Em vídeos longos, cache crescia N entradas para o mesmo ID, tornando k-NN enviesado e lento. Append só ocorre se entradas da pessoa no cache < `FACE_MAX_EMBEDDINGS_PER_PERSON`.
+- **fix(face_service)**: `find_matching_person` não normalizava `known_vecs` — embeddings médios ou carregados de disco podiam ter escala diferente de 1.0, tornando `1 - dot` inválido como distância coseno. Fix: normaliza cada linha de `known_vecs` antes do produto escalar.
+- **fix(person_service)**: Bandas de qualidade `_QUALITY_BANDS` calibradas para distância euclidiana (0–2+), incompatíveis com ArcFace/coseno (0–1). Novas bandas: excelente dist<0.1, bom dist<0.2, regular dist<0.3, insuficiente dist<0.4, fraco dist≥0.4.
+
+### Alterado
+- **refactor(face_service)**: Removida chamada redundante a `_close_stale_tracks` dentro de `add_detection`. Worker já invoca o método uma vez por frame; a chamada interna causava N execuções (uma por rosto detectado) ao invés de 1.
+- **refactor(settings)**: `save_face_sample` usava `MAX_FACE_SAMPLES = 10` hardcoded. Movido para `settings.FACE_MAX_SAMPLES_PER_PERSON = 10` (default igual), sobrescrevível via variável de ambiente.
+
+### Documentação
+- **docs(CLAUDE.md)**: Adicionada seção "13. Skills Recomendadas" catalogando as skills instaladas pertinentes ao projeto.
+
+---
+
 ## [1.99.0] — 2026-06-08
 
 ### Adicionado
