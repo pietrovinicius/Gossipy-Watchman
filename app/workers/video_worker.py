@@ -207,9 +207,19 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
                         )
 
             if run_detection:
-                embeddings = face_service.extract_embeddings(frame)
+                h, w = frame.shape[:2]
+                if w > settings.INSIGHTFACE_HIGH_RES_THRESHOLD:
+                    scale = settings.INSIGHTFACE_HIGH_RES_THRESHOLD / w
+                    frame_detect = cv2.resize(
+                        frame,
+                        (int(w * scale), int(h * scale)),
+                        interpolation=cv2.INTER_AREA,
+                    )
+                else:
+                    frame_detect = frame
+                embeddings = face_service.extract_embeddings(frame_detect)
                 for embedding, location, det_score in embeddings:
-                    tracker.add_detection(embedding, location, frame,
+                    tracker.add_detection(embedding, location, frame_detect,
                                           timestamp=float(timestamp_real), det_score=det_score)
                 if settings.MOTION_GATING_ENABLED:
                     prev_gray = gray

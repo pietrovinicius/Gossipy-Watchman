@@ -327,7 +327,7 @@ def test_motion_gating_disabled_processes_all_frames(video_in_db):
     
     with patch("app.workers.video_worker.frame_service.extract_frames", return_value=iter(frames)), \
          patch("app.workers.video_worker.face_service.extract_embeddings", return_value=[]) as mock_extract, \
-         patch("app.workers.video_worker.settings", MagicMock(MOTION_GATING_ENABLED=False, DATABASE_URL=settings.DATABASE_URL)):
+         patch("app.workers.video_worker.settings", MagicMock(MOTION_GATING_ENABLED=False, DATABASE_URL=settings.DATABASE_URL, INSIGHTFACE_HIGH_RES_THRESHOLD=settings.INSIGHTFACE_HIGH_RES_THRESHOLD)):
         
         process_video(video_id, Path("video.mp4"), _engine=engine)
         
@@ -352,7 +352,8 @@ def test_motion_gating_enabled_skips_static_frames(video_in_db):
              MOTION_GATING_AREA_RATIO=0.005,
              MOTION_GATING_FORCE_INTERVAL=999,
              DATABASE_URL=settings.DATABASE_URL,
-             STORAGE_VIDEOS=settings.STORAGE_VIDEOS
+             STORAGE_VIDEOS=settings.STORAGE_VIDEOS,
+             INSIGHTFACE_HIGH_RES_THRESHOLD=settings.INSIGHTFACE_HIGH_RES_THRESHOLD,
          )):
 
         process_video(video_id, Path("video.mp4"), _engine=engine)
@@ -363,14 +364,14 @@ def test_motion_gating_enabled_skips_static_frames(video_in_db):
 def test_motion_gating_enabled_processes_moving_frames(video_in_db):
     from app.workers.video_worker import process_video
     from app.core.settings import settings
-    
+
     engine, video_id = video_in_db
     frame1 = np.zeros((100, 100, 3), dtype=np.uint8)
     frame2 = np.zeros((100, 100, 3), dtype=np.uint8)
     frame2[40:60, 40:60] = 255 # Movimento bem acima de 0.5% (20*20 = 400 pixels = 4%)
-    
+
     frames = [(0, frame1), (1, frame2)]
-    
+
     with patch("app.workers.video_worker.frame_service.extract_frames", return_value=iter(frames)), \
          patch("app.workers.video_worker.face_service.extract_embeddings", return_value=[]) as mock_extract, \
          patch("app.workers.video_worker.settings", MagicMock(
@@ -379,7 +380,8 @@ def test_motion_gating_enabled_processes_moving_frames(video_in_db):
              MOTION_GATING_AREA_RATIO=0.005,
              MOTION_GATING_FORCE_INTERVAL=999,
              DATABASE_URL=settings.DATABASE_URL,
-             STORAGE_VIDEOS=settings.STORAGE_VIDEOS
+             STORAGE_VIDEOS=settings.STORAGE_VIDEOS,
+             INSIGHTFACE_HIGH_RES_THRESHOLD=settings.INSIGHTFACE_HIGH_RES_THRESHOLD,
          )):
 
         process_video(video_id, Path("video.mp4"), _engine=engine)
@@ -503,4 +505,55 @@ def test_motion_gating_forca_deteccao_periodica(video_in_db):
     # Com FORCE_INTERVAL=5 e 12s de vídeo, detecção forçada em 0, 5, 10 → ≥3 chamadas
     assert mock_extract.call_count >= 3, (
         f"Detecção forçada esperada ≥3x em 12s com interval=5, recebido {mock_extract.call_count}"
+    )
+
+
+# ── Task 7: escalonamento adaptativo para vídeos 4K ──────────────────────────
+
+def test_frame_4k_e_escalado_antes_de_extract_embeddings(video_in_db):
+    """Frame com largura > INSIGHTFACE_HIGH_RES_THRESHOLD deve ser escalado antes de extract_embeddings."""
+    from app.workers.video_worker import process_video
+    from app.core.settings import settings
+
+    engine, video_id = video_in_db
+
+    frame_4k = np.zeros((2160, 3840, 3), dtype=np.uint8)
+
+    with patch("app.workers.video_worker.frame_service.extract_frames",
+               return_value=iter([(0.0, frame_4k)])), \
+         patch("app.workers.video_worker.person_service.get_all_embeddings",
+               return_value=[]), \
+         patch("app.workers.video_worker.face_service.extract_embeddings",
+               return_value=[]) as mock_extract:
+        process_video(video_id, Path("video.mp4"), _engine=engine)
+
+    assert mock_extract.call_count >= 1
+    called_frame = mock_extract.call_args[0][0]
+    assert called_frame.shape[1] <= settings.INSIGHTFACE_HIGH_RES_THRESHOLD, (
+        f"Largura esperada <= {settings.INSIGHTFACE_HIGH_RES_THRESHOLD}, "
+        f"recebida {called_frame.shape[1]}"
+    )
+
+
+def test_frame_fullhd_nao_e_escalado(video_in_db):
+    """Frame com largura <= INSIGHTFACE_HIGH_RES_THRESHOLD não deve ser redimensionado."""
+    from app.workers.video_worker import process_video
+    from app.core.settings import settings
+
+    engine, video_id = video_in_db
+
+    frame_hd = np.zeros((1080, 1920, 3), dtype=np.uint8)
+
+    with patch("app.workers.video_worker.frame_service.extract_frames",
+               return_value=iter([(0.0, frame_hd)])), \
+         patch("app.workers.video_worker.person_service.get_all_embeddings",
+               return_value=[]), \
+         patch("app.workers.video_worker.face_service.extract_embeddings",
+               return_value=[]) as mock_extract:
+        process_video(video_id, Path("video.mp4"), _engine=engine)
+
+    assert mock_extract.call_count >= 1
+    called_frame = mock_extract.call_args[0][0]
+    assert called_frame.shape == frame_hd.shape, (
+        f"Frame FullHD não deve ser redimensionado, shape={called_frame.shape}"
     )

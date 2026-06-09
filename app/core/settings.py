@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     INSIGHTFACE_DET_SIZE: int = 640
     INSIGHTFACE_DET_SCORE: float = 0.7
     FACE_MAX_EMBEDDINGS_PER_PERSON: int = 5
+    INSIGHTFACE_HIGH_RES_THRESHOLD: int = 1920  # escala frames acima deste valor
 
     # Qualidade de frame
     FACE_MIN_SIZE_PX: int = 60
