@@ -329,10 +329,12 @@ def get_person_stats(db: Session, person_id: int) -> dict:
 
 _QUALITY_BANDS = (
     # (limite mínimo de score, nível, cor, recomendação)
-    (60.0, "excelente", "green", "Perfil com amostras de alta confiança. Nenhuma ação necessária."),
-    (48.0, "bom", "green", "Perfil com boa confiança. Considere adicionar mais amostras em ângulos variados para reforçar."),
-    (44.0, "regular", "yellow", "Confiança mediana nas identificações. Recomenda-se revisar e definir uma foto principal mais nítida."),
-    (40.0, "insuficiente", "yellow", "Confiança baixa nas identificações. Adicione amostras mais nítidas e revise possíveis confusões com outras pessoas."),
+    # Calibrado para distância coseno ArcFace (threshold=0.4 → score≈60%)
+    # score = (1 - avg_cosine_distance) * 100
+    (90.0, "excelente", "green", "Perfil com amostras de alta confiança. Nenhuma ação necessária."),
+    (80.0, "bom", "green", "Perfil com boa confiança. Considere adicionar mais amostras em ângulos variados para reforçar."),
+    (70.0, "regular", "yellow", "Confiança mediana nas identificações. Recomenda-se revisar e definir uma foto principal mais nítida."),
+    (60.0, "insuficiente", "yellow", "Confiança baixa nas identificações. Adicione amostras mais nítidas e revise possíveis confusões com outras pessoas."),
     (float("-inf"), "fraco", "red", "Confiança muito baixa. Recomenda-se revisar manualmente e considerar recadastrar esta pessoa."),
 )
 
@@ -340,7 +342,7 @@ _QUALITY_BANDS = (
 def get_profile_quality(db: Session, person_id: int) -> dict:
     """Avalia a qualidade do perfil a partir da confiança média dos reconhecimentos.
 
-    confidence é distância euclidiana (menor = mais confiante), portanto
+    confidence é distância coseno ArcFace (menor = mais confiante, threshold=0.4).
     quality_score = (1 - avg_confidence) * 100 cresce conforme a confiança aumenta.
     """
     person = db.get(Person, person_id)

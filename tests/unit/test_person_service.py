@@ -452,11 +452,12 @@ def _seed_appearances_with_confidences(db_session, confidences):
 def test_profile_quality_excelente_for_low_avg_confidence(db_session):
     from app.services.person_service import get_profile_quality
 
-    person = _seed_appearances_with_confidences(db_session, [0.3, 0.3])
+    # dist=0.05 → score=95% > 90 → "excelente" (match muito próximo para coseno ArcFace)
+    person = _seed_appearances_with_confidences(db_session, [0.05, 0.05])
     quality = get_profile_quality(db_session, person.id)
 
-    assert quality["avg_confidence"] == pytest.approx(0.3)
-    assert quality["quality_score"] == pytest.approx(70.0)
+    assert quality["avg_confidence"] == pytest.approx(0.05)
+    assert quality["quality_score"] == pytest.approx(95.0)
     assert quality["quality_level"] == "excelente"
     assert quality["color"] == "green"
 
@@ -464,10 +465,11 @@ def test_profile_quality_excelente_for_low_avg_confidence(db_session):
 def test_profile_quality_bom_for_mid_avg_confidence(db_session):
     from app.services.person_service import get_profile_quality
 
-    person = _seed_appearances_with_confidences(db_session, [0.5, 0.5])
+    # dist=0.15 → score=85% > 80 → "bom"
+    person = _seed_appearances_with_confidences(db_session, [0.15, 0.15])
     quality = get_profile_quality(db_session, person.id)
 
-    assert quality["quality_score"] == pytest.approx(50.0)
+    assert quality["quality_score"] == pytest.approx(85.0)
     assert quality["quality_level"] == "bom"
     assert quality["color"] == "green"
 
@@ -475,10 +477,11 @@ def test_profile_quality_bom_for_mid_avg_confidence(db_session):
 def test_profile_quality_regular_for_borderline_avg_confidence(db_session):
     from app.services.person_service import get_profile_quality
 
-    person = _seed_appearances_with_confidences(db_session, [0.55, 0.55])
+    # dist=0.25 → score=75% > 70 → "regular"
+    person = _seed_appearances_with_confidences(db_session, [0.25, 0.25])
     quality = get_profile_quality(db_session, person.id)
 
-    assert quality["quality_score"] == pytest.approx(45.0)
+    assert quality["quality_score"] == pytest.approx(75.0)
     assert quality["quality_level"] == "regular"
     assert quality["color"] == "yellow"
 
@@ -486,10 +489,11 @@ def test_profile_quality_regular_for_borderline_avg_confidence(db_session):
 def test_profile_quality_insuficiente_for_high_avg_confidence(db_session):
     from app.services.person_service import get_profile_quality
 
-    person = _seed_appearances_with_confidences(db_session, [0.58, 0.58])
+    # dist=0.35 → score=65% > 60 → "insuficiente"
+    person = _seed_appearances_with_confidences(db_session, [0.35, 0.35])
     quality = get_profile_quality(db_session, person.id)
 
-    assert quality["quality_score"] == pytest.approx(42.0)
+    assert quality["quality_score"] == pytest.approx(65.0)
     assert quality["quality_level"] == "insuficiente"
     assert quality["color"] == "yellow"
 
@@ -911,3 +915,20 @@ def test_merge_people_respeita_limite_max_embeddings(tmp_path):
 
     db.close()
     engine.dispose()
+
+
+# ── Task 7 V3: bandas de qualidade recalibradas para distância coseno ─────────
+
+def test_quality_excelente_so_para_distancia_coseno_muito_baixa(db_session):
+    """Para distância coseno, 'excelente' deve exigir score > 90% (dist < 0.1).
+    dist=0.3 (score=70%) está perto do threshold e não deve ser 'excelente'."""
+    from app.services.person_service import get_profile_quality
+
+    # confidence=0.3 → score=70% — bom match, mas não "excelente" para coseno
+    person = _seed_appearances_with_confidences(db_session, [0.3, 0.3])
+    quality = get_profile_quality(db_session, person.id)
+
+    assert quality["quality_level"] != "excelente", (
+        f"dist=0.3 (score=70%) não deve ser 'excelente' para distância coseno "
+        f"(threshold=0.4); bandas precisam de recalibração. Obtido: {quality['quality_level']}"
+    )
