@@ -478,3 +478,26 @@ def test_add_frame_data_aceita_det_score_opcional():
     # sem passar det_score — deve usar default 1.0
     track.add_frame_data(make_l2_embedding(), make_face_location(), frame, timestamp=1.0)
     assert track.sample_count == 1
+
+
+# ── Task 6 V3: normalizar known_vecs em find_matching_person ─────────────────
+
+def test_find_matching_normaliza_known_vecs_com_escala_pequena():
+    """known_vecs com escala != 1 devem ser normalizados antes do dot product.
+    Sem normalização: known=[0.1,0,0] → dot(query,known)=0.1 → dist=0.9 > threshold → falso neg.
+    Com normalização: known=[1,0,0] → dot=1.0 → dist=0.0 → match correto."""
+    from app.services.face_service import find_matching_person
+
+    query = np.zeros(512, dtype=np.float32)
+    query[0] = 1.0  # L2-normalizado
+
+    known_small = np.zeros(512, dtype=np.float32)
+    known_small[0] = 0.1  # mesma direção, escala 0.1 — sem normalizar: dist = 0.9 > 0.4
+
+    person_id, dist = find_matching_person(query, [(99, known_small)], tolerance=0.4)
+
+    assert person_id == 99, (
+        "Embedding com mesma direção mas escala 0.1 deve ser reconhecido após normalização; "
+        "sem normalização de known_vecs, dist coseno = 0.9 (falso negativo)"
+    )
+    assert dist is not None and dist < 0.05, f"dist coseno esperado ≈ 0, obtido {dist}"

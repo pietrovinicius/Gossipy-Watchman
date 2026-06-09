@@ -265,6 +265,12 @@ def find_matching_person(
     known_vecs = np.array([emb for _, emb in known_embeddings], dtype=np.float32)
     person_ids = [pid for pid, _ in known_embeddings]
 
+    # Normalizar known_vecs por segurança (embeddings médios ou carregados de disco
+    # podem ter escala ligeiramente diferente de 1.0)
+    norms = np.linalg.norm(known_vecs, axis=1, keepdims=True)
+    norms = np.where(norms > 0, norms, 1.0)
+    known_vecs = known_vecs / norms
+
     q = embedding.astype(np.float32)
     q_norm = np.linalg.norm(q)
     if q_norm > 0:
