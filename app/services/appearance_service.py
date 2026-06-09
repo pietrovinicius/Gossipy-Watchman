@@ -1,9 +1,11 @@
 from dataclasses import dataclass
 
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.settings import settings
 from app.models.appearance import Appearance
+from app.models.person import Person
 from app.models.video import Video
 
 
@@ -53,6 +55,36 @@ def upsert_appearance(
             existing.confidence = confidence
         db.commit()
         return existing
+
+    new_appearance = Appearance(
+        person_id=person_id,
+        video_id=video_id,
+        timestamp_start=timestamp_start,
+        timestamp_end=timestamp_end,
+        confidence=confidence,
+    )
+    db.add(new_appearance)
+    db.commit()
+    db.refresh(new_appearance)
+    return new_appearance
+
+
+def add_manual_appearance(
+    db: Session,
+    video_id: int,
+    person_id: int,
+    timestamp_start: float,
+    timestamp_end: float,
+    confidence: float = 0.0,
+) -> Appearance:
+    """Cria uma aparição manualmente para uma pessoa em um vídeo já processado."""
+    video = db.get(Video, video_id)
+    if video is None:
+        raise HTTPException(status_code=404, detail="Vídeo não encontrado")
+
+    person = db.get(Person, person_id)
+    if person is None:
+        raise HTTPException(status_code=404, detail="Pessoa não encontrada")
 
     new_appearance = Appearance(
         person_id=person_id,

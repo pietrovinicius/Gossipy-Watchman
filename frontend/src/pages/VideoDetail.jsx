@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft, Download, Loader2, AlertCircle, UserCircle, ExternalLink,
   Users, Film, Clock, Activity, Trash2, RotateCcw, RotateCw, PlayCircle,
+  UserPlus, X, Search,
 } from 'lucide-react'
 import Layout from '../components/Layout'
 import CategoryBadge from '../components/CategoryBadge'
@@ -162,6 +163,154 @@ function PersonCard({ person, isOnScreen, onSeekTo, cardRef }) {
   )
 }
 
+function PersonPickerThumb({ person }) {
+  const filename = person.profile_image_path ? person.profile_image_path.split('/').pop() : null
+  const imgSrc = useAuthImage(filename)
+  return (
+    <div className="w-8 h-8 rounded-lg overflow-hidden bg-surface border border-border flex-shrink-0">
+      {imgSrc
+        ? <img src={imgSrc} alt="" className="w-full h-full object-cover" />
+        : <div className="w-full h-full flex items-center justify-center">
+            <UserCircle className="w-4 h-4 text-text-muted" />
+          </div>
+      }
+    </div>
+  )
+}
+
+function AddPersonModal({ isOpen, onClose, onSubmit, currentTime, isSubmitting, submitErr }) {
+  const [people, setPeople] = useState([])
+  const [query, setQuery] = useState('')
+  const [selectedPerson, setSelectedPerson] = useState(null)
+  const [timestampStart, setTimestampStart] = useState('')
+  const [timestampEnd, setTimestampEnd] = useState('')
+
+  useEffect(() => {
+    if (!isOpen) return
+    setQuery('')
+    setSelectedPerson(null)
+    setTimestampStart(currentTime != null ? String(Number(currentTime).toFixed(1)) : '')
+    setTimestampEnd('')
+    api.get('/people?limit=200').then(res => setPeople(res.data)).catch(() => {})
+  }, [isOpen, currentTime])
+
+  const filtered = query.trim()
+    ? people.filter(p => p.name.toLowerCase().includes(query.trim().toLowerCase()))
+    : people
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (!selectedPerson) return
+    onSubmit({
+      person_id: selectedPerson.id,
+      timestamp_start: parseFloat(timestampStart) || 0,
+      timestamp_end: parseFloat(timestampEnd) || parseFloat(timestampStart) || 0,
+    })
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+         onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="bg-background border border-border rounded-2xl w-full max-w-md shadow-2xl
+                      flex flex-col max-h-[90vh]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 className="text-base font-semibold text-text-base">Adicionar pessoa ao vídeo</h2>
+          <button onClick={onClose} className="text-text-muted hover:text-text-base cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5 overflow-y-auto">
+          {/* Busca de pessoa */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-text-muted">Pessoa</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+              <input
+                type="text"
+                placeholder="Buscar por nome…"
+                value={query}
+                onChange={e => { setQuery(e.target.value); setSelectedPerson(null) }}
+                className="w-full pl-9 pr-3 py-2 text-sm bg-surface border border-border rounded-lg
+                           text-text-base placeholder:text-text-muted focus:outline-none focus:ring-2
+                           focus:ring-primary"
+              />
+            </div>
+            <div className="border border-border rounded-lg overflow-hidden max-h-44 overflow-y-auto">
+              {filtered.length === 0
+                ? <p className="text-xs text-text-muted text-center py-4">Nenhuma pessoa encontrada</p>
+                : filtered.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => { setSelectedPerson(p); setQuery(p.name) }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-primary/10
+                                transition-colors ${selectedPerson?.id === p.id ? 'bg-primary/15' : ''}`}
+                  >
+                    <PersonPickerThumb person={p} />
+                    <span className="text-sm text-text-base truncate">{p.name}</span>
+                    {p.category && <CategoryBadge category={p.category} />}
+                  </button>
+                ))
+              }
+            </div>
+          </div>
+
+          {/* Timestamps */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-text-muted">Início (s)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                value={timestampStart}
+                onChange={e => setTimestampStart(e.target.value)}
+                required
+                className="w-full px-3 py-2 text-sm bg-surface border border-border rounded-lg
+                           text-text-base focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-text-muted">Fim (s)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                value={timestampEnd}
+                onChange={e => setTimestampEnd(e.target.value)}
+                required
+                className="w-full px-3 py-2 text-sm bg-surface border border-border rounded-lg
+                           text-text-base focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          </div>
+
+          {submitErr && <p className="text-xs text-error-color">{submitErr}</p>}
+
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2 text-sm border border-border rounded-lg text-text-muted
+                         hover:text-text-base transition-colors cursor-pointer">
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={!selectedPerson || isSubmitting}
+              className="flex-1 py-2 text-sm bg-primary text-white rounded-lg
+                         hover:bg-primary/90 disabled:opacity-50 cursor-pointer transition-colors"
+            >
+              {isSubmitting ? 'Salvando…' : 'Adicionar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 export default function VideoDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -174,6 +323,9 @@ export default function VideoDetail() {
   const [actionErr, setActionErr] = useState('')
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [reprocessModalOpen, setReprocessModalOpen] = useState(false)
+  const [addPersonModalOpen, setAddPersonModalOpen] = useState(false)
+  const [addPersonSubmitting, setAddPersonSubmitting] = useState(false)
+  const [addPersonErr, setAddPersonErr] = useState('')
   const [seekTo, setSeekTo] = useState(null)
   const [currentTime, setCurrentTime] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -283,6 +435,20 @@ export default function VideoDetail() {
     }
   }
 
+  async function handleAddPerson({ person_id, timestamp_start, timestamp_end }) {
+    setAddPersonSubmitting(true)
+    setAddPersonErr('')
+    try {
+      await api.post(`/videos/${id}/appearances`, { person_id, timestamp_start, timestamp_end, confidence: 0.0 })
+      setAddPersonModalOpen(false)
+      fetchDetail()
+    } catch (err) {
+      setAddPersonErr(err.response?.data?.detail ?? err.message ?? 'Erro ao adicionar pessoa.')
+    } finally {
+      setAddPersonSubmitting(false)
+    }
+  }
+
   async function handleReprocessVideo() {
     setActionErr('')
     try {
@@ -355,6 +521,16 @@ export default function VideoDetail() {
                 <p className="text-xs text-text-muted">Enviado em {formatDateTime(detail.video.uploaded_at)}</p>
               </div>
               <div className="flex items-center gap-2">
+                {!detail.video.deleted_at && detail.video.status === 'Concluído' && (
+                  <button
+                    onClick={() => { setAddPersonErr(''); setAddPersonModalOpen(true) }}
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
+                               border-primary text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" aria-hidden="true" />
+                    Adicionar pessoa
+                  </button>
+                )}
                 {!detail.video.deleted_at && REPROCESSABLE_STATUSES.includes(detail.video.status) && (
                   <button
                     onClick={() => setReprocessModalOpen(true)}
@@ -402,6 +578,15 @@ export default function VideoDetail() {
           {exportErr && <p className="text-xs text-error-color mt-1">{exportErr}</p>}
           {actionErr && <p role="alert" className="text-xs text-error-color mt-1">{actionErr}</p>}
         </div>
+
+        <AddPersonModal
+          isOpen={addPersonModalOpen}
+          onClose={() => setAddPersonModalOpen(false)}
+          onSubmit={handleAddPerson}
+          currentTime={currentTime}
+          isSubmitting={addPersonSubmitting}
+          submitErr={addPersonErr}
+        />
 
         <ConfirmModal
           isOpen={deleteModalOpen}

@@ -1,4 +1,5 @@
 import pytest
+from datetime import datetime, timezone
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -175,3 +176,76 @@ def test_upsert_cria_novo_registro_quando_gap_excedido_novo(db_session):
         Appearance.person_id == person_id, Appearance.video_id == video_id
     ).all()
     assert len(appearances) == 2
+
+
+# ── add_manual_appearance ─────────────────────────────────────────────────────
+
+@pytest.fixture
+def db_session_full():
+    """Fixture com vídeo CONCLUIDO para testes de add_manual_appearance."""
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    person = Person(name="Pessoa Manual")
+    video = Video(
+        file_name="v.mp4",
+        file_path="storage/videos/v.mp4",
+        status=VideoStatus.CONCLUIDO,
+        uploaded_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+    )
+    session.add_all([person, video])
+    session.commit()
+    session.refresh(person)
+    session.refresh(video)
+
+    yield session, person.id, video.id
+    session.close()
+    engine.dispose()
+
+
+def test_add_manual_appearance_cria_nova_aparicao(db_session_full):
+    """add_manual_appearance deve criar Appearance com os dados fornecidos."""
+    from app.services.appearance_service import add_manual_appearance
+
+    session, person_id, video_id = db_session_full
+    app_obj = add_manual_appearance(
+        session, video_id=video_id, person_id=person_id,
+        timestamp_start=5.0, timestamp_end=10.0, confidence=0.0,
+    )
+
+    assert app_obj.id is not None
+    assert app_obj.person_id == person_id
+    assert app_obj.video_id == video_id
+    assert app_obj.timestamp_start == pytest.approx(5.0)
+    assert app_obj.timestamp_end == pytest.approx(10.0)
+    assert app_obj.confidence == pytest.approx(0.0)
+
+
+def test_add_manual_appearance_video_nao_encontrado(db_session_full):
+    """add_manual_appearance deve lançar 404 quando vídeo não existe."""
+    from fastapi import HTTPException
+    from app.services.appearance_service import add_manual_appearance
+
+    session, person_id, _ = db_session_full
+    with pytest.raises(HTTPException) as exc:
+        add_manual_appearance(
+            session, video_id=9999, person_id=person_id,
+            timestamp_start=0.0, timestamp_end=1.0, confidence=0.0,
+        )
+    assert exc.value.status_code == 404
+
+
+def test_add_manual_appearance_pessoa_nao_encontrada(db_session_full):
+    """add_manual_appearance deve lançar 404 quando pessoa não existe."""
+    from fastapi import HTTPException
+    from app.services.appearance_service import add_manual_appearance
+
+    session, _, video_id = db_session_full
+    with pytest.raises(HTTPException) as exc:
+        add_manual_appearance(
+            session, video_id=video_id, person_id=9999,
+            timestamp_start=0.0, timestamp_end=1.0, confidence=0.0,
+        )
+    assert exc.value.status_code == 404

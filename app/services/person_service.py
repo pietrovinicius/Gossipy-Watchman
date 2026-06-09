@@ -141,10 +141,16 @@ def _is_safe_face_filename(filename: str) -> bool:
     return ".." not in filename and "/" not in filename and "\\" not in filename
 
 
+def _get_primary_filename(person: "Person") -> str | None:
+    if person and person.profile_image_path:
+        return Path(person.profile_image_path).name
+    return None
+
+
 def delete_face_frame(db: Session, person_id: int, filename: str) -> None:
     """Deleta arquivo de frame facial da pessoa.
 
-    Validações: path traversal + ownership. Não permite deletar foto principal.
+    Validações: path traversal + ownership. Não permite deletar o frame atual principal.
     """
     if not _is_safe_face_filename(filename):
         raise HTTPException(status_code=400, detail="Nome de arquivo inválido")
@@ -154,8 +160,11 @@ def delete_face_frame(db: Session, person_id: int, filename: str) -> None:
     if filename != f"{person_id}.jpg" and not filename.startswith(owner_prefix):
         raise HTTPException(status_code=403, detail="Arquivo não pertence a esta pessoa")
 
-    # Não permitir deletar foto principal
-    if filename == f"{person_id}.jpg":
+    person = db.get(Person, person_id)
+    primary_filename = _get_primary_filename(person)
+
+    # Não permitir deletar o frame que é atualmente o principal
+    if filename == primary_filename:
         raise HTTPException(status_code=400, detail="Não é possível deletar a foto principal")
 
     frame_path = settings.STORAGE_FACES / filename
@@ -169,9 +178,8 @@ def delete_face_frame(db: Session, person_id: int, filename: str) -> None:
 def set_primary_photo(db: Session, person_id: int, source_filename: str) -> Person:
     """Define uma amostra facial existente como foto principal da pessoa.
 
-    Cadeia de validação: 400 (caminho inseguro) → 404 (arquivo inexistente)
-    → 403 (arquivo pertence a outra pessoa). Copia preservando o original
-    (shutil.copy2) para {person_id}.jpg.
+    Atualiza profile_image_path para apontar diretamente para o arquivo selecionado,
+    sem sobrescrever o arquivo {person_id}.jpg (preserva histórico de imagens).
     """
     logger.info(f"[SET_PRIMARY] iniciando: person_id={person_id} source_filename={source_filename}")
 
@@ -190,17 +198,11 @@ def set_primary_photo(db: Session, person_id: int, source_filename: str) -> Pers
     if person is None:
         raise HTTPException(status_code=404, detail="Pessoa não encontrada")
 
-    primary_path = settings.STORAGE_FACES / f"{person_id}.jpg"
-    shutil.copy2(str(source_path), str(primary_path))
-    logger.info(f"[SET_PRIMARY] arquivo copiado: {source_path} → {primary_path}")
-
-    person.profile_image_path = str(primary_path)
+    person.profile_image_path = str(source_path)
     db.commit()
     logger.info(f"[SET_PRIMARY] DB commitado: profile_image_path={person.profile_image_path}")
 
     db.refresh(person)
-    logger.info(f"[SET_PRIMARY] pessoa refreshada do DB: profile_image_path={person.profile_image_path}")
-
     return person
 
 

@@ -160,8 +160,8 @@ async def test_patch_primary_photo_updates_profile_image(client, auth_headers, t
 
     assert response.status_code == 200
     data = response.json()
-    assert data["profile_image_path"] == str(tmp_path / f"{pid}.jpg")
-    assert (tmp_path / f"{pid}.jpg").read_bytes() == b"nova-foto"
+    # profile_image_path aponta diretamente para o sample (sem cópia para {pid}.jpg)
+    assert data["profile_image_path"] == str(tmp_path / f"{pid}_sample_8.jpg")
 
 
 @pytest.mark.asyncio

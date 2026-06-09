@@ -4,8 +4,8 @@ import api from '../services/api'
 import { useAuthImage } from '../hooks/useAuthImage'
 
 function FrameThumb({ frame, onSetPrimary, onDelete, settingFilename, deletingFilename, refreshCounter }) {
-  // Cache-busting: counter incrementa cada vez que frames muda, força refetch
-  const cacheTag = `${frame.is_primary ? 'primary' : ''}_${refreshCounter}`
+  // cacheTag inclui apenas refreshCounter — imagem só rebaixa ao deletar, não ao trocar primary
+  const cacheTag = String(refreshCounter)
   const imgSrc = useAuthImage(frame.filename, cacheTag)
   const isSetting = settingFilename === frame.filename
   const isDeleting = deletingFilename === frame.filename
@@ -62,24 +62,16 @@ export default function PersonFrames({ personId }) {
   const [settingFilename, setSettingFilename] = useState(null)
   const [deletingFilename, setDeletingFilename] = useState(null)
   const [actionErr, setActionErr] = useState('')
-
-  useEffect(() => {
-    console.log('[PersonFrames] frames estado mudou:', frames)
-  }, [frames])
-
   const [refreshCounter, setRefreshCounter] = useState(0)
 
-  const fetchFrames = useCallback(() => {
+  const fetchFrames = useCallback((bumpCounter = false) => {
     setLoadErr('')
     api.get(`/people/${personId}/frames`)
       .then((res) => {
-        console.log('[PersonFrames] fetchFrames resposta:', res.data)
-        // Incrementar counter PRIMEIRO para forçar refetch com novo cacheTag
-        setRefreshCounter(c => c + 1)
+        if (bumpCounter) setRefreshCounter(c => c + 1)
         setFrames(res.data)
       })
       .catch((err) => {
-        console.error('[PersonFrames] fetchFrames erro:', err)
         setLoadErr(err.message)
       })
   }, [personId])
@@ -89,16 +81,18 @@ export default function PersonFrames({ personId }) {
   }, [fetchFrames])
 
   async function handleSetPrimary(filename) {
-    console.log('[PersonFrames] handleSetPrimary clicado:', filename)
     setSettingFilename(filename)
     setActionErr('')
+    // Optimistic update: troca is_primary imediatamente sem redownload de imagens
+    setFrames(prev => prev.map(f => ({ ...f, is_primary: f.filename === filename })))
     try {
-      const patchRes = await api.patch(`/people/${personId}/primary-photo`, { filename })
-      console.log('[PersonFrames] PATCH resposta:', patchRes.data)
-      console.log('[PersonFrames] Chamando fetchFrames após PATCH')
-      await fetchFrames()
+      await api.patch(`/people/${personId}/primary-photo`, { filename })
+      // Sync silencioso sem bump de counter (imagens não mudaram)
+      const res = await api.get(`/people/${personId}/frames`)
+      setFrames(res.data)
     } catch (err) {
-      console.error('[PersonFrames] handleSetPrimary erro:', err)
+      // Reverte em caso de erro
+      fetchFrames()
       setActionErr(err.response?.data?.detail ?? err.message ?? 'Erro ao definir foto principal.')
     } finally {
       setSettingFilename(null)
@@ -110,7 +104,8 @@ export default function PersonFrames({ personId }) {
     setActionErr('')
     try {
       await api.delete(`/people/${personId}/frames/${filename}`)
-      fetchFrames()
+      // Bump counter pois uma imagem foi removida
+      fetchFrames(true)
     } catch (err) {
       setActionErr(err.response?.data?.detail ?? err.message ?? 'Erro ao deletar frame.')
     } finally {
@@ -141,7 +136,7 @@ export default function PersonFrames({ personId }) {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {frames.map((frame) => (
               <FrameThumb
-                key={`${frame.filename}_${frame.is_primary}`}
+                key={frame.filename}
                 frame={frame}
                 onSetPrimary={handleSetPrimary}
                 onDelete={handleDeleteFrame}

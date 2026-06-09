@@ -5,6 +5,7 @@ from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.schemas.appearance import AppearanceResponse, ManualAppearanceCreate
 from app.schemas.video import (
     CatalogResponse,
     VideoDetailResponse,
@@ -12,6 +13,7 @@ from app.schemas.video import (
     VideoStatusResponse,
 )
 from app.services import video_service
+from app.services.appearance_service import add_manual_appearance
 from app.services.auth_service import get_current_user, verify_token
 from app.workers.video_worker import process_video
 
@@ -194,6 +196,33 @@ def get_video_status(
     if video is None:
         raise HTTPException(status_code=404, detail="Vídeo não encontrado")
     return VideoStatusResponse.model_validate(video)
+
+
+@router.post("/videos/{video_id}/appearances", response_model=AppearanceResponse, status_code=201)
+def add_appearance_to_video(
+    video_id: int,
+    body: ManualAppearanceCreate,
+    db: Session = Depends(get_db),
+    _current_user: dict = Depends(get_current_user),
+) -> AppearanceResponse:
+    app_obj = add_manual_appearance(
+        db,
+        video_id=video_id,
+        person_id=body.person_id,
+        timestamp_start=body.timestamp_start,
+        timestamp_end=body.timestamp_end,
+        confidence=body.confidence,
+    )
+    video = video_service.get_video_by_id(db, video_id)
+    return AppearanceResponse(
+        id=app_obj.id,
+        person_id=app_obj.person_id,
+        video_id=app_obj.video_id,
+        timestamp_start=app_obj.timestamp_start,
+        timestamp_end=app_obj.timestamp_end,
+        confidence=app_obj.confidence,
+        file_name=video.file_name if video else "",
+    )
 
 
 @router.get("/videos/{video_id}/thumbnail", response_model=None)

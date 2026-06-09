@@ -410,10 +410,12 @@ def test_set_primary_photo_raises_403_for_other_persons_file(db_session, tmp_pat
     assert exc.value.status_code == 403
 
 
-def test_set_primary_photo_copies_and_updates_profile_image_path(db_session, tmp_path):
+def test_set_primary_photo_atualiza_profile_image_path_direto_para_sample(db_session, tmp_path):
+    """set_primary_photo deve apontar profile_image_path para o sample diretamente,
+    sem copiar para {pid}.jpg (preserva o arquivo principal anterior)."""
     from app.services.person_service import set_primary_photo
 
-    person = Person(name="Alguém", profile_image_path=str(tmp_path / "old.jpg"))
+    person = Person(name="Alguém", profile_image_path=None)
     db_session.add(person)
     db_session.commit()
     pid = person.id
@@ -426,10 +428,106 @@ def test_set_primary_photo_copies_and_updates_profile_image_path(db_session, tmp
         result = set_primary_photo(db_session, pid, f"{pid}_sample_3.jpg")
 
     primary_path = tmp_path / f"{pid}.jpg"
-    assert primary_path.exists()
-    assert primary_path.read_bytes() == b"conteudo-da-amostra"
-    assert sample.exists()  # shutil.copy2 preserva o original
-    assert result.profile_image_path == str(primary_path)
+    assert not primary_path.exists(), "NÃO deve criar/sobrescrever {pid}.jpg"
+    assert sample.exists(), "sample original deve ser preservado"
+    assert result.profile_image_path == str(sample)
+
+
+def test_set_primary_photo_preserva_arquivo_principal_existente(db_session, tmp_path):
+    """Se {pid}.jpg já existe, set_primary_photo não deve sobrescrevê-lo."""
+    from app.services.person_service import set_primary_photo
+
+    person = Person(name="Alguém", profile_image_path=None)
+    db_session.add(person)
+    db_session.commit()
+    pid = person.id
+
+    existing_primary = tmp_path / f"{pid}.jpg"
+    existing_primary.write_bytes(b"conteudo-original-principal")
+
+    sample = tmp_path / f"{pid}_sample_1.jpg"
+    sample.write_bytes(b"novo-conteudo")
+
+    with patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+        set_primary_photo(db_session, pid, f"{pid}_sample_1.jpg")
+
+    assert existing_primary.read_bytes() == b"conteudo-original-principal", (
+        "{pid}.jpg não deve ser sobrescrito ao definir um sample como principal"
+    )
+
+
+# ── delete_face_frame ──────────────────────────────────────────────────────────
+
+def test_delete_face_frame_bloqueia_deletar_sample_primary_atual(db_session, tmp_path):
+    """Não deve permitir deletar o frame que é atualmente o primary (mesmo sendo sample)."""
+    from fastapi import HTTPException
+    from app.services.person_service import delete_face_frame
+
+    pid = 1
+    person = Person(name="Alguém", profile_image_path=str(tmp_path / f"{pid}_sample_3.jpg"))
+    person.id = pid
+    db_session.add(person)
+    db_session.commit()
+    pid = person.id
+
+    sample_file = tmp_path / f"{pid}_sample_3.jpg"
+    sample_file.write_bytes(b"x")
+
+    with patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+        with pytest.raises(HTTPException) as exc:
+            delete_face_frame(db_session, pid, f"{pid}_sample_3.jpg")
+
+    assert exc.value.status_code == 400
+
+
+def test_delete_face_frame_permite_deletar_1_jpg_quando_nao_e_primary(db_session, tmp_path):
+    """{pid}.jpg pode ser deletado se não for mais o primary."""
+    from app.services.person_service import delete_face_frame
+
+    person = Person(name="Alguém", profile_image_path=None)
+    db_session.add(person)
+    db_session.commit()
+    pid = person.id
+
+    # primary aponta para um sample, não para {pid}.jpg
+    sample = tmp_path / f"{pid}_sample_5.jpg"
+    sample.write_bytes(b"sample-primary")
+    person.profile_image_path = str(sample)
+    db_session.commit()
+
+    main_file = tmp_path / f"{pid}.jpg"
+    main_file.write_bytes(b"arquivo-antigo")
+
+    with patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+        delete_face_frame(db_session, pid, f"{pid}.jpg")
+
+    assert not main_file.exists(), "{pid}.jpg deve ter sido deletado quando não é o primary"
+
+
+def test_delete_face_frame_bloqueia_deletar_1_jpg_quando_e_primary(db_session, tmp_path):
+    """{pid}.jpg não pode ser deletado quando é o primary atual."""
+    from fastapi import HTTPException
+    from app.services.person_service import delete_face_frame
+
+    person = Person(name="Alguém", profile_image_path=None)
+    db_session.add(person)
+    db_session.commit()
+    pid = person.id
+
+    main_file = tmp_path / f"{pid}.jpg"
+    main_file.write_bytes(b"principal-atual")
+    person.profile_image_path = str(main_file)
+    db_session.commit()
+
+    with patch("app.services.person_service.settings") as mock_settings:
+        mock_settings.STORAGE_FACES = tmp_path
+        with pytest.raises(HTTPException) as exc:
+            delete_face_frame(db_session, pid, f"{pid}.jpg")
+
+    assert exc.value.status_code == 400
 
 
 # ── get_profile_quality ───────────────────────────────────────────────────────
