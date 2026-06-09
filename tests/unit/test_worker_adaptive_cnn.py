@@ -63,13 +63,44 @@ def test_process_track_creates_new_person_when_no_match():
     with patch("app.workers.video_worker.face_service.find_matching_person",
                return_value=(None, None)), \
          patch("app.workers.video_worker.person_service.save_new_person",
-               return_value=MagicMock(id=99)) as mock_save_new:
+               return_value=MagicMock(id=99)) as mock_save_new, \
+         patch("app.workers.video_worker.appearance_service.upsert_appearance",
+               return_value=MagicMock(id=1)):
         new_counter, _ = _process_track(mock_db, video_id=1, track=track,
                                         person_counter=5, alerted_in_this_video=set(),
                                         known_embeddings=[])
 
     assert new_counter == 6
     mock_save_new.assert_called_once()
+
+
+def test_process_track_nova_pessoa_cria_appearance():
+    """_process_track deve criar appearance para nova pessoa, vinculando ao vídeo."""
+    from app.workers.video_worker import _process_track
+
+    mock_db = MagicMock()
+    track = _make_track()
+
+    mock_upsert = MagicMock(return_value=MagicMock(id=1))
+
+    with patch("app.workers.video_worker.face_service.find_matching_person",
+               return_value=(None, None)), \
+         patch("app.workers.video_worker.person_service.save_new_person",
+               return_value=MagicMock(id=77)), \
+         patch("app.workers.video_worker.appearance_service.upsert_appearance",
+               mock_upsert):
+        _process_track(mock_db, video_id=42, track=track,
+                       person_counter=0, alerted_in_this_video=set(),
+                       known_embeddings=[])
+
+    mock_upsert.assert_called_once()
+    call_kwargs = mock_upsert.call_args
+    assert call_kwargs.kwargs.get("person_id") == 77 or call_kwargs.args[1] == 77, (
+        "upsert_appearance deve ser chamado com person_id=77 (nova pessoa)"
+    )
+    assert call_kwargs.kwargs.get("video_id") == 42 or call_kwargs.args[2] == 42, (
+        "upsert_appearance deve ser chamado com video_id=42"
+    )
 
 
 def test_get_adaptive_params_does_not_exist():

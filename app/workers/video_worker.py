@@ -59,6 +59,14 @@ def _process_track(
             db, mean_embedding, best_crop, person_index=person_counter
         )
         known_embeddings.append((new_person.id, mean_embedding))
+        appearance_service.upsert_appearance(
+            db,
+            person_id=new_person.id,
+            video_id=video_id,
+            timestamp_start=float(track.start_time),
+            timestamp_end=float(track.last_seen),
+            confidence=0.0,
+        )
         return person_counter, known_embeddings
 
     logger.info(

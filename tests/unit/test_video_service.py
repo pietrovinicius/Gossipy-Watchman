@@ -435,3 +435,50 @@ def test_search_videos_excludes_deleted_by_default(db):
 
     assert result["total"] == 1
     assert result["items"][0]["id"] == v1.id
+
+
+# ── soft_delete_video: limpeza de arquivos físicos ────────────────────────────
+
+def test_soft_delete_video_remove_arquivo_fisico(db, tmp_path):
+    """soft_delete_video deve apagar o arquivo de vídeo do disco."""
+    from app.services.video_service import create_video_record, soft_delete_video
+
+    video_file = tmp_path / "clip.mp4"
+    video_file.write_bytes(b"video-content")
+
+    video = create_video_record(db, "clip.mp4", str(video_file))
+    soft_delete_video(db, video.id)
+
+    assert not video_file.exists(), "arquivo de vídeo deve ser removido do disco ao deletar"
+    assert video.deleted_at is not None, "DB record deve estar soft-deleted"
+
+
+def test_soft_delete_video_remove_thumbnail_se_existir(db, tmp_path):
+    """soft_delete_video deve apagar o thumbnail do disco se existir."""
+    from app.services.video_service import create_video_record, soft_delete_video
+    from app.models.video import Video
+
+    video_file = tmp_path / "clip.mp4"
+    video_file.write_bytes(b"video")
+    thumb_file = tmp_path / "clip_thumb.jpg"
+    thumb_file.write_bytes(b"thumb")
+
+    video = create_video_record(db, "clip.mp4", str(video_file))
+    # Setar thumbnail manualmente
+    db.get(Video, video.id).thumbnail_path = str(thumb_file)
+    db.commit()
+
+    soft_delete_video(db, video.id)
+
+    assert not thumb_file.exists(), "thumbnail deve ser removido junto com o vídeo"
+
+
+def test_soft_delete_video_nao_falha_sem_arquivo_em_disco(db):
+    """soft_delete_video não deve lançar exceção se arquivo físico não existir."""
+    from app.services.video_service import create_video_record, soft_delete_video
+
+    video = create_video_record(db, "fantasma.mp4", "/tmp/nao_existe_nunca.mp4")
+    result = soft_delete_video(db, video.id)
+
+    assert result is not None
+    assert result.deleted_at is not None

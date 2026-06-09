@@ -46,6 +46,17 @@ def list_videos(
     )
 
 
+def _remove_file_if_exists(path_str: str | None) -> None:
+    if not path_str:
+        return
+    p = Path(path_str)
+    try:
+        if p.exists():
+            p.unlink()
+    except OSError as e:
+        logger.warning(f"[SOFT_DELETE] falha ao remover {path_str}: {e}")
+
+
 def soft_delete_video(db: Session, video_id: int) -> Video | None:
     video = db.get(Video, video_id)
     if video is None:
@@ -54,6 +65,8 @@ def soft_delete_video(db: Session, video_id: int) -> Video | None:
         video.deleted_at = datetime.utcnow()
         db.commit()
         db.refresh(video)
+        _remove_file_if_exists(video.file_path)
+        _remove_file_if_exists(video.thumbnail_path)
     return video
 
 
