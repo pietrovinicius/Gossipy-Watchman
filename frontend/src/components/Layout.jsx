@@ -78,13 +78,13 @@ export default function Layout({ children }) {
   }, [])
 
   const navItems = [
-    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/upload',    label: 'Upload',     icon: Upload },
-    { to: '/videos',    label: 'Vídeos',     icon: Film },
-    { to: '/people',   label: 'Pessoas',    icon: Users },
+    { to: '/dashboard', label: 'Dashboard',    icon: LayoutDashboard },
+    { to: '/upload',    label: 'Upload',       icon: Upload },
+    { to: '/people',    label: 'Pessoas',      icon: Users },
     { to: '/employees', label: 'Funcionários', icon: BadgeCheck },
-    { to: '/alerts',    label: 'Alertas',   icon: Bell, badge: unseenCount },
-    { to: '/analytics', label: 'Analytics',  icon: BarChart2 },
+    { to: '/videos',    label: 'Vídeos',       icon: Film },
+    { to: '/alerts',    label: 'Alertas',      icon: Bell, badge: unseenCount },
+    { to: '/analytics', label: 'Analytics',    icon: BarChart2 },
   ]
 
   function handleLogout() {

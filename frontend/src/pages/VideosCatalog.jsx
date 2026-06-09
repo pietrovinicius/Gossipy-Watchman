@@ -16,6 +16,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import api from '../services/api'
 import { useTheme } from '../contexts/ThemeContext'
 import { useAuthVideoThumbnail } from '../hooks/useAuthVideoThumbnail'
+import { useVideoActions } from '../hooks/useVideoActions'
 
 const STATUS_COLORS = {
   'Pendente': { bg: 'bg-yellow-100', text: 'text-yellow-800', dark: 'dark:bg-yellow-900 dark:text-yellow-200' },
@@ -31,12 +32,12 @@ function VideoCard({ video, onDelete, onReprocess, onExport, loading, loadingAct
   const thumbnailSrc = useAuthVideoThumbnail(video.id, Boolean(video.thumbnail_path))
 
   return (
-    <div className="bg-card rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-all duration-200 flex flex-col h-full">
+    <div
+      className="bg-card rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-all duration-200 flex flex-col h-full cursor-pointer"
+      onClick={() => navigate(`/videos/${video.id}`)}
+    >
       {/* Thumbnail + Badge */}
-      <div
-        className="relative w-full pt-[56.25%] bg-slate-100 dark:bg-slate-800 cursor-pointer overflow-hidden group"
-        onClick={() => navigate(`/videos/${video.id}`)}
-      >
+      <div className="relative w-full pt-[56.25%] bg-slate-100 dark:bg-slate-800 overflow-hidden group">
         {thumbnailSrc ? (
           <img
             src={thumbnailSrc}
@@ -114,7 +115,7 @@ function VideoCard({ video, onDelete, onReprocess, onExport, loading, loadingAct
       </div>
 
       {/* Ações */}
-      <div className="p-4 border-t border-border flex items-center gap-2 justify-end">
+      <div className="p-4 border-t border-border flex items-center gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
         <button
           onClick={() => onExport(video.id, video.file_name)}
           disabled={loading === video.id && loadingAction === 'export'}
@@ -192,9 +193,14 @@ export default function VideosCatalog() {
   const [sortBy, setSortBy] = useState('uploaded_at_desc')
   const [layout, setLayout] = useState(() => localStorage.getItem('gw-videos-layout') || 'grid')
   const [includeDeleted, setIncludeDeleted] = useState(false)
-  const [loadingId, setLoadingId] = useState(null)
-  const [loadingAction, setLoadingAction] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const { exportCsv, reprocess, softDelete, loadingId, loadingAction } = useVideoActions({
+    onSuccess: (action) => {
+      if (['delete', 'reprocess', 'restore'].includes(action)) setRefreshKey((k) => k + 1)
+    },
+    onError: () => {},
+  })
 
   // Debounce search
   useEffect(() => {
@@ -223,7 +229,7 @@ export default function VideosCatalog() {
     } finally {
       setLoading(false)
     }
-  }, [debouncedQuery, status, sortBy, page, pageSize, includeDeleted])
+  }, [debouncedQuery, status, sortBy, page, pageSize, includeDeleted, refreshKey])
 
   useEffect(() => {
     setPage(1)
@@ -237,55 +243,16 @@ export default function VideosCatalog() {
     setDeleteConfirm(videoId)
   }
 
-  const confirmDelete = async () => {
+  const confirmDelete = () => {
     if (!deleteConfirm) return
-    setLoadingId(deleteConfirm)
-    setLoadingAction('delete')
-    try {
-      await api.delete(`/videos/${deleteConfirm}`)
-      setVideos(videos.filter((v) => v.id !== deleteConfirm))
-      setTotal(total - 1)
-    } catch (error) {
-      console.error('Erro ao excluir:', error)
-    } finally {
-      setLoadingId(null)
-      setLoadingAction(null)
-      setDeleteConfirm(null)
-    }
+    const id = deleteConfirm
+    setDeleteConfirm(null)
+    softDelete(id)
   }
 
-  const handleReprocess = async (videoId) => {
-    setLoadingId(videoId)
-    setLoadingAction('reprocess')
-    try {
-      await api.post(`/videos/${videoId}/reprocess`)
-      fetchVideos()
-    } catch (error) {
-      console.error('Erro ao reprocessar:', error)
-    } finally {
-      setLoadingId(null)
-      setLoadingAction(null)
-    }
-  }
+  const handleReprocess = (videoId) => { reprocess(videoId) }
 
-  const handleExport = async (videoId, fileName) => {
-    setLoadingId(videoId)
-    setLoadingAction('export')
-    try {
-      const res = await api.get(`/export/timeline/video/${videoId}`, { responseType: 'blob' })
-      const url = window.URL.createObjectURL(res.data)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `${fileName.replace('.mp4', '')}_timeline.csv`
-      link.click()
-      window.URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Erro ao exportar:', error)
-    } finally {
-      setLoadingId(null)
-      setLoadingAction(null)
-    }
-  }
+  const handleExport = (videoId, fileName) => { exportCsv(videoId, fileName) }
 
   const handleLayoutChange = (newLayout) => {
     setLayout(newLayout)
