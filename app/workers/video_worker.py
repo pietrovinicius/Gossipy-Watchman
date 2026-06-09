@@ -74,6 +74,7 @@ def _process_track(
         confidence=distance,
     )
     person_service.save_face_sample(db, person_id, appearance.id, best_crop, embedding=mean_embedding)
+    known_embeddings.append((person_id, mean_embedding))
 
     person = db.get(Person, person_id)
     if person and person.category == PersonCategory.monitorado.value:

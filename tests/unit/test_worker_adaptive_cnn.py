@@ -78,3 +78,62 @@ def test_get_adaptive_params_does_not_exist():
     assert not hasattr(ww, "get_adaptive_params"), (
         "get_adaptive_params deve ter sido removido após migração para InsightFace"
     )
+
+
+def test_process_track_atualiza_cache_com_pessoa_conhecida():
+    """_process_track deve adicionar embedding ao cache quando pessoa conhecida identificada."""
+    from app.workers.video_worker import _process_track
+
+    mock_db = MagicMock()
+    track = _make_track()
+    mean_emb = track.mean_embedding()
+
+    appearance_mock = MagicMock()
+    appearance_mock.id = 42
+
+    initial_cache = [(1, mean_emb.copy())]
+    with patch("app.workers.video_worker.face_service.find_matching_person",
+               return_value=(1, 0.05)), \
+         patch("app.workers.video_worker.appearance_service.upsert_appearance",
+               return_value=appearance_mock), \
+         patch("app.workers.video_worker.person_service.save_face_sample",
+               return_value="/tmp/sample.jpg"):
+        mock_db.get.return_value = None
+        _, updated_cache = _process_track(
+            mock_db, video_id=1, track=track,
+            person_counter=0, alerted_in_this_video=set(),
+            known_embeddings=list(initial_cache),
+        )
+
+    assert len(updated_cache) > len(initial_cache), (
+        "cache deve crescer com o novo embedding da pessoa conhecida"
+    )
+    assert any(pid == 1 and np.allclose(emb, mean_emb) for pid, emb in updated_cache[len(initial_cache):])
+
+
+def test_process_track_nao_duplica_se_embedding_identico_ja_presente():
+    """_process_track com mesma pessoa: cache cresce para alimentar matches futuros."""
+    from app.workers.video_worker import _process_track
+
+    mock_db = MagicMock()
+    track = _make_track()
+
+    appearance_mock = MagicMock()
+    appearance_mock.id = 10
+
+    with patch("app.workers.video_worker.face_service.find_matching_person",
+               return_value=(7, 0.1)), \
+         patch("app.workers.video_worker.appearance_service.upsert_appearance",
+               return_value=appearance_mock), \
+         patch("app.workers.video_worker.person_service.save_face_sample",
+               return_value=None):
+        mock_db.get.return_value = None
+        _, updated_cache = _process_track(
+            mock_db, video_id=2, track=track,
+            person_counter=0, alerted_in_this_video=set(),
+            known_embeddings=[],
+        )
+
+    assert any(pid == 7 for pid, _ in updated_cache), (
+        "embedding da pessoa 7 deve estar no cache após o track"
+    )
