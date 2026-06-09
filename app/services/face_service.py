@@ -190,8 +190,6 @@ class FaceTracker:
         det_score: float = 1.0,
         bbox: np.ndarray | None = None,
     ) -> None:
-        self._close_stale_tracks(timestamp)
-
         best_idx = -1
         best_iou = 0.0
 

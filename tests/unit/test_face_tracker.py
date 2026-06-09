@@ -90,11 +90,14 @@ def test_face_tracker_continues_track_within_gap_tolerance():
 
 
 def test_face_tracker_closes_track_when_gap_exceeds_tolerance():
+    """Caller chama _close_stale_tracks antes de add_detection num novo timestamp.
+    Comportamento correto: track anterior fechado, novo track criado."""
     from app.services.face_service import FaceTracker
 
     tracker = FaceTracker(gap_tolerance=2.0, min_samples=1)
     tracker.add_detection(make_embedding(), make_location(), make_frame(), timestamp=1.0)
     tracker.add_detection(make_embedding(), make_location(), make_frame(), timestamp=1.5)
+    tracker._close_stale_tracks(current_time=10.0)  # worker faz isso antes do loop
     tracker.add_detection(make_embedding(), make_location(), make_frame(), timestamp=10.0)
 
     assert len(tracker.closed_tracks) == 1
@@ -107,7 +110,7 @@ def test_face_tracker_discards_tracks_below_min_samples():
 
     tracker = FaceTracker(gap_tolerance=2.0, min_samples=3)
     tracker.add_detection(make_embedding(), make_location(), make_frame(), timestamp=1.0)
-    tracker.add_detection(make_embedding(), make_location(), make_frame(), timestamp=10.0)
+    tracker._close_stale_tracks(current_time=10.0)  # worker faz isso antes do loop
 
     assert tracker.closed_tracks == []
 
@@ -228,6 +231,22 @@ def test_close_stale_tracks_fecha_tracks_expirados():
 
     assert len(tracker.closed_tracks) == 1
     assert len(tracker.active_tracks) == 0
+
+
+def test_add_detection_nao_chama_close_stale_tracks_internamente():
+    """add_detection não deve invocar _close_stale_tracks.
+    O worker já chama esse método antes do loop; chamada interna é redundante."""
+    from app.services.face_service import FaceTracker
+    from unittest.mock import patch
+
+    tracker = FaceTracker(gap_tolerance=5.0, min_samples=1)
+    bbox = np.array([0, 0, 100, 100], dtype=np.float32)
+
+    with patch.object(tracker, "_close_stale_tracks") as mock_close:
+        tracker.add_detection(make_l2_emb(1), (0, 100, 100, 0), make_frame(),
+                              timestamp=1.0, bbox=bbox)
+
+    mock_close.assert_not_called()
 
 
 def test_flush_com_multiple_tracks():
