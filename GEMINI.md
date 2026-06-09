@@ -240,3 +240,19 @@ Descrição objetiva do que mudou e por quê.
 - Limitar leitura de arquivos ao escopo da tarefa.
 - Nunca deixar tarefa concluída sem commit, push e fragmento de changelog.
 - Ao propor implementação, sempre declarar qual teste será escrito primeiro.
+
+---
+
+## 13. Skills Recomendadas
+
+As seguintes skills instaladas no ambiente são altamente pertinentes para o desenvolvimento deste projeto e podem ser usadas sempre que necessário para guiar a implementação de funcionalidades, testes e correção de bugs:
+
+1. **`computer-vision-expert`**: Guia para manipulação de mídia com OpenCV, amostragem de frames e extração de embeddings faciais com `face_recognition`.
+2. **`fastapi-pro`**: Melhores práticas para roteamento, injeção de dependência, manipulação de Pydantic v2 e estruturação assíncrona.
+3. **`test-driven-development`** / **`tdd-workflow`**: Apoio para a Lei de Ferro do TDD, auxiliando na escrita de testes vermelhos (RED), código funcional (GREEN) e refatoração (REFACTOR).
+4. **`react-patterns`** / **`react-best-practices`**: Padrões modernos para o frontend em React, hooks customizados, performance de componentes e integração Axios.
+5. **`database-admin`**: Boas práticas para o mapeamento objeto-relacional com SQLAlchemy, transações no SQLite e migrações.
+6. **`systematic-debugging`** / **`debugger`**: Metodologia sistemática para rastrear e solucionar falhas em background workers ou integração com a API.
+
+*Nota: Estas skills podem ser invocadas/mencionadas a qualquer momento para garantir a aderência técnica recomendada.*
+
