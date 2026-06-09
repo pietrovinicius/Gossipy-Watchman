@@ -210,7 +210,7 @@ describe('VideoDetail page', () => {
 
     await waitFor(() => screen.getByText('Fulano'))
     fireEvent.click(screen.getByText(/ver todas as 5 aparições/i))
-    expect(screen.getByText('00:09')).toBeTruthy()
+    expect(screen.getAllByText('00:09').length).toBeGreaterThan(0)
   })
 
   it('botão Exportar CSV chama downloadCsv com o blob retornado', async () => {
@@ -275,17 +275,41 @@ describe('VideoDetail page', () => {
     expect(scrollIntoView).toHaveBeenCalled()
   })
 
-  it('card de pessoa exibe botão de timestamp separado do ícone play', async () => {
+  it('card de pessoa exibe botão de timestamp separado do ícone play (seek-pause-{pid}-{aid})', async () => {
     const api = (await import('../services/api')).default
     api.get.mockResolvedValue({ data: makeDetail() })
 
     const { container } = await renderVideoDetail()
 
     await waitFor(() => screen.getByText('Fulano'))
-    // botão separado com data-testid="seek-pause-{id}"
-    const pauseBtn = container.querySelector('[data-testid="seek-pause-3"]')
+    // testid inclui appearance id: seek-pause-{person_id}-{appearance_id}
+    const pauseBtn = container.querySelector('[data-testid="seek-pause-3-1"]')
     expect(pauseBtn).toBeTruthy()
     expect(pauseBtn.textContent).toBe('00:01')
+  })
+
+  it('card com múltiplas aparições exibe um botão seek-pause por aparição visível', async () => {
+    const api = (await import('../services/api')).default
+    api.get.mockResolvedValue({ data: makeDetail({
+      people: [makePerson({
+        appearance_count: 3,
+        first_seen_at: 1736.0,
+        last_seen_at: 1796.0,
+        appearances: [
+          { id: 10, timestamp_start: 1736.0, timestamp_end: 1739.0, confidence: 0.0 },
+          { id: 11, timestamp_start: 1749.0, timestamp_end: 1757.0, confidence: 0.319 },
+          { id: 12, timestamp_start: 1795.0, timestamp_end: 1796.0, confidence: 0.261 },
+        ],
+      })],
+    }) })
+
+    const { container } = await renderVideoDetail()
+
+    await waitFor(() => screen.getByText('Fulano'))
+    // um botão por aparição: 28:56, 29:09, 29:55
+    expect(container.querySelector('[data-testid="seek-pause-3-10"]')).toBeTruthy()
+    expect(container.querySelector('[data-testid="seek-pause-3-11"]')).toBeTruthy()
+    expect(container.querySelector('[data-testid="seek-pause-3-12"]')).toBeTruthy()
   })
 
   it('clicar no botão de timestamp do card faz scroll até o player sem dar play', async () => {
@@ -299,7 +323,7 @@ describe('VideoDetail page', () => {
     const { container } = await renderVideoDetail()
 
     await waitFor(() => screen.getByText('Fulano'))
-    const pauseBtn = container.querySelector('[data-testid="seek-pause-3"]')
+    const pauseBtn = container.querySelector('[data-testid="seek-pause-3-1"]')
     fireEvent.click(pauseBtn)
 
     expect(scrollIntoView).toHaveBeenCalled()

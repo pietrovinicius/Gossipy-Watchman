@@ -147,23 +147,26 @@ function PersonCard({ person, isOnScreen, onSeekTo, onSeekAndPause, cardRef }) {
         )}
       </div>
 
-      <div className="flex justify-between">
-        <div className="flex items-center gap-1">
+      <div className="flex justify-between items-center flex-wrap gap-y-1">
+        <div className="flex items-center gap-1 flex-wrap">
           <button
             onClick={() => onSeekTo?.(person.first_seen_at)}
-            title="Reproduzir a partir deste momento"
+            title="Reproduzir a partir da primeira aparição"
             className="flex items-center text-primary hover:text-primary/70 transition-colors"
           >
             <PlayCircle className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
-          <button
-            onClick={() => onSeekAndPause?.(person.first_seen_at)}
-            title="Ir para este momento e pausar"
-            data-testid={`seek-pause-${person.person_id}`}
-            className="text-xs text-primary font-mono hover:underline px-1 py-0.5 rounded border border-primary/30 hover:border-primary/70 transition-colors"
-          >
-            {fmtMmSs(person.first_seen_at)}
-          </button>
+          {visibleAppearances.map((a) => (
+            <button
+              key={a.id}
+              onClick={() => onSeekAndPause?.(a.timestamp_start)}
+              title="Ir para este momento e pausar"
+              data-testid={`seek-pause-${person.person_id}-${a.id}`}
+              className="text-xs text-primary font-mono hover:underline px-1 py-0.5 rounded border border-primary/30 hover:border-primary/70 transition-colors"
+            >
+              {fmtMmSs(a.timestamp_start)}
+            </button>
+          ))}
         </div>
         <Link
           to={`/people/${person.person_id}`}
