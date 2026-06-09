@@ -23,6 +23,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 ### Removido
 - **chore(deps)**: `python-magic` removido de `requirements.txt` — nunca importado no código; causava erro no Windows por exigir `libmagic.dll`.
 
+### Frontend
+- **feat(sidebar)**: item "Vídeos" reposicionado na sidebar — agora entre "Funcionários" e "Alertas" (`Layout.jsx`).
+- **feat(VideosCatalog)**: card completo clicável (onClick no wrapper); `stopPropagation` na div de ações impede navegação acidental ao clicar botões; migrado para `useVideoActions` hook (`exportCsv`/`reprocess`/`softDelete`) eliminando lógica inline duplicada; `refreshKey` força re-fetch após delete/reprocess/restore.
+
 ---
 
 ## [2.20.0] — 2026-06-09
