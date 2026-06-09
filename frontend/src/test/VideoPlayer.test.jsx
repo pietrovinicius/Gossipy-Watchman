@@ -122,11 +122,13 @@ describe('VideoPlayer — Barra de Presença', () => {
     expect(screen.getByText('Bob')).toBeTruthy()
   })
 
-  it('exibe botões de velocidade incluindo 6x, 10x e 25x', () => {
+  it('exibe botões de velocidade incluindo 6x, 10x, 25x, 50x e 100x', () => {
     render(<VideoPlayer {...baseProps} />)
     expect(screen.getByText('6x')).toBeTruthy()
     expect(screen.getByText('10x')).toBeTruthy()
     expect(screen.getByText('25x')).toBeTruthy()
+    expect(screen.getByText('50x')).toBeTruthy()
+    expect(screen.getByText('100x')).toBeTruthy()
   })
 
   it('barra não renderiza quando duration = 0', () => {
