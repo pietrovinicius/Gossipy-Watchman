@@ -118,6 +118,23 @@ async def test_oversized_upload_returns_413(client, auth_headers, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_valid_dav_returns_202(client, auth_headers, tmp_path):
+    """.dav de câmera Dahua deve ser aceito sem validação de magic bytes."""
+    dav_bytes = b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b"  # bytes arbitrários
+    with patch("app.api.v1.upload.settings") as ms, \
+         patch("app.api.v1.upload.process_video"), \
+         patch("app.api.v1.upload.needs_conversion", return_value=False):
+        ms.STORAGE_VIDEOS = tmp_path
+        ms.MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024
+        response = await client.post(
+            "/api/v1/videos/upload",
+            files={"file": ("camera.dav", BytesIO(dav_bytes), "application/octet-stream")},
+            headers=auth_headers,
+        )
+    assert response.status_code == 202
+
+
+@pytest.mark.asyncio
 async def test_partial_file_deleted_on_413(client, auth_headers, tmp_path):
     """Arquivo parcial deve ser deletado quando upload excede o limite."""
     small_limit = 10

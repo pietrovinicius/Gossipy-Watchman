@@ -28,6 +28,15 @@ def test_needs_conversion_false_for_avi():
     assert needs_conversion(Path("video.avi")) is False
 
 
+def test_needs_conversion_true_for_dav():
+    assert needs_conversion(Path("video.dav")) is True
+
+
+def test_native_formats_does_not_include_dav():
+    from app.services.conversion_service import NATIVE_FORMATS
+    assert ".dav" not in NATIVE_FORMATS
+
+
 def test_convert_to_mp4_raises_runtime_error_if_ffmpeg_unavailable():
     with patch('app.services.conversion_service.FFMPEG_AVAILABLE', False):
         with pytest.raises(RuntimeError):

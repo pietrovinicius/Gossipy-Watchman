@@ -7,7 +7,7 @@ from app.core.ffmpeg_check import FFMPEG_AVAILABLE
 
 logger = logging.getLogger(__name__)
 
-CONVERTIBLE_FORMATS = {".ts", ".mkv", ".mov"}
+CONVERTIBLE_FORMATS = {".ts", ".mkv", ".mov", ".dav"}
 NATIVE_FORMATS = {".mp4", ".avi"}
 
 

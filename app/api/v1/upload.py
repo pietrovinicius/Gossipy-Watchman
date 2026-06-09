@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-_ALLOWED_EXTENSIONS = {".mp4", ".avi", ".mkv", ".mov", ".ts"}
+_ALLOWED_EXTENSIONS = {".mp4", ".avi", ".mkv", ".mov", ".ts", ".dav"}
 _CHUNK_SIZE = 1024 * 1024  # 1 MB
 
 _MAGIC: dict[str, list[tuple[int, int, bytes]]] = {

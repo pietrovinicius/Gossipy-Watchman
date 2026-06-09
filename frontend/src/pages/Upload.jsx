@@ -6,7 +6,7 @@ import api from '../services/api'
 import { useUploadProgress } from '../hooks/useUploadProgress'
 import { formatBytes, formatEta, formatSpeed } from '../utils/formatBytes'
 
-const ALLOWED = ['.mp4', '.avi', '.mkv', '.mov', '.ts']
+const ALLOWED = ['.mp4', '.avi', '.mkv', '.mov', '.ts', '.dav']
 const MAX_SIZE_GB = 5
 
 function getExt(name) {
@@ -30,7 +30,7 @@ export default function Upload() {
     setExtError('')
     resetProgress()
     if (!ALLOWED.includes(getExt(f.name))) {
-      setExtError(`Formato não suportado: "${getExt(f.name)}". Use .mp4, .avi, .mkv, .mov ou .ts.`)
+      setExtError(`Formato não suportado: "${getExt(f.name)}". Use .mp4, .avi, .mkv, .mov, .ts ou .dav.`)
       setFile(null)
       return
     }
@@ -125,12 +125,12 @@ export default function Upload() {
               <UploadCloud className="w-12 h-12 text-text-muted mx-auto mb-3" aria-hidden="true" />
               <p className="text-text-base font-medium">Arraste um arquivo aqui</p>
               <p className="text-text-muted text-sm mt-1">ou clique para selecionar</p>
-              <p className="text-xs text-text-muted mt-2">Formatos: .mp4, .avi, .mkv, .mov, .ts</p>
+              <p className="text-xs text-text-muted mt-2">Formatos: .mp4, .avi, .mkv, .mov, .ts, .dav</p>
               <p className="text-xs text-text-muted">Máximo: {MAX_SIZE_GB} GB</p>
               <input
                 ref={inputRef}
                 type="file"
-                accept=".mp4,.avi,.mkv,.mov,.ts"
+                accept=".mp4,.avi,.mkv,.mov,.ts,.dav"
                 className="hidden"
                 aria-hidden="true"
                 onChange={(e) => e.target.files[0] && selectFile(e.target.files[0])}
