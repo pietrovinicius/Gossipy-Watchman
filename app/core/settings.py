@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     INSIGHTFACE_DET_SIZE: int = 640
     INSIGHTFACE_DET_SCORE: float = 0.7
     FACE_MAX_EMBEDDINGS_PER_PERSON: int = 5
+    FACE_MAX_SAMPLES_PER_PERSON: int = 10
     INSIGHTFACE_HIGH_RES_THRESHOLD: int = 1920  # escala frames acima deste valor
 
     # Qualidade de frame
@@ -55,7 +56,7 @@ class Settings(BaseSettings):
 
     # App
     APP_NAME: str = "Gossipy Watchman"
-    APP_VERSION: str = "1.99.0"
+    APP_VERSION: str = "2.00.0"
     API_V1_PREFIX: str = "/api/v1"
     DOCS_ENABLED: bool = True
 

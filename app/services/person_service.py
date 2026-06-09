@@ -73,9 +73,6 @@ def save_new_person(
     return person
 
 
-MAX_FACE_SAMPLES = 10
-
-
 def save_face_sample(
     db: Session,
     person_id: int,
@@ -90,7 +87,7 @@ def save_face_sample(
     """
     try:
         existing = list(settings.STORAGE_FACES.glob(f"{person_id}_sample_*.jpg"))
-        if len(existing) >= MAX_FACE_SAMPLES:
+        if len(existing) >= settings.FACE_MAX_SAMPLES_PER_PERSON:
             return None
 
         sample_path = settings.STORAGE_FACES / f"{person_id}_sample_{appearance_id}.jpg"

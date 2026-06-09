@@ -262,6 +262,8 @@ def test_save_face_sample_calls_imwrite_with_correct_path(db_session, tmp_path):
     with patch("app.services.person_service.cv2.imwrite") as mock_imwrite, \
          patch("app.services.person_service.settings") as mock_settings:
         mock_settings.STORAGE_FACES = tmp_path
+        mock_settings.FACE_MAX_SAMPLES_PER_PERSON = 10
+        mock_settings.FACE_MAX_EMBEDDINGS_PER_PERSON = 5
         mock_imwrite.return_value = True
 
         result = save_face_sample(db_session, person.id, appearance_id=42, face_crop=face_crop)
@@ -286,6 +288,7 @@ def test_save_face_sample_returns_none_when_limit_reached(db_session, tmp_path):
     with patch("app.services.person_service.cv2.imwrite") as mock_imwrite, \
          patch("app.services.person_service.settings") as mock_settings:
         mock_settings.STORAGE_FACES = tmp_path
+        mock_settings.FACE_MAX_SAMPLES_PER_PERSON = 10
 
         result = save_face_sample(db_session, person.id, appearance_id=99, face_crop=face_crop)
 
@@ -305,6 +308,7 @@ def test_save_face_sample_returns_none_and_does_not_raise_on_error(db_session, t
     with patch("app.services.person_service.cv2.imwrite", side_effect=Exception("disco cheio")), \
          patch("app.services.person_service.settings") as mock_settings:
         mock_settings.STORAGE_FACES = tmp_path
+        mock_settings.FACE_MAX_SAMPLES_PER_PERSON = 10
 
         result = save_face_sample(db_session, person.id, appearance_id=7, face_crop=face_crop)
 
@@ -932,3 +936,41 @@ def test_quality_excelente_so_para_distancia_coseno_muito_baixa(db_session):
         f"dist=0.3 (score=70%) não deve ser 'excelente' para distância coseno "
         f"(threshold=0.4); bandas precisam de recalibração. Obtido: {quality['quality_level']}"
     )
+
+
+# ── Task 8 V3: MAX_FACE_SAMPLES deve vir de settings ─────────────────────────
+
+def test_save_face_sample_respeita_settings_max_samples(tmp_path):
+    """save_face_sample deve usar settings.FACE_MAX_SAMPLES_PER_PERSON, não constante hardcoded."""
+    from app.services.person_service import save_face_sample
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    face_crop = np.zeros((80, 80, 3), dtype=np.uint8)
+    embedding = np.zeros(512, dtype=np.float32)
+    embedding[0] = 1.0
+
+    cap = 3  # limite custom menor que MAX_FACE_SAMPLES=10 hardcoded
+
+    with patch("app.services.person_service.settings") as mock_s:
+        mock_s.STORAGE_FACES = tmp_path
+        mock_s.FACE_MAX_SAMPLES_PER_PERSON = cap
+        mock_s.FACE_MAX_EMBEDDINGS_PER_PERSON = 10  # não limitar embeddings neste teste
+
+        for i in range(cap + 2):
+            save_face_sample(db, person_id=1, appearance_id=i,
+                             face_crop=face_crop, embedding=embedding)
+
+    samples = list(tmp_path.glob("1_sample_*.jpg"))
+    assert len(samples) <= cap, (
+        f"save_face_sample deve parar em {cap} (settings.FACE_MAX_SAMPLES_PER_PERSON), "
+        f"obtido {len(samples)} — provavelmente usando MAX_FACE_SAMPLES=10 hardcoded"
+    )
+
+    db.close()
+    engine.dispose()
