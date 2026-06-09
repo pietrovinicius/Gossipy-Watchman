@@ -10,13 +10,15 @@ from app.core.settings import settings
 def extract_frames(
     video_path: Path,
     fps_sample: int = settings.FRAMES_PER_SECOND_SAMPLE,
-) -> Generator[tuple[int, np.ndarray], None, None]:
+) -> Generator[tuple[float, np.ndarray], None, None]:
     cap = cv2.VideoCapture(str(video_path))
     try:
         if not cap.isOpened():
             raise FileNotFoundError(f"Não foi possível abrir o vídeo: {video_path}")
 
         fps_real: float = cap.get(cv2.CAP_PROP_FPS)
+        if fps_real <= 0:
+            fps_real = 25.0  # fallback para vídeos com metadata ausente
         frame_interval: int = max(1, round(fps_real / fps_sample))
 
         frame_index = 0
@@ -25,8 +27,8 @@ def extract_frames(
             if not ok:
                 break
             if frame_index % frame_interval == 0:
-                segundo = frame_index // frame_interval
-                yield segundo, frame
+                timestamp_seconds: float = frame_index / fps_real
+                yield timestamp_seconds, frame
             frame_index += 1
     finally:
         cap.release()

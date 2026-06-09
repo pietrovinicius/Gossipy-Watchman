@@ -166,7 +166,7 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
         # Task 4: controle de detecção forçada periódica
         last_forced_detection: float = -float(settings.MOTION_GATING_FORCE_INTERVAL)
 
-        for segundo, frame in frame_service.extract_frames(video_path):
+        for timestamp_real, frame in frame_service.extract_frames(video_path):
             # Salvar primeiro frame como thumbnail
             if first_frame:
                 try:
@@ -192,16 +192,16 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
                     run_detection = True
                 else:
                     has_mov, motion_ratio = frame_service.has_motion(prev_gray, gray)
-                    force_detect = (segundo - last_forced_detection) >= settings.MOTION_GATING_FORCE_INTERVAL
+                    force_detect = (timestamp_real - last_forced_detection) >= settings.MOTION_GATING_FORCE_INTERVAL
                     run_detection = has_mov or force_detect
                     if force_detect and not has_mov:
                         logger.debug(
-                            f"[WORKER] video_id={video_id} segundo={segundo} "
+                            f"[WORKER] video_id={video_id} timestamp_real={timestamp_real} "
                             f"detecção forçada (sem movimento, interval={settings.MOTION_GATING_FORCE_INTERVAL}s)"
                         )
                     else:
                         logger.debug(
-                            f"[WORKER] video_id={video_id} segundo={segundo} "
+                            f"[WORKER] video_id={video_id} timestamp_real={timestamp_real} "
                             f"motion_ratio={motion_ratio:.4f} run_detection={run_detection}"
                         )
 
@@ -209,14 +209,14 @@ def process_video(video_id: int, video_path: Path, _engine=None) -> None:
                 embeddings = face_service.extract_embeddings(frame)
                 for embedding, location, det_score in embeddings:
                     tracker.add_detection(embedding, location, frame,
-                                          timestamp=float(segundo), det_score=det_score)
+                                          timestamp=float(timestamp_real), det_score=det_score)
                 if settings.MOTION_GATING_ENABLED:
                     prev_gray = gray
-                    last_forced_detection = float(segundo)
+                    last_forced_detection = float(timestamp_real)
             else:
-                logger.debug(f"[WORKER] video_id={video_id} segundo={segundo} frame estatico pulado")
+                logger.debug(f"[WORKER] video_id={video_id} timestamp_real={timestamp_real} frame estatico pulado")
 
-            _broadcast_sync(video_id, {"event": "frame", "second": segundo, "video_id": video_id})
+            _broadcast_sync(video_id, {"event": "frame", "second": timestamp_real, "video_id": video_id})
 
         for track in tracker.flush():
             person_counter, known_embeddings = _process_track(

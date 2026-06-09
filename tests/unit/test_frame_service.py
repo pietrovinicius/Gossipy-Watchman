@@ -42,7 +42,7 @@ def test_30fps_sample1_yields_one_per_second():
 
 
 def test_second_approximation_correct():
-    """segundo_aproximado = frame_index // frame_interval."""
+    """Para 30fps / fps_sample=1: frames 0, 30, 60 → timestamps 0.0s, 1.0s, 2.0s."""
     from app.services.frame_service import extract_frames
 
     frames = [np.zeros((480, 640, 3), dtype=np.uint8) for _ in range(90)]
@@ -51,8 +51,11 @@ def test_second_approximation_correct():
     with patch("app.services.frame_service.cv2.VideoCapture", return_value=cap):
         results = list(extract_frames(Path("video.mp4"), fps_sample=1))
 
-    seconds = [r[0] for r in results]
-    assert seconds == [0, 1, 2]
+    timestamps = [r[0] for r in results]
+    assert len(timestamps) == 3
+    assert abs(timestamps[0] - 0.0) < 0.01
+    assert abs(timestamps[1] - 1.0) < 0.01
+    assert abs(timestamps[2] - 2.0) < 0.01
 
 
 def test_release_called_on_success():
@@ -92,6 +95,44 @@ def test_yields_ndarray_frames():
 
     assert len(results) == 1
     assert isinstance(results[0][1], np.ndarray)
+
+
+# ── Task 3: timestamps devem ser segundos reais, não índice de amostra ────────
+
+def test_timestamps_sao_segundos_reais_nao_indice():
+    """Para 30fps / fps_sample=2: frame_interval=15.
+    frame 0 → 0.0s, frame 15 → 0.5s, frame 30 → 1.0s.
+    Código antigo retornava índices 0, 1, 2 (2× o valor correto).
+    """
+    from app.services.frame_service import extract_frames
+
+    frames = [np.zeros((480, 640, 3), dtype=np.uint8) for _ in range(45)]
+    cap = make_mock_cap(fps=30.0, frames=frames)
+
+    with patch("app.services.frame_service.cv2.VideoCapture", return_value=cap):
+        results = list(extract_frames(Path("video.mp4"), fps_sample=2))
+
+    timestamps = [r[0] for r in results]
+    # 45 frames @ interval 15 → frames 0, 15, 30 → timestamps 0.0, 0.5, 1.0
+    assert len(results) == 3
+    assert abs(timestamps[0] - 0.0) < 0.01, f"frame 0 deve ser 0.0s, obtido {timestamps[0]}"
+    assert abs(timestamps[1] - 0.5) < 0.01, f"frame 15 deve ser 0.5s, obtido {timestamps[1]} (bug: retorna 1.0)"
+    assert abs(timestamps[2] - 1.0) < 0.01, f"frame 30 deve ser 1.0s, obtido {timestamps[2]} (bug: retorna 2.0)"
+
+
+def test_timestamp_tipo_float():
+    """extract_frames deve retornar float, não int."""
+    from app.services.frame_service import extract_frames
+
+    frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    cap = make_mock_cap(fps=30.0, frames=[frame])
+
+    with patch("app.services.frame_service.cv2.VideoCapture", return_value=cap):
+        results = list(extract_frames(Path("video.mp4"), fps_sample=1))
+
+    assert isinstance(results[0][0], float), (
+        f"timestamp deve ser float, obtido {type(results[0][0])}"
+    )
 
 
 def test_has_motion_no_motion():
