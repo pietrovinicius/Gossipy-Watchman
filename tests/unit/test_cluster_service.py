@@ -199,6 +199,56 @@ def test_clusterizacao_usa_distancia_coseno_nao_euclidiana(db_session):
     )
 
 
+# ── Task 3 V3: complete linkage — sem chaining A≈B≈C mesmo A≇C ───────────────
+
+def test_complete_linkage_evita_chaining_abc(db_session):
+    """Single linkage une A≈B≈C num único cluster mesmo quando dist(A,C) > threshold.
+    Complete linkage deve gerar apenas o par A+B (ou B+C), nunca o trio."""
+    # A=[1,0,...], B=[cos30°,sin30°,...], C=[cos60°,sin60°,...]
+    # dist(A,B) = 1 - cos(30°) ≈ 0.134 < 0.4  ✓ devem ser agrupados
+    # dist(B,C) = 1 - cos(30°) ≈ 0.134 < 0.4  ✓ parecem similares
+    # dist(A,C) = 1 - cos(60°) = 0.5  > 0.4   ✗ A e C são diferentes
+    import math
+    p1 = Person(name="Desconhecido #1", category="Desconhecido")
+    p2 = Person(name="Desconhecido #2", category="Desconhecido")
+    p3 = Person(name="Desconhecido #3", category="Desconhecido")
+    db_session.add_all([p1, p2, p3])
+    db_session.commit()
+
+    emb_a = np.zeros(512, dtype=np.float32)
+    emb_a[0] = 1.0
+
+    emb_b = np.zeros(512, dtype=np.float32)
+    emb_b[0] = math.cos(math.radians(30))
+    emb_b[1] = math.sin(math.radians(30))
+    emb_b = _l2(emb_b)
+
+    emb_c = np.zeros(512, dtype=np.float32)
+    emb_c[0] = math.cos(math.radians(60))
+    emb_c[1] = math.sin(math.radians(60))
+    emb_c = _l2(emb_c)
+
+    dist_ab = float(1.0 - np.dot(emb_a, emb_b))
+    dist_bc = float(1.0 - np.dot(emb_b, emb_c))
+    dist_ac = float(1.0 - np.dot(emb_a, emb_c))
+    assert dist_ab < 0.4, f"pré-cond dist(A,B)={dist_ab:.3f}"
+    assert dist_bc < 0.4, f"pré-cond dist(B,C)={dist_bc:.3f}"
+    assert dist_ac > 0.4, f"pré-cond dist(A,C)={dist_ac:.3f}"
+
+    mock_embeddings = [(p1.id, emb_a), (p2.id, emb_b), (p3.id, emb_c)]
+    with patch("app.services.cluster_service.person_service.get_all_embeddings",
+               return_value=mock_embeddings):
+        run_clusterization(db_session)
+
+    suggestions = db_session.query(ClusterSuggestion).filter(
+        ClusterSuggestion.deleted_at.is_(None)
+    ).all()
+    assert len(suggestions) == 2, (
+        f"Complete linkage deve gerar 1 grupo de 2 (não trio). "
+        f"Obtido {len(suggestions)} sugestões — single linkage encadeou A≈B≈C?"
+    )
+
+
 def test_clusterizacao_nao_agrupa_embeddings_coseno_acima_threshold(db_session):
     """Dois embeddings com coseno dist > 0.4 NÃO devem ser agrupados."""
     p1 = Person(name="Desconhecido #1", category="Desconhecido")

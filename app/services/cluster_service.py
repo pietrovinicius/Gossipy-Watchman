@@ -41,32 +41,44 @@ def run_clusterization(db: Session) -> None:
         logger.info("run_clusterization: perfis elegíveis insuficientes (%s) para clusterização", n)
         return
 
-    # 5. Calcula distâncias coseno e monta o grafo de adjacência (Single Linkage / Connected Components)
+    # 5. Calcula distâncias coseno entre todos os pares.
     # ArcFace embeddings são L2-normalizados → coseno = 1 - dot(a, b)
-    adj = {i: [] for i in range(n)}
+    tol = settings.FACE_RECOGNITION_TOLERANCE
+    pairwise: dict[tuple[int, int], float] = {}
     for i in range(n):
         for j in range(i + 1, n):
-            dist = float(1.0 - np.dot(active_embeddings[i][1], active_embeddings[j][1]))
-            if dist < settings.FACE_RECOGNITION_TOLERANCE:
-                adj[i].append(j)
-                adj[j].append(i)
+            d = float(1.0 - np.dot(active_embeddings[i][1], active_embeddings[j][1]))
+            pairwise[(i, j)] = d
 
-    # 6. Busca por componentes conectados (DBSCAN simplificado sem densidade de ruído)
-    visited = [False] * n
-    components = []
-    for i in range(n):
-        if not visited[i]:
-            comp = []
-            queue = [i]
-            visited[i] = True
-            while queue:
-                curr = queue.pop(0)
-                comp.append(curr)
-                for neighbor in adj[curr]:
-                    if not visited[neighbor]:
-                        visited[neighbor] = True
-                        queue.append(neighbor)
-            components.append(comp)
+    # 6. Clusterização por complete linkage:
+    # Um cluster só absorve um novo nó/cluster se a distância MÁXIMA entre todos os
+    # pares inter-cluster for < threshold (evita encadeamento A≈B≈C quando A≇C).
+    clusters: list[set[int]] = [{i} for i in range(n)]
+    sorted_pairs = sorted(pairwise.items(), key=lambda kv: kv[1])
+
+    changed = True
+    while changed:
+        changed = False
+        for (i, j), d in sorted_pairs:
+            if d >= tol:
+                break
+            ci = next((idx for idx, c in enumerate(clusters) if i in c), None)
+            cj = next((idx for idx, c in enumerate(clusters) if j in c), None)
+            if ci is None or cj is None or ci == cj:
+                continue
+            # Distância complete linkage = máxima distância entre os dois clusters
+            max_d = max(
+                pairwise[(min(a, b), max(a, b))]
+                for a in clusters[ci]
+                for b in clusters[cj]
+            )
+            if max_d < tol:
+                clusters[ci] = clusters[ci] | clusters[cj]
+                del clusters[cj]
+                changed = True
+                break  # reiniciar após merge (índices mudaram)
+
+    components = [list(c) for c in clusters]
 
     # 7. Persiste os grupos encontrados com tamanho >= 2
     for comp in components:
