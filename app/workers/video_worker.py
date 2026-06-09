@@ -75,7 +75,9 @@ def _process_track(
         confidence=distance,
     )
     person_service.save_face_sample(db, person_id, appearance.id, best_crop, embedding=mean_embedding)
-    known_embeddings.append((person_id, mean_embedding))
+    count_in_cache = sum(1 for pid, _ in known_embeddings if pid == person_id)
+    if count_in_cache < settings.FACE_MAX_EMBEDDINGS_PER_PERSON:
+        known_embeddings.append((person_id, mean_embedding))
 
     person = db.get(Person, person_id)
     if person and person.category == PersonCategory.monitorado.value:

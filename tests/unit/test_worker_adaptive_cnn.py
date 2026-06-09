@@ -137,3 +137,42 @@ def test_process_track_nao_duplica_se_embedding_identico_ja_presente():
     assert any(pid == 7 for pid, _ in updated_cache), (
         "embedding da pessoa 7 deve estar no cache após o track"
     )
+
+
+# ── Task 5 V3: cache não cresce infinitamente por pessoa ─────────────────────
+
+def test_cache_nao_cresce_alem_do_limite_por_pessoa():
+    """_process_track não deve acumular entradas ilimitadas no cache para uma pessoa.
+    Após FACE_MAX_EMBEDDINGS_PER_PERSON aparições da mesma pessoa, o cache deve
+    ter no máximo FACE_MAX_EMBEDDINGS_PER_PERSON entradas para essa pessoa."""
+    from app.workers.video_worker import _process_track
+    from app.core.settings import settings
+
+    mock_db = MagicMock()
+    appearance_mock = MagicMock()
+    appearance_mock.id = 1
+
+    limit = settings.FACE_MAX_EMBEDDINGS_PER_PERSON
+    n_tracks = limit + 3  # mais do que o limite
+
+    cache = []
+    with patch("app.workers.video_worker.face_service.find_matching_person",
+               return_value=(42, 0.05)), \
+         patch("app.workers.video_worker.appearance_service.upsert_appearance",
+               return_value=appearance_mock), \
+         patch("app.workers.video_worker.person_service.save_face_sample",
+               return_value=None):
+        mock_db.get.return_value = None
+        for _ in range(n_tracks):
+            track = _make_track()
+            _, cache = _process_track(
+                mock_db, video_id=1, track=track,
+                person_counter=0, alerted_in_this_video=set(),
+                known_embeddings=cache,
+            )
+
+    count_person_42 = sum(1 for pid, _ in cache if pid == 42)
+    assert count_person_42 <= limit, (
+        f"Cache tem {count_person_42} entradas para pessoa 42, "
+        f"esperado <= {limit} (FACE_MAX_EMBEDDINGS_PER_PERSON)"
+    )
