@@ -5,6 +5,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.21.0] — 2026-06-09
+
+### Adicionado
+- **feat(settings)**: `INSIGHTFACE_PROVIDERS` com default `["CPUExecutionProvider"]` — remove dependência de CoreML inexistente no Windows. `INSIGHTFACE_DET_SIZE` default ajustado para 640 no código-fonte (~30% menos RAM por frame). `INSIGHTFACE_INTRA_OP_NUM_THREADS=4` limita threads ONNX Runtime; `get_face_app()` seta `OMP_NUM_THREADS` antes de inicializar FaceAnalysis.
+- **feat(db)**: SQLite WAL mode + `synchronous=NORMAL` via `event.listen` no engine singleton (`_set_sqlite_pragma`) — leituras concorrentes sem bloquear escritas, crítico no Windows.
+- **feat(path_utils)**: novo módulo `app/core/path_utils.py` com `safe_unlink()` — retry automático em `PermissionError` (3 tentativas, 200ms delay). Windows mantém file handles abertos após ffmpeg/OpenCV fechar arquivo.
+- **feat(worker)**: `threading.Semaphore(1)` (`_PROCESSING_SEMAPHORE`) serializa processamento de vídeos (evita spike de RAM com buffalo_l ~1–2GB por instância). `gc.collect()` no `finally` força liberação de objetos ONNX após cada vídeo.
+
+### Corrigido
+- **fix(face_service)**: providers CoreML hardcoded `["CoreMLExecutionProvider", "CPUExecutionProvider"]` substituídos por `settings.INSIGHTFACE_PROVIDERS` — CoreML não existe no Windows, causava falha silenciosa a cada boot.
+
+### Documentação
+- **docs(readme)**: seção completa "Windows 11" com pré-requisitos, passo a passo PowerShell, variáveis `.env` específicas para 16GB RAM, criação de diretórios, aviso `--workers 1`, tabela de troubleshooting (5 erros comuns).
+- **docs(claude.md)**: comando uvicorn atualizado para `--workers 1 --host 0.0.0.0` (Windows não suporta `fork`).
+
+### Removido
+- **chore(deps)**: `python-magic` removido de `requirements.txt` — nunca importado no código; causava erro no Windows por exigir `libmagic.dll`.
+
+---
+
 ## [2.20.0] — 2026-06-09
 
 ### Adicionado
