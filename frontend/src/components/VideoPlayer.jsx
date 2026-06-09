@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 
+const MAX_NATIVE_RATE = 16
+const HIGH_SPEED_INTERVAL_MS = 200
+
 export function VideoPlayer({
   videoId,
   token,
@@ -16,12 +19,24 @@ export function VideoPlayer({
   onPause,
 }) {
   const videoRef = useRef(null)
+  const highSpeedIntervalRef = useRef(null)
   const [error, setError] = useState(null)
   const [playbackRate, setPlaybackRate] = useState(1)
   const [videoDuration, setVideoDuration] = useState(duration)
   const [legendExpanded, setLegendExpanded] = useState(false)
 
   const LEGEND_THRESHOLD = 5
+
+  const clearHighSpeedInterval = () => {
+    if (highSpeedIntervalRef.current) {
+      clearInterval(highSpeedIntervalRef.current)
+      highSpeedIntervalRef.current = null
+    }
+  }
+
+  useEffect(() => {
+    return () => clearHighSpeedInterval()
+  }, [])
 
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
   const videoUrl = `${apiUrl}/api/v1/videos/${videoId}/stream?token=${token}`
@@ -65,9 +80,32 @@ export function VideoPlayer({
   }
 
   const handleSpeedClick = (speed) => {
+    const wasHighSpeed = playbackRate > MAX_NATIVE_RATE
+    clearHighSpeedInterval()
     setPlaybackRate(speed)
-    if (videoRef.current) {
+
+    if (!videoRef.current) return
+
+    if (speed <= MAX_NATIVE_RATE) {
       videoRef.current.playbackRate = speed
+      if (wasHighSpeed) {
+        videoRef.current.play()
+      }
+    } else {
+      videoRef.current.pause()
+      videoRef.current.playbackRate = 1
+      const seekStep = speed * (HIGH_SPEED_INTERVAL_MS / 1000)
+      highSpeedIntervalRef.current = setInterval(() => {
+        if (!videoRef.current) { clearHighSpeedInterval(); return }
+        const newTime = videoRef.current.currentTime + seekStep
+        const dur = videoRef.current.duration || 0
+        if (newTime >= dur) {
+          videoRef.current.currentTime = dur
+          clearHighSpeedInterval()
+        } else {
+          videoRef.current.currentTime = newTime
+        }
+      }, HIGH_SPEED_INTERVAL_MS)
     }
   }
 

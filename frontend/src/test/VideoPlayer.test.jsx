@@ -187,6 +187,60 @@ describe('VideoPlayer — Barra de Presença', () => {
     expect(bar).toBeFalsy()
   })
 
+  it('velocidades > 16x usam setInterval de manual seeking (não apenas playbackRate)', () => {
+    vi.useFakeTimers()
+    const setIntervalSpy = vi.spyOn(global, 'setInterval')
+
+    render(<VideoPlayer {...baseProps} />)
+
+    fireEvent.click(screen.getByText('25x'))
+
+    expect(setIntervalSpy).toHaveBeenCalled()
+
+    vi.useRealTimers()
+    setIntervalSpy.mockRestore()
+  })
+
+  it('velocidades ≤ 16x NÃO usam setInterval', () => {
+    vi.useFakeTimers()
+    const setIntervalSpy = vi.spyOn(global, 'setInterval')
+
+    render(<VideoPlayer {...baseProps} />)
+
+    fireEvent.click(screen.getByText('6x'))
+
+    expect(setIntervalSpy).not.toHaveBeenCalled()
+
+    vi.useRealTimers()
+    setIntervalSpy.mockRestore()
+  })
+
+  it('intervalo de seeking avança currentTime proporcionalmente à velocidade', () => {
+    vi.useFakeTimers()
+
+    const { container } = render(<VideoPlayer {...baseProps} />)
+    const video = container.querySelector('video')
+
+    // Mock currentTime como propriedade gravável
+    let fakeCurrentTime = 0
+    Object.defineProperty(video, 'currentTime', {
+      get: () => fakeCurrentTime,
+      set: (v) => { fakeCurrentTime = v },
+      configurable: true,
+    })
+    Object.defineProperty(video, 'duration', { value: 300, configurable: true })
+
+    fireEvent.click(screen.getByText('25x'))
+
+    // Avança 200ms (HIGH_SPEED_INTERVAL_MS)
+    vi.advanceTimersByTime(200)
+
+    // A cada tick de 200ms, deve ter avançado 25 * 0.2 = 5 segundos
+    expect(fakeCurrentTime).toBeGreaterThan(0)
+
+    vi.useRealTimers()
+  })
+
   it('cores dos segmentos correspondem à categoria de pessoa', () => {
     const { container } = render(<VideoPlayer {...baseProps} />)
 
