@@ -54,14 +54,11 @@ export default function Upload() {
     form.append('file', file)
 
     try {
-      const res = await api.post('/videos/upload', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress,
-      })
+      const res = await api.post('/videos/upload', form, { onUploadProgress })
       setResult(res.data)
       setFile(null)
     } catch (err) {
-      setError(err.message)
+      setError(err.response?.data?.detail ?? err.message)
     } finally {
       setUploading(false)
     }
@@ -72,7 +69,7 @@ export default function Upload() {
     setResult(null)
     setError('')
     setExtError('')
-    setProgress(0)
+    resetProgress()
   }
 
   const sizeMB = file ? (file.size / 1024 / 1024).toFixed(1) : null
