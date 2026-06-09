@@ -17,6 +17,9 @@ export function VideoPlayer({
   const [error, setError] = useState(null)
   const [playbackRate, setPlaybackRate] = useState(1)
   const [videoDuration, setVideoDuration] = useState(duration)
+  const [legendExpanded, setLegendExpanded] = useState(false)
+
+  const LEGEND_THRESHOLD = 5
 
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
   const videoUrl = `${apiUrl}/api/v1/videos/${videoId}/stream?token=${token}`
@@ -137,20 +140,44 @@ export function VideoPlayer({
             )}
           </div>
 
-          <div className="text-xs text-text-muted space-x-3">
-            {people.map((person) => (
-              <span
-                key={person.person_id}
-                className="inline-flex items-center gap-1"
+          {people.length > LEGEND_THRESHOLD ? (
+            <div className="flex flex-col gap-1">
+              <button
+                data-testid="legend-toggle"
+                onClick={() => setLegendExpanded(v => !v)}
+                className="text-xs text-primary hover:underline self-start"
               >
-                <span
-                  className="w-2 h-2 rounded-full inline-block"
-                  style={{ backgroundColor: getCategoryColor(person.person_category) }}
-                />
-                {person.person_name}
-              </span>
-            ))}
-          </div>
+                {legendExpanded
+                  ? 'Recolher legenda'
+                  : `Ver legenda (${people.length} pessoas)`}
+              </button>
+              {legendExpanded && (
+                <div className="text-xs text-text-muted flex flex-wrap gap-x-3 gap-y-1">
+                  {people.map((person) => (
+                    <span key={person.person_id} className="inline-flex items-center gap-1">
+                      <span
+                        className="w-2 h-2 rounded-full inline-block flex-shrink-0"
+                        style={{ backgroundColor: getCategoryColor(person.person_category) }}
+                      />
+                      {person.person_name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-xs text-text-muted space-x-3">
+              {people.map((person) => (
+                <span key={person.person_id} className="inline-flex items-center gap-1">
+                  <span
+                    className="w-2 h-2 rounded-full inline-block"
+                    style={{ backgroundColor: getCategoryColor(person.person_category) }}
+                  />
+                  {person.person_name}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

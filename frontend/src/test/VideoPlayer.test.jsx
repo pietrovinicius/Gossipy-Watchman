@@ -131,6 +131,45 @@ describe('VideoPlayer — Barra de Presença', () => {
     expect(screen.getByText('100x')).toBeTruthy()
   })
 
+  it('legenda recolhida por padrão quando há mais de 5 pessoas', () => {
+    const manyPeople = Array.from({ length: 8 }, (_, i) => ({
+      person_id: i + 10,
+      person_name: `Desconhecido #${i + 10}`,
+      person_category: 'Desconhecido',
+      appearances: [{ id: 900 + i, timestamp_start: i * 5, timestamp_end: i * 5 + 3, confidence: 0.5 }],
+    }))
+
+    render(<VideoPlayer {...baseProps} people={manyPeople} />)
+
+    expect(screen.queryByText('Desconhecido #10')).toBeFalsy()
+    expect(screen.getByTestId('legend-toggle')).toBeTruthy()
+    expect(screen.getByTestId('legend-toggle').textContent).toMatch(/8 pessoas/)
+  })
+
+  it('clicar no toggle expande a legenda', () => {
+    const manyPeople = Array.from({ length: 8 }, (_, i) => ({
+      person_id: i + 10,
+      person_name: `Desconhecido #${i + 10}`,
+      person_category: 'Desconhecido',
+      appearances: [{ id: 900 + i, timestamp_start: i * 5, timestamp_end: i * 5 + 3, confidence: 0.5 }],
+    }))
+
+    render(<VideoPlayer {...baseProps} people={manyPeople} />)
+
+    fireEvent.click(screen.getByTestId('legend-toggle'))
+
+    expect(screen.getByText('Desconhecido #10')).toBeTruthy()
+    expect(screen.getByTestId('legend-toggle').textContent).toMatch(/Recolher/)
+  })
+
+  it('legenda sempre visível quando há 5 ou menos pessoas', () => {
+    render(<VideoPlayer {...baseProps} />)
+
+    expect(screen.getByText('Alice')).toBeTruthy()
+    expect(screen.getByText('Bob')).toBeTruthy()
+    expect(screen.queryByTestId('legend-toggle')).toBeFalsy()
+  })
+
   it('barra não renderiza quando duration = 0', () => {
     const { container } = render(<VideoPlayer {...baseProps} duration={0} />)
 
