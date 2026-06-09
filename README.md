@@ -31,20 +31,19 @@ Sistema web de análise de vídeo para identificação, catalogação e registro
 | **Backend** | Python 3.11+, FastAPI 0.111+, Uvicorn |
 | **Frontend** | React 18, Vite, Tailwind CSS 3, Axios, React Router v6, Lucide React |
 | **Banco de dados** | SQLite (dev) via SQLAlchemy 2.x |
-| **Visão computacional** | OpenCV 4.13, face_recognition 1.3, dlib 20, NumPy 2.x |
+| **Visão computacional** | OpenCV 4.9+, InsightFace 0.7+ (buffalo_l), ONNX Runtime 1.17+, NumPy 2.x |
 | **Testes** | pytest 8, pytest-asyncio 0.23, httpx |
 
 ---
 
 ## Como Rodar Localmente
 
-### Backend
+### macOS / Linux
 
 ```bash
 # Criar e ativar virtualenv
 python3 -m venv venv
-source venv/bin/activate          # Linux/Mac
-# venv\Scripts\activate           # Windows
+source venv/bin/activate
 
 # Instalar dependências
 pip install -r requirements.txt
@@ -54,14 +53,125 @@ cp .env.example .env
 # Edite .env preenchendo JWT_SECRET_KEY e ADMIN_PASSWORD_HASH conforme
 # os comandos documentados no próprio .env.example
 
+# Criar diretórios de storage (se não existirem)
+mkdir -p storage/videos storage/faces storage/models
+
 # Iniciar servidor de desenvolvimento
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --workers 1 --host 0.0.0.0 --port 8000
 ```
 
-A API estará disponível em `http://localhost:8000`.
-Documentação interativa (Swagger): `http://localhost:8000/docs`.
+---
 
-### Frontend
+### Windows 11
+
+#### 1. Pré-requisitos
+
+| Ferramenta | Versão mínima | Download |
+|-----------|--------------|---------|
+| Python | 3.11 | [python.org/downloads](https://www.python.org/downloads/) — **NÃO usar a versão da Microsoft Store** |
+| Node.js | 18 LTS | [nodejs.org](https://nodejs.org/) |
+| ffmpeg | qualquer | `winget install ffmpeg` ou [ffmpeg.org/download.html](https://ffmpeg.org/download.html) — adicionar ao PATH |
+| Git | qualquer | [git-scm.com](https://git-scm.com/) |
+
+> **Atenção Python:** Durante a instalação, marque **"Add Python to PATH"**. Use o instalador de [python.org](https://python.org), não a Microsoft Store — a versão da Store causa erros com extensões C (OpenCV, ONNX Runtime).
+
+#### 2. Clonar e configurar ambiente
+
+Abra o **PowerShell** (ou Terminal) na pasta onde deseja instalar:
+
+```powershell
+git clone https://github.com/pietrovinicius/Gossipy-Watchman.git
+cd "Gossipy-Watchman"
+
+# Criar e ativar virtualenv
+python -m venv venv
+venv\Scripts\activate
+
+# Instalar dependências
+pip install -r requirements.txt
+```
+
+> Se aparecer erro `Microsoft Visual C++ 14.0 is required`, instale o [Build Tools for Visual Studio](https://visualstudio.microsoft.com/visual-cpp-build-tools/) com workload **"C++ build tools"** antes de rodar o pip.
+
+#### 3. Configurar variáveis de ambiente
+
+```powershell
+copy .env.example .env
+```
+
+Abra o `.env` em qualquer editor e configure os campos obrigatórios:
+
+```env
+# Gere com: python -c "import secrets; print(secrets.token_hex(32))"
+JWT_SECRET_KEY=COLE-SUA-CHAVE-AQUI
+
+# Gere com: python -c "from passlib.context import CryptContext; print(CryptContext(['bcrypt']).hash('watchman'))"
+ADMIN_PASSWORD_HASH=COLE-O-HASH-AQUI
+```
+
+Adicione ao final do `.env` as otimizações para Windows 16 GB RAM:
+
+```env
+# Otimizações Windows
+INSIGHTFACE_DET_SIZE=640
+INSIGHTFACE_INTRA_OP_NUM_THREADS=4
+INSIGHTFACE_PROVIDERS=["CPUExecutionProvider"]
+```
+
+#### 4. Criar diretórios de storage
+
+```powershell
+New-Item -ItemType Directory -Force -Path storage\videos, storage\faces, storage\models
+```
+
+#### 5. Verificar ffmpeg
+
+```powershell
+ffmpeg -version
+```
+
+Se não reconhecer o comando, adicione o diretório `bin/` do ffmpeg ao PATH:
+`Configurações do Sistema → Variáveis de Ambiente → Path → Novo → C:\ffmpeg\bin`
+
+#### 6. Iniciar backend
+
+```powershell
+# Com virtualenv ativo (venv\Scripts\activate)
+uvicorn app.main:app --reload --workers 1 --host 0.0.0.0 --port 8000
+```
+
+> **`--workers 1` é obrigatório no Windows.** O Windows não suporta `fork` — múltiplos workers causam falha silenciosa na inicialização do ONNX Runtime.
+
+A API estará disponível em `http://localhost:8000`.  
+Documentação Swagger: `http://localhost:8000/docs`.
+
+#### 7. Iniciar frontend
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+O frontend estará disponível em `http://localhost:5173`.
+
+#### 8. Na primeira execução
+
+O InsightFace baixa automaticamente o modelo `buffalo_l` (~200 MB) na primeira chamada de processamento de vídeo. O download ocorre para `%USERPROFILE%\.insightface\models\buffalo_l\`. Aguarde — pode levar alguns minutos dependendo da conexão.
+
+#### Solução de problemas comuns no Windows
+
+| Erro | Causa | Solução |
+|------|-------|---------|
+| `PermissionError: [WinError 32] The process cannot access the file` | Windows mantém handle aberto em arquivo recém-fechado | Aguardar e tentar novamente; o sistema já tem retry automático (safe_unlink) |
+| `OnnxRuntimeError: No such file or directory` | Modelo buffalo_l não baixado ainda | Verificar conexão; deletar `%USERPROFILE%\.insightface\models\buffalo_l\` e deixar baixar novamente |
+| `uvicorn: error: unrecognized arguments: --workers` | Versão antiga do uvicorn | `pip install --upgrade uvicorn[standard]` |
+| `Error loading shared library libmagic` | Resíduo de instalação anterior | Ignorar; python-magic foi removido do requirements.txt (não é usado) |
+| Porta 8000 já em uso | Outro processo na porta | `netstat -ano \| findstr :8000` para identificar PID, depois `taskkill /PID <numero> /F` |
+
+---
+
+### Frontend (todas as plataformas)
 
 ```bash
 cd frontend
@@ -77,7 +187,7 @@ O frontend estará disponível em `http://localhost:5173`.
 
 ```bash
 # Na raiz do projeto, com virtualenv ativo
-pytest tests/ -v
+python -m pytest tests/unit/ -v
 ```
 
 ---
