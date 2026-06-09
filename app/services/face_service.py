@@ -49,6 +49,9 @@ def is_good_quality_frame(
     blur_threshold: float = settings.FACE_BLUR_THRESHOLD,
     det_score: float = 1.0,
     det_score_threshold: float = settings.INSIGHTFACE_DET_SCORE,
+    pose: np.ndarray | None = None,
+    max_yaw_deg: float = settings.FACE_MAX_YAW_DEG,
+    max_pitch_deg: float = settings.FACE_MAX_PITCH_DEG,
 ) -> bool:
     top, right, bottom, left = location
     width = right - left
@@ -59,6 +62,11 @@ def is_good_quality_frame(
 
     if det_score < det_score_threshold:
         return False
+
+    if pose is not None:
+        pitch, yaw = float(pose[0]), float(pose[1])
+        if abs(yaw) > max_yaw_deg or abs(pitch) > max_pitch_deg:
+            return False
 
     face_crop = frame[top:bottom, left:right]
     if face_crop.size == 0:
@@ -79,7 +87,8 @@ def extract_embeddings(frame: np.ndarray) -> list[tuple[np.ndarray, tuple, float
     for face in faces:
         location = bbox_to_location(face.bbox)
         score = float(face.det_score)
-        if not is_good_quality_frame(location, frame, det_score=score):
+        pose = face.pose if hasattr(face, "pose") else None
+        if not is_good_quality_frame(location, frame, det_score=score, pose=pose):
             continue
         result.append((face.embedding, location, score))
 

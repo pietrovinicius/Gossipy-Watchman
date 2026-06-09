@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     # k-NN voting
     FACE_KNN_K: int = 3
 
+    # Filtro de pose facial
+    FACE_MAX_YAW_DEG: float = 40.0
+    FACE_MAX_PITCH_DEG: float = 30.0
+
     # Motion Gating
     MOTION_GATING_ENABLED: bool = True
     MOTION_GATING_THRESHOLD: int = 15
