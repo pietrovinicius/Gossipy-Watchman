@@ -10,6 +10,13 @@ logger = logging.getLogger(__name__)
 CONVERTIBLE_FORMATS = {".ts", ".mkv", ".mov", ".dav"}
 NATIVE_FORMATS = {".mp4", ".avi"}
 
+# Args extras por formato para corrigir quirks específicos de cada container.
+# .dav (Dahua): timestamps descontínuos entre sessões — make_zero normaliza
+# para base 0 evitando Non-monotonic DTS na remuxagem.
+_FORMAT_EXTRA_ARGS: dict[str, list[str]] = {
+    ".dav": ["-avoid_negative_ts", "make_zero"],
+}
+
 
 def needs_conversion(file_path: Path) -> bool:
     """Verifica se arquivo precisa ser convertido para MP4."""
@@ -31,9 +38,11 @@ def convert_to_mp4(
 
     output_path = output_dir / (input_path.stem + "_converted.mp4")
 
+    extra_args = _FORMAT_EXTRA_ARGS.get(input_path.suffix.lower(), [])
     cmd = [
         settings.FFMPEG_PATH,
         "-i", str(input_path),
+        *extra_args,
         "-c:v", "copy",
         "-c:a", "copy",
         "-y",

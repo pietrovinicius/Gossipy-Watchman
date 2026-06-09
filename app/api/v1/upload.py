@@ -1,4 +1,3 @@
-import os
 import logging
 from pathlib import Path
 from uuid import uuid4
@@ -92,7 +91,7 @@ async def upload_video(
         try:
             logger.info(f"[video_id={video_record.id}] Convertendo {suffix}")
             converted_path = convert_to_mp4(dest_path, settings.STORAGE_VIDEOS)
-            os.remove(dest_path)
+            dest_path.unlink(missing_ok=True)
             final_path = converted_path
             video_service.update_file_name(
                 db, video_record.id,
@@ -100,7 +99,9 @@ async def upload_video(
             )
         except Exception as e:
             logger.error(f"[video_id={video_record.id}] Erro na conversão: {e}")
-            os.remove(dest_path, missing_ok=True)
+            dest_path.unlink(missing_ok=True)
+            converted_partial = settings.STORAGE_VIDEOS / f"{dest_path.stem}_converted.mp4"
+            converted_partial.unlink(missing_ok=True)
             raise HTTPException(
                 status_code=422,
                 detail=f"Não foi possível converter o arquivo. {str(e)}"

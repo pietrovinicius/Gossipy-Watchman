@@ -37,6 +37,50 @@ def test_native_formats_does_not_include_dav():
     assert ".dav" not in NATIVE_FORMATS
 
 
+def test_convert_to_mp4_dav_includes_avoid_negative_ts(tmp_path):
+    """Conversão de .dav deve incluir -avoid_negative_ts make_zero (timestamps Dahua)."""
+    test_file = tmp_path / "camera.dav"
+    test_file.write_bytes(b"fake dav")
+
+    with patch("app.services.conversion_service.FFMPEG_AVAILABLE", True):
+        with patch("app.services.conversion_service.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
+            convert_to_mp4(test_file, tmp_path)
+
+    call_args = mock_run.call_args[0][0]
+    assert "-avoid_negative_ts" in call_args
+    assert "make_zero" in call_args
+
+
+def test_convert_to_mp4_mp4_does_not_include_avoid_negative_ts(tmp_path):
+    """Conversão de outros formatos não deve ter -avoid_negative_ts."""
+    test_file = tmp_path / "video.ts"
+    test_file.write_bytes(b"fake ts")
+
+    with patch("app.services.conversion_service.FFMPEG_AVAILABLE", True):
+        with patch("app.services.conversion_service.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
+            convert_to_mp4(test_file, tmp_path)
+
+    call_args = mock_run.call_args[0][0]
+    assert "-avoid_negative_ts" not in call_args
+
+
+def test_convert_to_mp4_dav_includes_avoid_negative_ts(tmp_path):
+    """Conversão de .dav deve incluir -avoid_negative_ts make_zero (timestamps Dahua)."""
+    test_file = tmp_path / "camera.dav"
+    test_file.write_bytes(b"fake dav")
+
+    with patch("app.services.conversion_service.FFMPEG_AVAILABLE", True):
+        with patch("app.services.conversion_service.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
+            convert_to_mp4(test_file, tmp_path)
+
+    call_args = mock_run.call_args[0][0]
+    assert "-avoid_negative_ts" in call_args
+    assert "make_zero" in call_args
+
+
 def test_convert_to_mp4_raises_runtime_error_if_ffmpeg_unavailable():
     with patch('app.services.conversion_service.FFMPEG_AVAILABLE', False):
         with pytest.raises(RuntimeError):
