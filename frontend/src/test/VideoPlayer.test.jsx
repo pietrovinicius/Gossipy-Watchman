@@ -115,6 +115,16 @@ describe('VideoPlayer — Barra de Presença', () => {
     expect(mockOnSeek).toHaveBeenCalledWith(5)
   })
 
+  it('clicar em segmento chama onSegmentSeek com person_id e timestamp', () => {
+    const mockOnSegmentSeek = vi.fn()
+    const { container } = render(<VideoPlayer {...baseProps} onSegmentSeek={mockOnSegmentSeek} />)
+
+    const segment = container.querySelector('[data-testid="presence-segment-101"]')
+    fireEvent.click(segment)
+
+    expect(mockOnSegmentSeek).toHaveBeenCalledWith(1, 5)
+  })
+
   it('legenda exibe nome de cada pessoa', () => {
     render(<VideoPlayer {...baseProps} />)
 

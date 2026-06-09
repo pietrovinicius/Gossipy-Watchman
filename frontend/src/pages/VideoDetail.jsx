@@ -64,7 +64,7 @@ function SummaryCard({ icon: Icon, label, value, color }) {
   )
 }
 
-function PersonCard({ person, isOnScreen, onSeekTo, cardRef }) {
+function PersonCard({ person, isOnScreen, onSeekTo, onSeekAndPause, cardRef }) {
   const filename = person.profile_image_path
     ? person.profile_image_path.split('/').pop()
     : null
@@ -148,13 +148,23 @@ function PersonCard({ person, isOnScreen, onSeekTo, cardRef }) {
       </div>
 
       <div className="flex justify-between">
-        <button
-          onClick={() => onSeekTo?.(person.first_seen_at)}
-          className="flex items-center gap-1.5 text-xs text-primary hover:underline"
-        >
-          <PlayCircle className="w-3.5 h-3.5" aria-hidden="true" />
-          {fmtMmSs(person.first_seen_at)}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => onSeekTo?.(person.first_seen_at)}
+            title="Reproduzir a partir deste momento"
+            className="flex items-center text-primary hover:text-primary/70 transition-colors"
+          >
+            <PlayCircle className="w-3.5 h-3.5" aria-hidden="true" />
+          </button>
+          <button
+            onClick={() => onSeekAndPause?.(person.first_seen_at)}
+            title="Ir para este momento e pausar"
+            data-testid={`seek-pause-${person.person_id}`}
+            className="text-xs text-primary font-mono hover:underline px-1 py-0.5 rounded border border-primary/30 hover:border-primary/70 transition-colors"
+          >
+            {fmtMmSs(person.first_seen_at)}
+          </button>
+        </div>
         <Link
           to={`/people/${person.person_id}`}
           className="flex items-center gap-1.5 text-xs text-primary hover:underline"
@@ -331,6 +341,7 @@ export default function VideoDetail() {
   const [addPersonSubmitting, setAddPersonSubmitting] = useState(false)
   const [addPersonErr, setAddPersonErr] = useState('')
   const [seekTo, setSeekTo] = useState(null)
+  const [pauseSeekTo, setPauseSeekTo] = useState(null)
   const [currentTime, setCurrentTime] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [videoDuration, setVideoDuration] = useState(0)
@@ -370,6 +381,16 @@ export default function VideoDetail() {
     playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  const handleSeekAndPause = (ts) => {
+    setPauseSeekTo({ time: ts })
+    playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const handleSegmentSeek = (person_id, ts) => {
+    setSeekTo(ts)
+    cardRefs.current[person_id]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   const fetchDetail = useCallback(() => {
     const requestedId = id
     setError('')
@@ -390,6 +411,7 @@ export default function VideoDetail() {
     setDetail(null)
     setCurrentTime(0)
     setSeekTo(null)
+    setPauseSeekTo(null)
     setVideoDuration(0)
     setIsPlaying(false)
     setError('')
@@ -501,10 +523,12 @@ export default function VideoDetail() {
               token={token}
               onTimeUpdate={setCurrentTime}
               seekTo={seekTo}
+              pauseSeekTo={pauseSeekTo}
               people={detail.people}
               duration={videoDuration}
               currentTime={currentTime}
               onSeek={setSeekTo}
+              onSegmentSeek={handleSegmentSeek}
               onDurationChange={handleDurationChange}
               onPlay={handlePlayClick}
               onPause={handlePauseClick}
@@ -671,6 +695,7 @@ export default function VideoDetail() {
                   person={person}
                   isOnScreen={peopleOnScreen?.some(p => p.person_id === person.person_id)}
                   onSeekTo={handleSeekClick}
+                  onSeekAndPause={handleSeekAndPause}
                   cardRef={(el) => { cardRefs.current[person.person_id] = el }}
                 />
               ))}

@@ -5,10 +5,12 @@ export function VideoPlayer({
   token,
   onTimeUpdate,
   seekTo,
+  pauseSeekTo,
   people = [],
   duration = 0,
   currentTime = 0,
   onSeek,
+  onSegmentSeek,
   onDurationChange,
   onPlay,
   onPause,
@@ -40,6 +42,13 @@ export function VideoPlayer({
       videoRef.current.play()
     }
   }, [seekTo])
+
+  useEffect(() => {
+    if (pauseSeekTo?.time != null && videoRef.current) {
+      videoRef.current.currentTime = pauseSeekTo.time
+      videoRef.current.pause()
+    }
+  }, [pauseSeekTo])
 
   const handleTimeUpdate = (e) => {
     onTimeUpdate?.(e.target.currentTime)
@@ -125,7 +134,10 @@ export function VideoPlayer({
                       backgroundColor: color,
                     }}
                     title={`${person.person_name}: ${app.timestamp_start}s`}
-                    onClick={() => handleSeek(app.timestamp_start)}
+                    onClick={() => {
+                      handleSeek(app.timestamp_start)
+                      onSegmentSeek?.(person.person_id, app.timestamp_start)
+                    }}
                   />
                 )
               })

@@ -275,6 +275,66 @@ describe('VideoDetail page', () => {
     expect(scrollIntoView).toHaveBeenCalled()
   })
 
+  it('card de pessoa exibe botão de timestamp separado do ícone play', async () => {
+    const api = (await import('../services/api')).default
+    api.get.mockResolvedValue({ data: makeDetail() })
+
+    const { container } = await renderVideoDetail()
+
+    await waitFor(() => screen.getByText('Fulano'))
+    // botão separado com data-testid="seek-pause-{id}"
+    const pauseBtn = container.querySelector('[data-testid="seek-pause-3"]')
+    expect(pauseBtn).toBeTruthy()
+    expect(pauseBtn.textContent).toBe('00:01')
+  })
+
+  it('clicar no botão de timestamp do card faz scroll até o player sem dar play', async () => {
+    sessionStorage.setItem('token', 'test-token')
+    const scrollIntoView = vi.fn()
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoView
+
+    const api = (await import('../services/api')).default
+    api.get.mockResolvedValue({ data: makeDetail() })
+
+    const { container } = await renderVideoDetail()
+
+    await waitFor(() => screen.getByText('Fulano'))
+    const pauseBtn = container.querySelector('[data-testid="seek-pause-3"]')
+    fireEvent.click(pauseBtn)
+
+    expect(scrollIntoView).toHaveBeenCalled()
+  })
+
+  it('clicar em segmento da barra de presença faz scroll para o card da pessoa', async () => {
+    sessionStorage.setItem('token', 'test-token')
+    const scrollIntoView = vi.fn()
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoView
+
+    const api = (await import('../services/api')).default
+    api.get.mockResolvedValue({ data: makeDetail() })
+
+    const { container } = await renderVideoDetail()
+
+    await waitFor(() => screen.getByText('Fulano'))
+
+    // dispara loadedmetadata no video para setar videoDuration e renderizar a barra
+    const video = container.querySelector('video')
+    if (video) {
+      Object.defineProperty(video, 'duration', { value: 60, configurable: true })
+      fireEvent(video, new Event('loadedmetadata'))
+    }
+
+    await waitFor(() => {
+      const segment = container.querySelector('[data-testid^="presence-segment-"]')
+      expect(segment).toBeTruthy()
+    })
+
+    const segment = container.querySelector('[data-testid^="presence-segment-"]')
+    fireEvent.click(segment)
+
+    expect(scrollIntoView).toHaveBeenCalled()
+  })
+
   it('estado é resetado quando videoId muda (detail null até novo fetch)', async () => {
     const api = (await import('../services/api')).default
     api.get.mockResolvedValue({ data: makeDetail() })
