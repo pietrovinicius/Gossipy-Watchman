@@ -26,27 +26,27 @@ class Settings(BaseSettings):
 
     # InsightFace
     INSIGHTFACE_MODEL: str = "buffalo_l"
-    INSIGHTFACE_DET_SIZE: int = 640
-    INSIGHTFACE_DET_SCORE: float = 0.7
+    INSIGHTFACE_DET_SIZE: int = 1024
+    INSIGHTFACE_DET_SCORE: float = 0.45
     FACE_MAX_EMBEDDINGS_PER_PERSON: int = 5
     FACE_MAX_SAMPLES_PER_PERSON: int = 10
     INSIGHTFACE_HIGH_RES_THRESHOLD: int = 1920  # escala frames acima deste valor
 
     # Qualidade de frame
-    FACE_MIN_SIZE_PX: int = 60
-    FACE_BLUR_THRESHOLD: float = 100.0
+    FACE_MIN_SIZE_PX: int = 40
+    FACE_BLUR_THRESHOLD: float = 40.0
 
     # Agregação por aparição contínua (track)
     FACE_TRACK_GAP_TOLERANCE: float = 2.0
-    FACE_TRACK_MIN_SAMPLES: int = 2
+    FACE_TRACK_MIN_SAMPLES: int = 1
     FACE_TRACK_IOU_THRESHOLD: float = 0.3
 
     # k-NN voting
     FACE_KNN_K: int = 3
 
-    # Filtro de pose facial
-    FACE_MAX_YAW_DEG: float = 40.0
-    FACE_MAX_PITCH_DEG: float = 30.0
+    # Filtro de pose facial — câmera CCTV de teto/parede gera pitch 35–50°
+    FACE_MAX_YAW_DEG: float = 65.0
+    FACE_MAX_PITCH_DEG: float = 55.0
 
     # Motion Gating
     MOTION_GATING_ENABLED: bool = True
@@ -56,7 +56,7 @@ class Settings(BaseSettings):
 
     # App
     APP_NAME: str = "Gossipy Watchman"
-    APP_VERSION: str = "2.06.0"
+    APP_VERSION: str = "2.07.0"
     API_V1_PREFIX: str = "/api/v1"
     DOCS_ENABLED: bool = True
 

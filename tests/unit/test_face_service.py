@@ -88,7 +88,7 @@ def test_is_good_quality_frame_rejeita_yaw_extremo():
     from app.services.face_service import is_good_quality_frame
     frame = make_bgr_frame()
     location = make_face_location(size=120)
-    pose = np.array([0.0, 50.0, 0.0])  # yaw 50° > threshold padrão 40°
+    pose = np.array([0.0, 70.0, 0.0])  # yaw 70° > threshold padrão 65°
     assert is_good_quality_frame(
         location, frame, det_score=0.9, blur_threshold=10.0, pose=pose
     ) is False
@@ -98,7 +98,7 @@ def test_is_good_quality_frame_rejeita_pitch_extremo():
     from app.services.face_service import is_good_quality_frame
     frame = make_bgr_frame()
     location = make_face_location(size=120)
-    pose = np.array([40.0, 0.0, 0.0])  # pitch 40° > threshold padrão 30°
+    pose = np.array([60.0, 0.0, 0.0])  # pitch 60° > threshold padrão 55°
     assert is_good_quality_frame(
         location, frame, det_score=0.9, blur_threshold=10.0, pose=pose
     ) is False
@@ -127,7 +127,7 @@ def test_is_good_quality_frame_sem_pose_nao_filtra():
 def test_extract_embeddings_descarta_face_de_perfil():
     from app.services.face_service import extract_embeddings
     face = make_mock_face(bbox=[10, 10, 130, 130], det_score=0.95)
-    face.pose = np.array([0.0, 50.0, 0.0])  # yaw 50° > 40°
+    face.pose = np.array([0.0, 70.0, 0.0])  # yaw 70° > 65°
     with patch("app.services.face_service.get_face_app") as mock_get:
         mock_get.return_value.get.return_value = [face]
         result = extract_embeddings(make_bgr_frame())
