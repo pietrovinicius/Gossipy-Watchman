@@ -1,3 +1,336 @@
 {
-  "common": {}
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "restore": "Restore",
+    "edit": "Edit",
+    "close": "Close",
+    "back": "Back",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "upload": "Upload",
+    "reprocess": "Reprocess",
+    "logout": "Logout",
+    "darkMode": "Dark mode",
+    "lightMode": "Light mode",
+    "language": "Language",
+    "noData": "No data found",
+    "tryAgain": "Try again",
+    "showDeleted": "Show deleted",
+    "hideDeleted": "Hide deleted",
+    "actions": "Actions",
+    "status": "Status",
+    "name": "Name",
+    "date": "Date",
+    "notes": "Notes",
+    "category": "Category",
+    "unknown": "Unknown",
+    "active": "Active",
+    "inactive": "Inactive",
+    "all": "All"
+  },
+
+  "nav": {
+    "dashboard": "Dashboard",
+    "upload": "Upload",
+    "videos": "Videos",
+    "people": "People",
+    "employees": "Employees",
+    "alerts": "Alerts",
+    "analytics": "Analytics",
+    "logout": "Logout"
+  },
+
+  "auth": {
+    "title": "Gossipy Watchman",
+    "subtitle": "Facial Recognition Surveillance System",
+    "username": "Username",
+    "password": "Password",
+    "login": "Sign In",
+    "loginError": "Invalid credentials. Please try again.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
+  },
+
+  "dashboard": {
+    "title": "Dashboard",
+    "updatedAt": "Updated at {{time}} · auto-refresh {{interval}}s",
+    "refresh": "Refresh",
+    "processedVideos": "Processed videos",
+    "inQueue": "In queue",
+    "catalogedPeople": "Cataloged people",
+    "unknown": "Unknown",
+    "recentVideos": "Recent videos",
+    "file": "File",
+    "sentAt": "Sent at",
+    "exportCsv": "Export CSV",
+    "noVideos": "No videos found",
+    "showDeleted": "Show deleted"
+  },
+
+  "upload": {
+    "title": "Upload Video",
+    "dragDrop": "Drag and drop your video here",
+    "orClick": "or click to select",
+    "acceptedFormats": "Accepted formats: MP4, AVI, MKV, MOV, TS",
+    "maxSize": "Maximum size: {{size}}GB",
+    "selectFile": "Select file",
+    "uploading": "Uploading...",
+    "uploadSuccess": "Upload successful",
+    "uploadError": "Upload error",
+    "processing": "Processing...",
+    "conversionInProgress": "Converting to MP4...",
+    "speed": "Speed",
+    "remaining": "Remaining",
+    "of": "of",
+    "newUpload": "New upload",
+    "goToDashboard": "Go to Dashboard",
+    "invalidFormat": "Invalid format. Use MP4, AVI, MKV, MOV or TS.",
+    "fileTooLarge": "File exceeds the {{size}}MB limit."
+  },
+
+  "videos": {
+    "title": "Videos",
+    "subtitle": "Complete archive of analyses",
+    "searchPlaceholder": "Search by filename...",
+    "sortBy": "Sort by",
+    "sortOptions": {
+      "newest": "Newest first",
+      "oldest": "Oldest first",
+      "nameAsc": "Name A→Z",
+      "nameDesc": "Name Z→A",
+      "mostPeople": "Most people"
+    },
+    "layout": {
+      "grid": "Grid",
+      "list": "List"
+    },
+    "showing": "Showing {{start}}-{{end}} of {{total}} videos",
+    "noVideos": "No videos found",
+    "noVideosFiltered": "Try adjusting your search filters",
+    "noVideosEmpty": "Upload your first video",
+    "goToUpload": "Go to Upload",
+    "people": "{{count}} person",
+    "people_plural": "{{count}} people",
+    "noPeople": "No faces detected",
+    "deleteConfirmTitle": "Delete video",
+    "deleteConfirmMessage": "This video will be marked as deleted. Appearance data is preserved for audit purposes.",
+    "reprocessConfirmTitle": "Reprocess video",
+    "reprocessConfirmMessage": "The video will be reprocessed with current pipeline settings (CNN model, current threshold). Newly detected people will be added without removing existing ones."
+  },
+
+  "videoDetail": {
+    "backToDashboard": "Back to Dashboard",
+    "exportCsv": "Export CSV",
+    "deleteVideo": "Delete video",
+    "reprocess": "Reprocess",
+    "restoreVideo": "Restore video",
+    "sentAt": "Sent at {{date}}",
+    "peopleIdentified": "People identified",
+    "totalAppearances": "Total appearances",
+    "timeCovered": "Time covered",
+    "status": "Status",
+    "peopleInVideo": "People in this video",
+    "noFacesFound": "No faces identified in this video.",
+    "noFacesHint": "If you expected to find people, try adjusting FACE_RECOGNITION_TOLERANCE in .env to a higher value.",
+    "processing": "Video still being processed. Please wait...",
+    "appearances": "{{count}} appearance",
+    "appearances_plural": "{{count}} appearances",
+    "presentFor": "Present for {{seconds}}s",
+    "firstSeen": "First seen at {{time}}s",
+    "lastSeen": "Last seen at {{time}}s",
+    "viewFullProfile": "View full profile",
+    "start": "Start",
+    "end": "End",
+    "confidence": "Confidence",
+    "showAll": "Show all {{count}} appearances",
+    "inScene": "ON SCREEN",
+    "goToSecond": "Go to {{second}}s"
+  },
+
+  "people": {
+    "title": "People",
+    "count": "{{count}} of {{total}} people",
+    "searchPlaceholder": "Search by name...",
+    "searchByFace": "Search by face",
+    "selectForMerge": "Select to merge",
+    "cancelMerge": "Cancel",
+    "merge": "Merge",
+    "mergeSelected": "{{count}} profiles selected — Select primary profile",
+    "noPeople": "No people found",
+    "category": {
+      "employee": "Employee",
+      "visitor": "Visitor",
+      "unknown": "Unknown",
+      "monitored": "Monitored"
+    },
+    "registeredOn": "Registered on {{date}}",
+    "videos": "{{count}} video",
+    "videos_plural": "{{count}} videos",
+    "noAppearances": "No appearances registered",
+    "deleteConfirmTitle": "Delete person",
+    "deleteConfirmMessage": "{{name}}'s profile will be marked as deleted. Data is preserved for audit purposes and can be restored.",
+    "deletedBadge": "Deleted",
+    "faceSearch": {
+      "title": "Search by face",
+      "instruction": "Upload a photo to find matching people",
+      "dragDrop": "Drag a photo here or click to select",
+      "search": "Search",
+      "clear": "Clear search",
+      "noResults": "No matches found",
+      "noFaceDetected": "No face detected in the image",
+      "confidence": "{{percent}}% confidence",
+      "queryTime": "Search completed in {{ms}}ms"
+    }
+  },
+
+  "personDetail": {
+    "backToPeople": "Back to People",
+    "exportCsv": "Export CSV",
+    "deleteProfile": "Delete profile",
+    "restoreProfile": "Restore profile",
+    "restoreName": "Restore original name",
+    "id": "ID #{{id}}",
+    "registeredOn": "Registered on {{date}}",
+    "videos": "Videos",
+    "totalTime": "Total time",
+    "firstSeen": "First seen",
+    "lastSeen": "Last seen",
+    "profileQuality": "Profile quality",
+    "qualityLevels": {
+      "excellent": "Excellent",
+      "good": "Good",
+      "regular": "Regular",
+      "insufficient": "Insufficient",
+      "weak": "Weak"
+    },
+    "qualityRecommendations": {
+      "excellent": "High-confidence profile. Reliable recognition.",
+      "good": "Solid profile. Recommended to keep collecting samples.",
+      "regular": "Acceptable quality. More appearances will improve accuracy.",
+      "insufficient": "Few samples. Process more videos with this person.",
+      "weak": "Low confidence. Consider adjusting threshold or reviewing profile."
+    },
+    "detectedFrames": "Detected frames ({{count}})",
+    "setPrimary": "Set as primary",
+    "appearanceTimeline": "Appearance timeline",
+    "video": "Video",
+    "start": "Start",
+    "end": "End",
+    "confidence": "Confidence",
+    "editName": "Edit name",
+    "editCategory": "Edit category",
+    "editNotes": "Edit notes",
+    "saveChanges": "Save changes",
+    "deleteConfirmTitle": "Delete profile",
+    "deleteConfirmMessage": "This action marks the profile as deleted. Data is preserved and can be restored. Type 'delete' to confirm.",
+    "deleteConfirmWord": "delete",
+    "restoreNameConfirmTitle": "Restore original name",
+    "restoreNameConfirmMessage": "The name will be reset to 'Unknown #{{id}}'.",
+    "mergeProfiles": "Merge profiles"
+  },
+
+  "employees": {
+    "title": "Employees",
+    "count": "{{count}} employee",
+    "count_plural": "{{count}} employees",
+    "register": "Register Employee",
+    "showInactive": "Show inactive",
+    "columns": {
+      "photo": "Photo",
+      "name": "Name",
+      "registration": "ID / Badge",
+      "department": "Department",
+      "role": "Role",
+      "linkedProfile": "Linked Profile",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "noEmployees": "No employees registered",
+    "noEmployeesHint": "Register employees to enable automatic recognition in videos",
+    "form": {
+      "title": "Register Employee",
+      "editTitle": "Edit Employee",
+      "fullName": "Full name",
+      "fullNamePlaceholder": "Employee full name",
+      "registration": "ID / Badge number",
+      "registrationPlaceholder": "e.g. EMP001",
+      "department": "Department",
+      "departmentPlaceholder": "e.g. IT, HR, Security",
+      "role": "Role / Position",
+      "rolePlaceholder": "e.g. Security Guard, Nurse",
+      "notes": "Notes",
+      "notesPlaceholder": "Additional observations",
+      "photo": "Reference photo",
+      "photoInstruction": "Use a frontal photo with a clearly visible face. Avoid group photos or side profiles.",
+      "dragDrop": "Drag a photo here or click to select",
+      "submit": "Register",
+      "update": "Update",
+      "errors": {
+        "nameRequired": "Name is required",
+        "registrationRequired": "ID/Badge is required",
+        "photoRequired": "Reference photo is required",
+        "duplicateRegistration": "ID/Badge already registered",
+        "noFaceDetected": "No face detected in the photo",
+        "multipleFaces": "Multiple faces detected. Use a solo photo."
+      }
+    },
+    "deactivateConfirmTitle": "Deactivate employee",
+    "deactivateConfirmMessage": "{{name}} will be marked as inactive. Their profile will be preserved."
+  },
+
+  "alerts": {
+    "title": "Alerts",
+    "markAllSeen": "Mark all as seen",
+    "noAlerts": "No alerts registered",
+    "noAlertsHint": "People with 'Monitored' category generate automatic alerts",
+    "badge": "ALERT",
+    "detectedIn": "Detected in",
+    "at": "at",
+    "inVideo": "in video",
+    "viewProfile": "View profile"
+  },
+
+  "analytics": {
+    "title": "Analytics",
+    "dailyActivity": "Daily activity",
+    "categories": "Categories",
+    "mostFrequent": "Most frequent",
+    "avgDwellTime": "Avg. dwell time (s)",
+    "noData": "Insufficient data — process videos to see analytics",
+    "people": "people",
+    "appearances": "appearances",
+    "seconds": "seconds"
+  },
+
+  "status": {
+    "pending": "Pending",
+    "processing": "Processing",
+    "completed": "Completed",
+    "error": "Error",
+    "converting": "Converting",
+    "repairing": "Repairing"
+  },
+
+  "confirmModal": {
+    "typeToConfirm": "Type '{{word}}' to confirm",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
+
+  "errors": {
+    "serverOffline": "Unable to connect to server. Check if the backend is running.",
+    "unauthorized": "Session expired. Please sign in again.",
+    "notFound": "Resource not found.",
+    "uploadFailed": "Upload failed. Try again.",
+    "processingFailed": "Processing failed. Check the logs for details.",
+    "conversionFailed": "Could not convert the file. Make sure ffmpeg is installed.",
+    "moovAtomNotFound": "Video file format not supported by the camera. Attempting repair..."
+  }
 }

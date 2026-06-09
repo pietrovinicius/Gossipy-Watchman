@@ -1,3 +1,336 @@
 {
-  "common": {}
+  "common": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "delete": "Excluir",
+    "restore": "Restaurar",
+    "edit": "Editar",
+    "close": "Fechar",
+    "back": "Voltar",
+    "loading": "Carregando...",
+    "error": "Erro",
+    "success": "Sucesso",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "export": "Exportar",
+    "upload": "Upload",
+    "reprocess": "Reprocessar",
+    "logout": "Sair",
+    "darkMode": "Modo escuro",
+    "lightMode": "Modo claro",
+    "language": "Idioma",
+    "noData": "Nenhum dado encontrado",
+    "tryAgain": "Tentar novamente",
+    "showDeleted": "Mostrar excluídos",
+    "hideDeleted": "Ocultar excluídos",
+    "actions": "Ações",
+    "status": "Status",
+    "name": "Nome",
+    "date": "Data",
+    "notes": "Observações",
+    "category": "Categoria",
+    "unknown": "Desconhecido",
+    "active": "Ativo",
+    "inactive": "Inativo",
+    "all": "Todos"
+  },
+
+  "nav": {
+    "dashboard": "Dashboard",
+    "upload": "Upload",
+    "videos": "Vídeos",
+    "people": "Pessoas",
+    "employees": "Funcionários",
+    "alerts": "Alertas",
+    "analytics": "Análises",
+    "logout": "Sair"
+  },
+
+  "auth": {
+    "title": "Gossipy Watchman",
+    "subtitle": "Sistema de Vigilância por Reconhecimento Facial",
+    "username": "Usuário",
+    "password": "Senha",
+    "login": "Entrar",
+    "loginError": "Credenciais inválidas. Tente novamente.",
+    "showPassword": "Mostrar senha",
+    "hidePassword": "Ocultar senha"
+  },
+
+  "dashboard": {
+    "title": "Dashboard",
+    "updatedAt": "Atualizado às {{time}} · auto-refresh {{interval}}s",
+    "refresh": "Atualizar",
+    "processedVideos": "Vídeos processados",
+    "inQueue": "Na fila",
+    "catalogedPeople": "Pessoas catalogadas",
+    "unknown": "Desconhecido",
+    "recentVideos": "Vídeos recentes",
+    "file": "Arquivo",
+    "sentAt": "Enviado em",
+    "exportCsv": "Exportar CSV",
+    "noVideos": "Nenhum vídeo encontrado",
+    "showDeleted": "Mostrar excluídos"
+  },
+
+  "upload": {
+    "title": "Enviar Vídeo",
+    "dragDrop": "Arraste e solte seu vídeo aqui",
+    "orClick": "ou clique para selecionar",
+    "acceptedFormats": "Formatos aceitos: MP4, AVI, MKV, MOV, TS",
+    "maxSize": "Tamanho máximo: {{size}}GB",
+    "selectFile": "Selecionar arquivo",
+    "uploading": "Enviando...",
+    "uploadSuccess": "Upload realizado com sucesso",
+    "uploadError": "Erro no upload",
+    "processing": "Processando...",
+    "conversionInProgress": "Convertendo para MP4...",
+    "speed": "Velocidade",
+    "remaining": "Restante",
+    "of": "de",
+    "newUpload": "Novo upload",
+    "goToDashboard": "Ir para o Dashboard",
+    "invalidFormat": "Formato inválido. Use MP4, AVI, MKV, MOV ou TS.",
+    "fileTooLarge": "Arquivo excede o limite de {{size}}MB."
+  },
+
+  "videos": {
+    "title": "Vídeos",
+    "subtitle": "Acervo completo de análises",
+    "searchPlaceholder": "Buscar por nome do arquivo...",
+    "sortBy": "Ordenar por",
+    "sortOptions": {
+      "newest": "Mais recentes primeiro",
+      "oldest": "Mais antigos primeiro",
+      "nameAsc": "Nome A→Z",
+      "nameDesc": "Nome Z→A",
+      "mostPeople": "Mais pessoas"
+    },
+    "layout": {
+      "grid": "Grade",
+      "list": "Lista"
+    },
+    "showing": "Mostrando {{start}}-{{end}} de {{total}} vídeos",
+    "noVideos": "Nenhum vídeo encontrado",
+    "noVideosFiltered": "Tente ajustar os filtros de busca",
+    "noVideosEmpty": "Envie seu primeiro vídeo",
+    "goToUpload": "Ir para Upload",
+    "people": "{{count}} pessoa",
+    "people_plural": "{{count}} pessoas",
+    "noPeople": "Nenhum rosto detectado",
+    "deleteConfirmTitle": "Excluir vídeo",
+    "deleteConfirmMessage": "Este vídeo será marcado como excluído. Os dados de aparições são preservados para fins de auditoria.",
+    "reprocessConfirmTitle": "Reprocessar vídeo",
+    "reprocessConfirmMessage": "O vídeo será reprocessado com as configurações atuais do pipeline (modelo CNN, threshold atual). Pessoas recém-detectadas serão adicionadas sem remover as existentes."
+  },
+
+  "videoDetail": {
+    "backToDashboard": "Voltar ao Dashboard",
+    "exportCsv": "Exportar CSV",
+    "deleteVideo": "Excluir vídeo",
+    "reprocess": "Reprocessar",
+    "restoreVideo": "Restaurar vídeo",
+    "sentAt": "Enviado em {{date}}",
+    "peopleIdentified": "Pessoas identificadas",
+    "totalAppearances": "Total de aparições",
+    "timeCovered": "Tempo coberto",
+    "status": "Status",
+    "peopleInVideo": "Pessoas neste vídeo",
+    "noFacesFound": "Nenhum rosto identificado neste vídeo.",
+    "noFacesHint": "Se você esperava encontrar pessoas, tente ajustar o FACE_RECOGNITION_TOLERANCE no .env para um valor maior.",
+    "processing": "Vídeo ainda em processamento. Aguarde...",
+    "appearances": "{{count}} aparição",
+    "appearances_plural": "{{count}} aparições",
+    "presentFor": "Presente por {{seconds}}s",
+    "firstSeen": "Primeira vez visto aos {{time}}s",
+    "lastSeen": "Última vez visto aos {{time}}s",
+    "viewFullProfile": "Ver perfil completo",
+    "start": "Início",
+    "end": "Fim",
+    "confidence": "Confiança",
+    "showAll": "Mostrar todas as {{count}} aparições",
+    "inScene": "EM CENA",
+    "goToSecond": "Ir para {{second}}s"
+  },
+
+  "people": {
+    "title": "Pessoas",
+    "count": "{{count}} de {{total}} pessoas",
+    "searchPlaceholder": "Buscar por nome...",
+    "searchByFace": "Buscar por rosto",
+    "selectForMerge": "Selecionar para mesclar",
+    "cancelMerge": "Cancelar",
+    "merge": "Mesclar",
+    "mergeSelected": "{{count}} perfis selecionados — Selecione o perfil principal",
+    "noPeople": "Nenhuma pessoa encontrada",
+    "category": {
+      "employee": "Funcionário",
+      "visitor": "Visitante",
+      "unknown": "Desconhecido",
+      "monitored": "Monitorado"
+    },
+    "registeredOn": "Cadastrado em {{date}}",
+    "videos": "{{count}} vídeo",
+    "videos_plural": "{{count}} vídeos",
+    "noAppearances": "Nenhuma aparição registrada",
+    "deleteConfirmTitle": "Excluir pessoa",
+    "deleteConfirmMessage": "O perfil de {{name}} será marcado como excluído. Os dados são preservados para fins de auditoria e podem ser restaurados.",
+    "deletedBadge": "Excluído",
+    "faceSearch": {
+      "title": "Buscar por rosto",
+      "instruction": "Envie uma foto para encontrar pessoas correspondentes",
+      "dragDrop": "Arraste uma foto aqui ou clique para selecionar",
+      "search": "Buscar",
+      "clear": "Limpar busca",
+      "noResults": "Nenhuma correspondência encontrada",
+      "noFaceDetected": "Nenhum rosto detectado na imagem",
+      "confidence": "{{percent}}% de confiança",
+      "queryTime": "Busca concluída em {{ms}}ms"
+    }
+  },
+
+  "personDetail": {
+    "backToPeople": "Voltar para Pessoas",
+    "exportCsv": "Exportar CSV",
+    "deleteProfile": "Excluir perfil",
+    "restoreProfile": "Restaurar perfil",
+    "restoreName": "Restaurar nome original",
+    "id": "ID #{{id}}",
+    "registeredOn": "Cadastrado em {{date}}",
+    "videos": "Vídeos",
+    "totalTime": "Tempo total",
+    "firstSeen": "Primeira vez visto",
+    "lastSeen": "Última vez visto",
+    "profileQuality": "Qualidade do perfil",
+    "qualityLevels": {
+      "excellent": "Excelente",
+      "good": "Boa",
+      "regular": "Regular",
+      "insufficient": "Insuficiente",
+      "weak": "Fraca"
+    },
+    "qualityRecommendations": {
+      "excellent": "Perfil de alta confiança. Reconhecimento confiável.",
+      "good": "Perfil sólido. Recomenda-se continuar coletando amostras.",
+      "regular": "Qualidade aceitável. Mais aparições vão melhorar a precisão.",
+      "insufficient": "Poucas amostras. Processe mais vídeos com esta pessoa.",
+      "weak": "Baixa confiança. Considere ajustar o threshold ou revisar o perfil."
+    },
+    "detectedFrames": "Frames detectados ({{count}})",
+    "setPrimary": "Definir como principal",
+    "appearanceTimeline": "Linha do tempo de aparições",
+    "video": "Vídeo",
+    "start": "Início",
+    "end": "Fim",
+    "confidence": "Confiança",
+    "editName": "Editar nome",
+    "editCategory": "Editar categoria",
+    "editNotes": "Editar observações",
+    "saveChanges": "Salvar alterações",
+    "deleteConfirmTitle": "Excluir perfil",
+    "deleteConfirmMessage": "Esta ação marca o perfil como excluído. Os dados são preservados e podem ser restaurados. Digite 'delete' para confirmar.",
+    "deleteConfirmWord": "delete",
+    "restoreNameConfirmTitle": "Restaurar nome original",
+    "restoreNameConfirmMessage": "O nome será redefinido para 'Desconhecido #{{id}}'.",
+    "mergeProfiles": "Mesclar perfis"
+  },
+
+  "employees": {
+    "title": "Funcionários",
+    "count": "{{count}} funcionário",
+    "count_plural": "{{count}} funcionários",
+    "register": "Cadastrar Funcionário",
+    "showInactive": "Mostrar inativos",
+    "columns": {
+      "photo": "Foto",
+      "name": "Nome",
+      "registration": "Matrícula",
+      "department": "Departamento",
+      "role": "Cargo",
+      "linkedProfile": "Perfil Vinculado",
+      "status": "Status",
+      "actions": "Ações"
+    },
+    "noEmployees": "Nenhum funcionário cadastrado",
+    "noEmployeesHint": "Cadastre funcionários para habilitar o reconhecimento automático nos vídeos",
+    "form": {
+      "title": "Cadastrar Funcionário",
+      "editTitle": "Editar Funcionário",
+      "fullName": "Nome completo",
+      "fullNamePlaceholder": "Nome completo do funcionário",
+      "registration": "Matrícula",
+      "registrationPlaceholder": "ex.: EMP001",
+      "department": "Departamento",
+      "departmentPlaceholder": "ex.: TI, RH, Segurança",
+      "role": "Cargo / Função",
+      "rolePlaceholder": "ex.: Segurança, Enfermeiro",
+      "notes": "Observações",
+      "notesPlaceholder": "Observações adicionais",
+      "photo": "Foto de referência",
+      "photoInstruction": "Use uma foto frontal com o rosto claramente visível. Evite fotos em grupo ou de perfil.",
+      "dragDrop": "Arraste uma foto aqui ou clique para selecionar",
+      "submit": "Cadastrar",
+      "update": "Atualizar",
+      "errors": {
+        "nameRequired": "Nome é obrigatório",
+        "registrationRequired": "Matrícula é obrigatória",
+        "photoRequired": "Foto de referência é obrigatória",
+        "duplicateRegistration": "Matrícula já cadastrada",
+        "noFaceDetected": "Nenhum rosto detectado na foto",
+        "multipleFaces": "Múltiplos rostos detectados. Use uma foto individual."
+      }
+    },
+    "deactivateConfirmTitle": "Desativar funcionário",
+    "deactivateConfirmMessage": "{{name}} será marcado como inativo. O perfil será preservado."
+  },
+
+  "alerts": {
+    "title": "Alertas",
+    "markAllSeen": "Marcar todos como vistos",
+    "noAlerts": "Nenhum alerta registrado",
+    "noAlertsHint": "Pessoas com categoria 'Monitorado' geram alertas automáticos",
+    "badge": "ALERTA",
+    "detectedIn": "Detectado em",
+    "at": "às",
+    "inVideo": "no vídeo",
+    "viewProfile": "Ver perfil"
+  },
+
+  "analytics": {
+    "title": "Análises",
+    "dailyActivity": "Atividade diária",
+    "categories": "Categorias",
+    "mostFrequent": "Mais frequentes",
+    "avgDwellTime": "Tempo médio de permanência (s)",
+    "noData": "Dados insuficientes — processe vídeos para ver as análises",
+    "people": "pessoas",
+    "appearances": "aparições",
+    "seconds": "segundos"
+  },
+
+  "status": {
+    "pending": "Pendente",
+    "processing": "Processando",
+    "completed": "Concluído",
+    "error": "Erro",
+    "converting": "Convertendo",
+    "repairing": "Reparando"
+  },
+
+  "confirmModal": {
+    "typeToConfirm": "Digite '{{word}}' para confirmar",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar"
+  },
+
+  "errors": {
+    "serverOffline": "Não foi possível conectar ao servidor. Verifique se o backend está em execução.",
+    "unauthorized": "Sessão expirada. Faça login novamente.",
+    "notFound": "Recurso não encontrado.",
+    "uploadFailed": "Falha no upload. Tente novamente.",
+    "processingFailed": "Falha no processamento. Verifique os logs para mais detalhes.",
+    "conversionFailed": "Não foi possível converter o arquivo. Verifique se o ffmpeg está instalado.",
+    "moovAtomNotFound": "Formato de arquivo de vídeo não suportado pela câmera. Tentando reparar..."
+  }
 }
