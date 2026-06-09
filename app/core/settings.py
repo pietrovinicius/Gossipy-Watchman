@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     INSIGHTFACE_DET_SIZE: int = 640
     INSIGHTFACE_DET_SCORE: float = 0.45
     INSIGHTFACE_PROVIDERS: list[str] = ["CPUExecutionProvider"]
+    INSIGHTFACE_INTRA_OP_NUM_THREADS: int = 4
     FACE_MAX_EMBEDDINGS_PER_PERSON: int = 5
     FACE_MAX_SAMPLES_PER_PERSON: int = 10
     INSIGHTFACE_HIGH_RES_THRESHOLD: int = 1920  # escala frames acima deste valor

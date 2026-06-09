@@ -1,4 +1,5 @@
 import logging
+import os
 
 import cv2
 import numpy as np
@@ -20,6 +21,7 @@ def get_face_app():
     if _face_app is None:
         if FaceAnalysis is None:
             raise RuntimeError("insightface não está instalado")
+        os.environ["OMP_NUM_THREADS"] = str(settings.INSIGHTFACE_INTRA_OP_NUM_THREADS)
         _face_app = FaceAnalysis(
             name=settings.INSIGHTFACE_MODEL,
             providers=settings.INSIGHTFACE_PROVIDERS,
