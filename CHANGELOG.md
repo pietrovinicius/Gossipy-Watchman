@@ -5,6 +5,39 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.98.0] — 2026-06-08
+
+### Adicionado
+- **feat(worker)**: Implementação de fallback periódico de detecção a cada 5 segundos no Motion Gating para evitar que pessoas paradas em cenas estáticas sejam completamente ignoradas.
+
+### Corrigido
+- **fix(worker)**: Correção crítica no `person_counter` que agora é inicializado com a contagem de pessoas existentes (`db.query(Person).count()`) em vez de vídeos, evitando a geração incorreta de índices de novas pessoas.
+
+### Alterado
+- **refactor(services)**: Otimização de memória no `FaceTrack` salvando apenas crops de rostos em vez de frames inteiros, reduzindo drasticamente o consumo de memória RAM de ~900KB por frame para poucos KB.
+- **refactor(services)**: Otimização de acurácia no cálculo do `mean_embedding` aplicando uma média ponderada pelo `det_score` de cada detecção.
+- **refactor(worker)**: Cache de conhecidos em memória no `process_video` para evitar leituras repetidas de disco a cada track.
+
+## [1.97.0] — 2026-06-08
+
+### Adicionado
+- **feat(services)**: Substituição completa da biblioteca dlib/face_recognition por **InsightFace buffalo_l** (RetinaFace para detecção e ArcFace para extração de embeddings de 512 dimensões), utilizando distância coseno (threshold 0.4).
+- **feat(services)**: Suporte a múltiplos embeddings (até 5) por pessoa para aumentar a robustez do reconhecimento contra variação de pose e iluminação.
+- **feat(services)**: Migração idempotente automática `migration_insightface` que limpa embeddings de 128 dimensões antigos do dlib para evitar inconsistências.
+- **feat(services)**: Pré-aquecimento do modelo InsightFace no Lifespan do FastAPI e suporte ao CoreMLExecutionProvider para aceleração no Neural Engine (macOS).
+
+## [1.96.0] — 2026-06-08
+
+### Adicionado
+- **feat(services)**: Implementação do Motion Gating (filtragem por detecção de movimento clássica) no pipeline do worker de vídeo, pulando frames estáticos para economizar processamento de CPU.
+
+### Corrigido
+- **fix(worker)**: Correção e calibração de parâmetros de movimento (sensibilidade aumentada com threshold=15 e area_ratio=0.001) e suavização com kernel adaptativo proporcional ao tamanho do frame, prevenindo perdas em vídeos de baixa resolução.
+- **fix(worker)**: Flexibilização dos filtros de qualidade de rostos para vídeos de baixa qualidade (FACE_BLUR_THRESHOLD=30.0 e FACE_MIN_SIZE_PX=40).
+
+### Alterado
+- **refactor(services)**: Reversão temporária da stack OpenCV YuNet + SFace de volta para `face_recognition` (dlib) antes da migração definitiva para o InsightFace, mantendo as correções de HEVC, faststart MP4 e Motion Gating integradas.
+
 ## [1.95.0] — 2026-06-08
 
 ### Adicionado
