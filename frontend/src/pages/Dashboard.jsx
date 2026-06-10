@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Film, Clock, Users, UserX, RefreshCw, Download, Loader2, ChevronRight, Eye, Trash2, RotateCcw, RotateCw } from 'lucide-react'
 import Layout from '../components/Layout'
 import ConfirmModal from '../components/ConfirmModal'
@@ -10,15 +11,16 @@ import { formatDateTime } from '../utils/formatDate'
 import { useGlobalWebSocket } from '../hooks/useGlobalWebSocket'
 
 const STATUS_BADGE = {
-  Pendente:    { cls: 'bg-warning/20 text-warning',       label: 'Pendente' },
-  Processando: { cls: 'bg-processing/20 text-processing', label: 'Processando' },
-  Concluído:   { cls: 'bg-success/20 text-success',       label: 'Concluído' },
-  Erro:        { cls: 'bg-error-color/20 text-error-color', label: 'Erro' },
+  Pendente:    { cls: 'bg-warning/20 text-warning',       key: 'status.pending' },
+  Processando: { cls: 'bg-processing/20 text-processing', key: 'status.processing' },
+  Concluído:   { cls: 'bg-success/20 text-success',       key: 'status.completed' },
+  Erro:        { cls: 'bg-error-color/20 text-error-color', key: 'status.error' },
 }
 
 function StatusBadge({ status }) {
-  const cfg = STATUS_BADGE[status] ?? { cls: 'bg-border text-text-muted', label: status }
-  return <span className={`badge ${cfg.cls}`}>{cfg.label}</span>
+  const { t } = useTranslation()
+  const cfg = STATUS_BADGE[status]
+  return <span className={`badge ${cfg ? cfg.cls : 'bg-border text-text-muted'}`}>{cfg ? t(cfg.key) : status}</span>
 }
 
 function MetricCard({ icon: Icon, label, value, color }) {
@@ -38,6 +40,13 @@ function MetricCard({ icon: Icon, label, value, color }) {
 }
 
 const STATUS_FILTERS = ['Todos', 'Pendente', 'Processando', 'Concluído', 'Erro']
+const STATUS_FILTER_LABEL_KEY = {
+  Todos: 'common.all',
+  Pendente: 'status.pending',
+  Processando: 'status.processing',
+  Concluído: 'status.completed',
+  Erro: 'status.error',
+}
 const REPROCESSABLE_STATUSES = ['Concluído', 'Erro']
 
 function SkeletonRow() {
@@ -53,6 +62,7 @@ function SkeletonRow() {
 }
 
 export default function Dashboard() {
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const [videos, setVideos] = useState(null)
   const [people, setPeople] = useState(null)
@@ -160,30 +170,33 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-text-base">Dashboard</h1>
+            <h1 className="text-2xl font-bold text-text-base">{t('dashboard.title')}</h1>
             {lastRefresh && (
               <p className="text-xs text-text-muted mt-0.5">
-                Atualizado às {lastRefresh.toLocaleTimeString('pt-BR')} · auto-refresh 15s
+                {t('dashboard.updatedAt', {
+                  time: lastRefresh.toLocaleTimeString(i18n.language === 'pt-BR' ? 'pt-BR' : 'en-US'),
+                  interval: 15,
+                })}
               </p>
             )}
           </div>
           <div className="flex items-center gap-2">
             <span
-              title={wsConnected ? 'Tempo real ativo' : 'WebSocket desconectado'}
+              title={wsConnected ? t('dashboard.realtimeOn') : t('dashboard.realtimeOff')}
               className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors duration-500 ${
                 wsConnected ? 'bg-success shadow-[0_0_6px_rgba(0,200,80,0.6)]' : 'bg-border'
               }`}
-              aria-label={wsConnected ? 'Tempo real ativo' : 'WebSocket desconectado'}
+              aria-label={wsConnected ? t('dashboard.realtimeOn') : t('dashboard.realtimeOff')}
             />
             <button
               onClick={fetchData}
-              aria-label="Atualizar dados"
+              aria-label={t('dashboard.refresh')}
               className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border
                          text-text-muted hover:text-text-base hover:border-primary/50
                          transition-colors duration-200 cursor-pointer text-sm"
             >
               <RefreshCw className="w-4 h-4" aria-hidden="true" />
-              Atualizar
+              {t('dashboard.refresh')}
             </button>
           </div>
         </div>
@@ -201,7 +214,7 @@ export default function Dashboard() {
                     ? 'bg-primary/10 border-primary text-primary'
                     : 'border-border text-text-muted hover:text-text-base'}`}
               >
-                {s}
+                {t(STATUS_FILTER_LABEL_KEY[s])}
               </button>
             ))}
           </div>
@@ -214,38 +227,38 @@ export default function Dashboard() {
                           : 'border-border text-text-muted hover:text-text-base'}`}
           >
             <Eye className="w-3.5 h-3.5" aria-hidden="true" />
-            Mostrar excluídos
+            {t('common.showDeleted')}
           </button>
         </div>
 
         {error && (
           <div role="alert" className="p-4 rounded-xl bg-red-950/40 border border-red-800/50 text-error-color text-sm">
-            API inacessível: {error}
+            {t('dashboard.apiUnreachable', { error })}
           </div>
         )}
 
         {/* Metric cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <MetricCard icon={Film}  label="Vídeos processados" value={concluded} color="bg-success/20 text-success" />
-          <MetricCard icon={Clock} label="Na fila"            value={queued}    color="bg-warning/20 text-warning" />
-          <MetricCard icon={Users} label="Pessoas catalogadas" value={totalPpl} color="bg-primary/20 text-primary" />
-          <MetricCard icon={UserX} label="Desconhecidos"       value={unknown}  color="bg-text-muted/20 text-text-muted" />
+          <MetricCard icon={Film}  label={t('dashboard.processedVideos')} value={concluded} color="bg-success/20 text-success" />
+          <MetricCard icon={Clock} label={t('dashboard.inQueue')}         value={queued}    color="bg-warning/20 text-warning" />
+          <MetricCard icon={Users} label={t('dashboard.catalogedPeople')} value={totalPpl} color="bg-primary/20 text-primary" />
+          <MetricCard icon={UserX} label={t('dashboard.unknown')}         value={unknown}  color="bg-text-muted/20 text-text-muted" />
         </div>
 
         {/* Recent videos table */}
         <div className="card p-0 overflow-hidden">
           <div className="px-4 py-3 border-b border-border">
-            <h2 className="text-sm font-semibold text-text-base">Vídeos recentes</h2>
+            <h2 className="text-sm font-semibold text-text-base">{t('dashboard.recentVideos')}</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">Arquivo</th>
-                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">Status</th>
-                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">Enviado em</th>
-                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">Exportar</th>
-                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">Ações</th>
+                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">{t('dashboard.file')}</th>
+                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">{t('common.status')}</th>
+                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">{t('dashboard.sentAt')}</th>
+                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">{t('common.export')}</th>
+                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">{t('common.actions')}</th>
                   <th className="px-4 py-2.5" aria-hidden="true" />
                 </tr>
               </thead>
@@ -255,7 +268,7 @@ export default function Dashboard() {
                 ) : recent.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-text-muted">
-                      Nenhum vídeo enviado ainda.
+                      {t('dashboard.noVideosUploaded')}
                     </td>
                   </tr>
                 ) : (
@@ -267,7 +280,7 @@ export default function Dashboard() {
                       <tr
                         key={v.id}
                         onClick={() => navigate(`/videos/${v.id}`)}
-                        title="Ver detalhes do vídeo"
+                        title={t('dashboard.viewVideoDetails')}
                         className={`border-b border-border/50 cursor-pointer hover:bg-slate-50
                                    dark:hover:bg-[#1F2937] transition-colors duration-150 ${isDeleted ? 'opacity-50' : ''}`}
                       >
@@ -277,7 +290,7 @@ export default function Dashboard() {
                             {isDeleted && (
                               <span className="text-[10px] font-medium px-2 py-0.5 rounded-full
                                                bg-error-color/20 text-error-color">
-                                Excluído
+                                {t('people.deletedBadge')}
                               </span>
                             )}
                           </div>
@@ -288,7 +301,7 @@ export default function Dashboard() {
                           <button
                             onClick={(e) => { e.stopPropagation(); handleExportVideo(v.id, v.file_name) }}
                             disabled={exportingId === v.id}
-                            aria-label={`Exportar CSV do vídeo ${name}`}
+                            aria-label={t('dashboard.exportCsvOf', { name })}
                             className="text-text-muted hover:text-primary transition-colors disabled:opacity-40"
                           >
                             {exportingId === v.id
@@ -301,7 +314,7 @@ export default function Dashboard() {
                             {!isDeleted && canReprocess && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); setVideoToReprocess(v) }}
-                                aria-label={`Reprocessar vídeo ${name}`}
+                                aria-label={t('dashboard.reprocessVideo', { name })}
                                 className="text-text-muted hover:text-primary transition-colors"
                               >
                                 <RotateCw className="w-4 h-4" aria-hidden="true" />
@@ -310,7 +323,7 @@ export default function Dashboard() {
                             {!isDeleted && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); setVideoToDelete(v) }}
-                                aria-label={`Excluir vídeo ${name}`}
+                                aria-label={t('dashboard.deleteVideo', { name })}
                                 className="text-text-muted hover:text-error-color transition-colors"
                               >
                                 <Trash2 className="w-4 h-4" aria-hidden="true" />
@@ -319,7 +332,7 @@ export default function Dashboard() {
                             {isDeleted && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleRestoreVideo(v) }}
-                                aria-label={`Restaurar vídeo ${name}`}
+                                aria-label={t('dashboard.restoreVideo', { name })}
                                 className="text-text-muted hover:text-primary transition-colors"
                               >
                                 <RotateCcw className="w-4 h-4" aria-hidden="true" />
@@ -342,20 +355,20 @@ export default function Dashboard() {
 
       <ConfirmModal
         isOpen={videoToDelete !== null}
-        title="Excluir vídeo"
-        message={videoToDelete ? `Tem certeza que deseja excluir "${sanitizeFileName(videoToDelete.file_name)}"? Esta ação pode ser desfeita restaurando o vídeo.` : ''}
+        title={t('videos.deleteConfirmTitle')}
+        message={videoToDelete ? t('videos.deleteConfirmMessage') : ''}
         variant="danger"
-        confirmLabel="Excluir"
+        confirmLabel={t('common.delete')}
         onConfirm={() => handleDeleteVideo(videoToDelete)}
         onCancel={() => setVideoToDelete(null)}
       />
 
       <ConfirmModal
         isOpen={videoToReprocess !== null}
-        title="Reprocessar vídeo"
-        message={videoToReprocess ? `O status de "${sanitizeFileName(videoToReprocess.file_name)}" voltará para Pendente e o worker de visão computacional será disparado novamente. Aparições anteriores serão substituídas.` : ''}
+        title={t('videos.reprocessConfirmTitle')}
+        message={videoToReprocess ? t('videos.reprocessConfirmMessage') : ''}
         variant="warning"
-        confirmLabel="Reprocessar"
+        confirmLabel={t('common.reprocess')}
         onConfirm={() => handleReprocessVideo(videoToReprocess)}
         onCancel={() => setVideoToReprocess(null)}
       />

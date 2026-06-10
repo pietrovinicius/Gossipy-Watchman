@@ -70,7 +70,7 @@ describe('Dashboard — vídeos clicáveis', () => {
 
     await waitFor(() => screen.getByText('video5.mp4'))
 
-    const exportBtn = screen.getAllByLabelText(/exportar csv do vídeo/i)[0]
+    const exportBtn = screen.getAllByLabelText(/export csv of video/i)[0]
     fireEvent.click(exportBtn)
 
     expect(mockNavigate).not.toHaveBeenCalled()

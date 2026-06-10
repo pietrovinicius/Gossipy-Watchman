@@ -43,7 +43,7 @@ describe('Dashboard — filtros, exclusão, restauração e reprocessamento', ()
     renderPage()
     await screen.findByText('ativo.mp4')
 
-    const pill = screen.getByRole('button', { name: 'Erro' })
+    const pill = screen.getByRole('button', { name: 'Error' })
     fireEvent.click(pill)
 
     await vi.waitFor(() => {
@@ -56,7 +56,7 @@ describe('Dashboard — filtros, exclusão, restauração e reprocessamento', ()
     renderPage()
     await screen.findByText('ativo.mp4')
 
-    const toggle = screen.getByRole('button', { name: /mostrar exclu[ií]dos/i })
+    const toggle = screen.getByRole('button', { name: /show deleted/i })
     fireEvent.click(toggle)
 
     await vi.waitFor(() => {
@@ -71,11 +71,11 @@ describe('Dashboard — filtros, exclusão, restauração e reprocessamento', ()
     renderPage()
     await screen.findByText('ativo.mp4')
 
-    const deleteBtn = screen.getByRole('button', { name: /excluir v[ií]deo ativo\.mp4/i })
+    const deleteBtn = screen.getByRole('button', { name: /delete video ativo\.mp4/i })
     fireEvent.click(deleteBtn)
 
     const dialog = await screen.findByRole('dialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Excluir' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
 
     await vi.waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith('/videos/1')
@@ -87,10 +87,10 @@ describe('Dashboard — filtros, exclusão, restauração e reprocessamento', ()
     renderPage()
     await screen.findByText('ativo.mp4')
 
-    fireEvent.click(screen.getByRole('button', { name: /mostrar exclu[ií]dos/i }))
+    fireEvent.click(screen.getByRole('button', { name: /show deleted/i }))
     await screen.findByText('removido.mp4')
 
-    const restoreBtn = screen.getByRole('button', { name: /restaurar v[ií]deo removido\.mp4/i })
+    const restoreBtn = screen.getByRole('button', { name: /restore video removido\.mp4/i })
     fireEvent.click(restoreBtn)
 
     await vi.waitFor(() => {
@@ -103,11 +103,11 @@ describe('Dashboard — filtros, exclusão, restauração e reprocessamento', ()
     renderPage()
     await screen.findByText('ativo.mp4')
 
-    const reprocessBtn = screen.getByRole('button', { name: /reprocessar v[ií]deo ativo\.mp4/i })
+    const reprocessBtn = screen.getByRole('button', { name: /reprocess video ativo\.mp4/i })
     fireEvent.click(reprocessBtn)
 
     const dialog = await screen.findByRole('dialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Reprocessar' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reprocess' }))
 
     await vi.waitFor(() => {
       expect(api.post).toHaveBeenCalledWith('/videos/1/reprocess')

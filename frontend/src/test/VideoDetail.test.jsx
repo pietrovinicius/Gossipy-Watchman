@@ -91,7 +91,7 @@ describe('VideoDetail page', () => {
     await waitFor(() => {
       expect(screen.getByText('WhatsApp Video 2026.mp4')).toBeTruthy()
     })
-    expect(screen.getAllByText('Concluído').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Completed').length).toBeGreaterThan(0)
   })
 
   it('exibe os 4 cards de resumo com valores corretos', async () => {
@@ -116,7 +116,7 @@ describe('VideoDetail page', () => {
     await renderVideoDetail()
 
     await waitFor(() => {
-      expect(screen.getByText(/nenhuma face identificada/i)).toBeTruthy()
+      expect(screen.getByText(/no faces identified/i)).toBeTruthy()
     })
     expect(screen.getByText(/FACE_RECOGNITION_TOLERANCE/)).toBeTruthy()
   })
@@ -132,7 +132,7 @@ describe('VideoDetail page', () => {
     await renderVideoDetail()
 
     await waitFor(() => {
-      expect(screen.getByText(/ainda sendo processado/i)).toBeTruthy()
+      expect(screen.getByText(/still being processed/i)).toBeTruthy()
     })
   })
 
@@ -144,7 +144,7 @@ describe('VideoDetail page', () => {
 
     await waitFor(() => screen.getByText('Fulano'))
     expect(screen.getByText('Visitante')).toBeTruthy()
-    expect(screen.getByText(/1 aparição/)).toBeTruthy()
+    expect(screen.getByText(/1 appearance/)).toBeTruthy()
   })
 
   it('carrega foto da pessoa via useAuthImage', async () => {
@@ -165,7 +165,7 @@ describe('VideoDetail page', () => {
     await renderVideoDetail()
 
     await waitFor(() => screen.getByText('Fulano'))
-    const link = screen.getByRole('link', { name: /ver perfil completo/i })
+    const link = screen.getByRole('link', { name: /view full profile/i })
     expect(link.getAttribute('href')).toBe('/people/3')
   })
 
@@ -187,7 +187,7 @@ describe('VideoDetail page', () => {
     await renderVideoDetail()
 
     await waitFor(() => screen.getByText('Fulano'))
-    expect(screen.getByText(/ver todas as 5 aparições/i)).toBeTruthy()
+    expect(screen.getByText(/show all 5 appearances/i)).toBeTruthy()
     expect(screen.queryByText('00:09')).toBeFalsy()
   })
 
@@ -209,7 +209,7 @@ describe('VideoDetail page', () => {
     await renderVideoDetail()
 
     await waitFor(() => screen.getByText('Fulano'))
-    fireEvent.click(screen.getByText(/ver todas as 5 aparições/i))
+    fireEvent.click(screen.getByText(/show all 5 appearances/i))
     expect(screen.getAllByText('00:09').length).toBeGreaterThan(0)
   })
 
@@ -225,7 +225,7 @@ describe('VideoDetail page', () => {
     await renderVideoDetail()
 
     await waitFor(() => screen.getByText('Fulano'))
-    fireEvent.click(screen.getByRole('button', { name: /exportar csv/i }))
+    fireEvent.click(screen.getByRole('button', { name: /export csv/i }))
 
     await waitFor(() => {
       expect(downloadCsv).toHaveBeenCalledWith(blob, expect.stringContaining('7'))
@@ -240,7 +240,7 @@ describe('VideoDetail page', () => {
 
     await waitFor(() => screen.getByText('Fulano'))
     // total_seconds=5.0 → 'Presente por 00:05'; first_seen_at=1.0 → td '00:01'; last_seen_at=4.0 → td '00:04'
-    expect(screen.getByText(/Presente por 00:05/)).toBeTruthy()
+    expect(screen.getByText(/Present for 00:05/)).toBeTruthy()
     expect(screen.getAllByText('00:01').length).toBeGreaterThan(0)
     expect(screen.getAllByText('00:04').length).toBeGreaterThan(0)
   })

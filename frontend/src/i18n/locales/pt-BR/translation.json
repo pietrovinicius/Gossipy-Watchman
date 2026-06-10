@@ -44,7 +44,12 @@
     "employees": "Funcionários",
     "alerts": "Alertas",
     "analytics": "Análises",
-    "logout": "Sair"
+    "logout": "Sair",
+    "mainMenu": "Menu principal",
+    "sidebar": "Barra lateral",
+    "mobileSidebar": "Barra lateral mobile",
+    "openMenu": "Abrir menu",
+    "closeMenu": "Fechar menu"
   },
 
   "auth": {
@@ -55,7 +60,10 @@
     "login": "Entrar",
     "loginError": "Credenciais inválidas. Tente novamente.",
     "showPassword": "Mostrar senha",
-    "hidePassword": "Ocultar senha"
+    "hidePassword": "Ocultar senha",
+    "verifying": "Verificando...",
+    "placeholderUsername": "admin",
+    "placeholderPassword": "••••••••"
   },
 
   "dashboard": {
@@ -71,7 +79,16 @@
     "sentAt": "Enviado em",
     "exportCsv": "Exportar CSV",
     "noVideos": "Nenhum vídeo encontrado",
-    "showDeleted": "Mostrar excluídos"
+    "showDeleted": "Mostrar excluídos",
+    "realtimeOn": "Tempo real ativo",
+    "realtimeOff": "WebSocket desconectado",
+    "noVideosUploaded": "Nenhum vídeo enviado ainda.",
+    "exportCsvOf": "Exportar CSV do vídeo {{name}}",
+    "reprocessVideo": "Reprocessar vídeo {{name}}",
+    "deleteVideo": "Excluir vídeo {{name}}",
+    "restoreVideo": "Restaurar vídeo {{name}}",
+    "viewVideoDetails": "Ver detalhes do vídeo",
+    "apiUnreachable": "API inacessível: {{error}}"
   },
 
   "upload": {
@@ -142,7 +159,7 @@
     "processing": "Vídeo ainda em processamento. Aguarde...",
     "appearances": "{{count}} aparição",
     "appearances_plural": "{{count}} aparições",
-    "presentFor": "Presente por {{seconds}}s",
+    "presentFor": "Presente por {{seconds}}",
     "firstSeen": "Primeira vez visto aos {{time}}s",
     "lastSeen": "Última vez visto aos {{time}}s",
     "viewFullProfile": "Ver perfil completo",
@@ -151,7 +168,27 @@
     "confidence": "Confiança",
     "showAll": "Mostrar todas as {{count}} aparições",
     "inScene": "EM CENA",
-    "goToSecond": "Ir para {{second}}s"
+    "goToSecond": "Ir para {{second}}s",
+    "firstSeenInVideo": "Primeira vez: {{time}} do vídeo",
+    "lastSeenInVideo": "Última vez: {{time}} do vídeo",
+    "playFromFirstAppearance": "Reproduzir a partir da primeira aparição",
+    "seekAndPause": "Ir para este momento e pausar",
+    "addPerson": "Adicionar pessoa",
+    "addPersonTitle": "Adicionar pessoa ao vídeo",
+    "addPersonField": "Pessoa",
+    "addPersonSearchPlaceholder": "Buscar por nome…",
+    "addPersonNoResults": "Nenhuma pessoa encontrada",
+    "startSeconds": "Início (s)",
+    "endSeconds": "Fim (s)",
+    "saving": "Salvando…",
+    "add": "Adicionar",
+    "addPersonError": "Erro ao adicionar pessoa.",
+    "exportError": "Erro ao exportar CSV.",
+    "deleteConfirmTitle": "Excluir vídeo",
+    "deleteConfirmMessage": "Esta ação excluirá o vídeo \"{{name}}\". Digite \"excluir\" para confirmar. O vídeo pode ser restaurado posteriormente.",
+    "deleteConfirmWord": "excluir",
+    "reprocessConfirmTitle": "Reprocessar vídeo",
+    "reprocessConfirmMessage": "O status de \"{{name}}\" voltará para Pendente e o worker de visão computacional será disparado novamente. Aparições anteriores serão substituídas."
   },
 
   "people": {

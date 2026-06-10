@@ -53,13 +53,13 @@ describe('VideoDetail — exclusão, restauração e reprocessamento', () => {
     api.delete.mockResolvedValue({ data: { ...VIDEO_ACTIVE, deleted_at: '2026-03-01T00:00:00Z' } })
     renderPage()
 
-    fireEvent.click(await screen.findByRole('button', { name: /excluir v[ií]deo/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /delete video/i }))
 
     const dialog = await screen.findByRole('dialog')
-    const confirmBtn = within(dialog).getByRole('button', { name: /confirmar/i })
+    const confirmBtn = within(dialog).getByRole('button', { name: /confirm/i })
     expect(confirmBtn).toBeDisabled()
 
-    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'excluir' } })
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'delete' } })
     expect(confirmBtn).not.toBeDisabled()
     fireEvent.click(confirmBtn)
 
@@ -72,10 +72,10 @@ describe('VideoDetail — exclusão, restauração e reprocessamento', () => {
     api.post.mockResolvedValue({ data: { id: 7, status: 'Pendente' } })
     renderPage()
 
-    fireEvent.click(await screen.findByRole('button', { name: /reprocessar/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /reprocess/i }))
 
     const dialog = await screen.findByRole('dialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Reprocessar' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reprocess' }))
 
     await vi.waitFor(() => {
       expect(api.post).toHaveBeenCalledWith('/videos/7/reprocess')
@@ -87,7 +87,7 @@ describe('VideoDetail — exclusão, restauração e reprocessamento', () => {
     api.post.mockResolvedValue({ data: { ...VIDEO_DELETED, deleted_at: null } })
     renderPage()
 
-    const restoreBtn = await screen.findByRole('button', { name: /restaurar v[ií]deo/i })
+    const restoreBtn = await screen.findByRole('button', { name: /restore video/i })
     fireEvent.click(restoreBtn)
 
     await vi.waitFor(() => {
@@ -99,7 +99,7 @@ describe('VideoDetail — exclusão, restauração e reprocessamento', () => {
     mockDetail(VIDEO_DELETED)
     renderPage()
 
-    await screen.findByRole('button', { name: /restaurar v[ií]deo/i })
-    expect(screen.queryByRole('button', { name: /excluir v[ií]deo/i })).toBeNull()
+    await screen.findByRole('button', { name: /restore video/i })
+    expect(screen.queryByRole('button', { name: /delete video/i })).toBeNull()
   })
 })
