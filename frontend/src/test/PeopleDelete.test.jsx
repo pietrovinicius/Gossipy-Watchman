@@ -37,7 +37,7 @@ function renderPage() {
 describe('People — exclusão e restauração', () => {
   it('exibe ícone de excluir em cada card de pessoa', async () => {
     renderPage()
-    const deleteBtn = await screen.findByRole('button', { name: /excluir ativo/i })
+    const deleteBtn = await screen.findByRole('button', { name: /delete ativo/i })
     expect(deleteBtn).toBeTruthy()
   })
 
@@ -45,11 +45,11 @@ describe('People — exclusão e restauração', () => {
     api.delete.mockResolvedValue({ data: { ...PEOPLE[0], deleted_at: '2026-03-01T00:00:00Z' } })
     renderPage()
 
-    const deleteBtn = await screen.findByRole('button', { name: /excluir ativo/i })
+    const deleteBtn = await screen.findByRole('button', { name: /delete ativo/i })
     fireEvent.click(deleteBtn)
 
     const dialog = await screen.findByRole('dialog')
-    const confirmBtn = within(dialog).getByRole('button', { name: 'Excluir' })
+    const confirmBtn = within(dialog).getByRole('button', { name: 'Delete' })
     fireEvent.click(confirmBtn)
 
     await vi.waitFor(() => {
@@ -59,9 +59,9 @@ describe('People — exclusão e restauração', () => {
 
   it('toggle "Exibir excluídos" recarrega lista incluindo deletados', async () => {
     renderPage()
-    await screen.findByRole('button', { name: /excluir ativo/i })
+    await screen.findByRole('button', { name: /delete ativo/i })
 
-    const toggle = screen.getByRole('button', { name: /exibir exclu[ií]dos/i })
+    const toggle = screen.getByRole('button', { name: /show deleted/i })
     fireEvent.click(toggle)
 
     await vi.waitFor(() => {
@@ -74,26 +74,26 @@ describe('People — exclusão e restauração', () => {
 
   it('exibe badge "Excluído" para pessoas com deleted_at preenchido', async () => {
     renderPage()
-    await screen.findByRole('button', { name: /excluir ativo/i })
+    await screen.findByRole('button', { name: /delete ativo/i })
 
-    const toggle = screen.getByRole('button', { name: /exibir exclu[ií]dos/i })
+    const toggle = screen.getByRole('button', { name: /show deleted/i })
     fireEvent.click(toggle)
 
     const removedName = await screen.findByText('Removido')
     const card = removedName.closest('.card')
-    expect(within(card).getByText('Excluído')).toBeTruthy()
+    expect(within(card).getByText('Deleted')).toBeTruthy()
   })
 
   it('exibe botão de restaurar para pessoas deletadas e chama POST /restore', async () => {
     api.post.mockResolvedValue({ data: { ...PEOPLE[1], deleted_at: null } })
     renderPage()
-    await screen.findByRole('button', { name: /excluir ativo/i })
+    await screen.findByRole('button', { name: /delete ativo/i })
 
-    const toggle = screen.getByRole('button', { name: /exibir exclu[ií]dos/i })
+    const toggle = screen.getByRole('button', { name: /show deleted/i })
     fireEvent.click(toggle)
     await screen.findByText('Removido')
 
-    const restoreBtn = screen.getByRole('button', { name: /restaurar removido/i })
+    const restoreBtn = screen.getByRole('button', { name: /restore removido/i })
     fireEvent.click(restoreBtn)
 
     await vi.waitFor(() => {
@@ -103,9 +103,9 @@ describe('People — exclusão e restauração', () => {
 
   it('cards de pessoas deletadas têm opacidade reduzida', async () => {
     renderPage()
-    await screen.findByRole('button', { name: /excluir ativo/i })
+    await screen.findByRole('button', { name: /delete ativo/i })
 
-    const toggle = screen.getByRole('button', { name: /exibir exclu[ií]dos/i })
+    const toggle = screen.getByRole('button', { name: /show deleted/i })
     fireEvent.click(toggle)
     const removedName = await screen.findByText('Removido')
 
@@ -115,7 +115,7 @@ describe('People — exclusão e restauração', () => {
 
   it('cancelar no ConfirmModal não chama DELETE', async () => {
     renderPage()
-    const deleteBtn = await screen.findByRole('button', { name: /excluir ativo/i })
+    const deleteBtn = await screen.findByRole('button', { name: /delete ativo/i })
     fireEvent.click(deleteBtn)
 
     const dialog = await screen.findByRole('dialog')

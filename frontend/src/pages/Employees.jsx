@@ -1,11 +1,13 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { UserPlus, ExternalLink, Edit2, Trash2, AlertCircle } from 'lucide-react'
 import Layout from '../components/Layout'
 import ConfirmModal from '../components/ConfirmModal'
 import api from '../services/api'
 
 function EmployeeRow({ employee, onEdit, onDelete }) {
+  const { t } = useTranslation()
   return (
     <tr className="border-b border-border/50 hover:bg-card/50 transition-colors">
       <td className="px-4 py-3">
@@ -50,21 +52,21 @@ function EmployeeRow({ employee, onEdit, onDelete }) {
               : 'bg-error-color/20 text-error-color'
           }`}
         >
-          {employee.active ? 'Ativo' : 'Inativo'}
+          {employee.active ? t('common.active') : t('common.inactive')}
         </span>
       </td>
       <td className="px-4 py-3 flex gap-2">
         <button
           onClick={() => onEdit(employee)}
           className="text-text-muted hover:text-primary transition-colors"
-          aria-label="Editar"
+          aria-label={t('common.edit')}
         >
           <Edit2 className="w-4 h-4" />
         </button>
         <button
           onClick={() => onDelete(employee.id)}
           className="text-text-muted hover:text-error-color transition-colors"
-          aria-label="Desativar"
+          aria-label={t('employees.deactivateAria')}
         >
           <Trash2 className="w-4 h-4" />
         </button>
@@ -74,6 +76,7 @@ function EmployeeRow({ employee, onEdit, onDelete }) {
 }
 
 export default function Employees() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [employees, setEmployees] = useState([])
   const [loading, setLoading] = useState(true)
@@ -120,7 +123,7 @@ export default function Employees() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-text-base">
-              Funcionários ({employees.length})
+              {t('employees.title')} ({employees.length})
             </h1>
           </div>
           <button
@@ -131,7 +134,7 @@ export default function Employees() {
             className="flex items-center gap-2 btn-primary"
           >
             <UserPlus className="w-4 h-4" />
-            Cadastrar Funcionário
+            {t('employees.register')}
           </button>
         </div>
 
@@ -143,7 +146,7 @@ export default function Employees() {
               onChange={(e) => setShowInactive(e.target.checked)}
               className="w-4 h-4 rounded border border-border"
             />
-            <span className="text-text-muted">Mostrar inativos</span>
+            <span className="text-text-muted">{t('employees.showInactive')}</span>
           </label>
         </div>
 
@@ -156,11 +159,11 @@ export default function Employees() {
 
         {loading ? (
           <div className="card text-center py-12">
-            <p className="text-text-muted">Carregando...</p>
+            <p className="text-text-muted">{t('common.loading')}</p>
           </div>
         ) : employees.length === 0 ? (
           <div className="card text-center py-12">
-            <p className="text-text-muted">Nenhum funcionário cadastrado.</p>
+            <p className="text-text-muted">{t('employees.noEmployees')}</p>
           </div>
         ) : (
           <div className="card overflow-x-auto">
@@ -168,28 +171,28 @@ export default function Employees() {
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left px-4 py-3 text-text-muted font-medium text-xs">
-                    Foto
+                    {t('employees.columns.photo')}
                   </th>
                   <th className="text-left px-4 py-3 text-text-muted font-medium text-xs">
-                    Nome
+                    {t('employees.columns.name')}
                   </th>
                   <th className="text-left px-4 py-3 text-text-muted font-medium text-xs">
-                    Matrícula
+                    {t('employees.columns.registration')}
                   </th>
                   <th className="text-left px-4 py-3 text-text-muted font-medium text-xs">
-                    Setor
+                    {t('employees.columns.department')}
                   </th>
                   <th className="text-left px-4 py-3 text-text-muted font-medium text-xs">
-                    Cargo
+                    {t('employees.columns.role')}
                   </th>
                   <th className="text-left px-4 py-3 text-text-muted font-medium text-xs">
-                    Perfil
+                    {t('employees.columns.linkedProfile')}
                   </th>
                   <th className="text-left px-4 py-3 text-text-muted font-medium text-xs">
-                    Status
+                    {t('employees.columns.status')}
                   </th>
                   <th className="text-left px-4 py-3 text-text-muted font-medium text-xs">
-                    Ações
+                    {t('employees.columns.actions')}
                   </th>
                 </tr>
               </thead>
@@ -216,9 +219,9 @@ export default function Employees() {
 
       <ConfirmModal
         isOpen={deleteModalOpen}
-        title="Desativar funcionário"
-        message="Tem certeza que deseja desativar este funcionário?"
-        confirmLabel="Desativar"
+        title={t('employees.deactivateConfirmTitle')}
+        message={t('employees.deactivateConfirmGeneric')}
+        confirmLabel={t('common.deactivate')}
         onConfirm={() => handleDelete(deleteId)}
         onCancel={() => setDeleteModalOpen(false)}
       />

@@ -104,7 +104,7 @@ describe('PersonDetail — promoção a funcionário', () => {
     await waitFor(() => screen.getByText('Fulano'))
     fireEvent.click(screen.getByTestId('promote-btn'))
     fireEvent.click(screen.getByTestId('promote-confirm-btn'))
-    expect(screen.getByText(/matrícula é obrigatória/i)).toBeTruthy()
+    expect(screen.getByText(/id\/badge is required/i)).toBeTruthy()
   })
 
   it('submeter com matrícula chama POST /people/{id}/promote', async () => {

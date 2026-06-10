@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, UserCircle, Pencil, Check, X, AlertCircle, Download, Loader2, ExternalLink, Trash2, RotateCcw, BadgeCheck } from 'lucide-react'
 import Layout from '../components/Layout'
@@ -13,6 +14,12 @@ import { sanitizeFileName } from '../utils/sanitizeFileName'
 import { downloadCsv } from '../utils/downloadCsv'
 
 const CATEGORIES = ['Funcionário', 'Visitante', 'Desconhecido', 'Monitorado']
+const CATEGORY_KEY = {
+  'Funcionário': 'employee',
+  'Visitante': 'visitor',
+  'Desconhecido': 'unknown',
+  'Monitorado': 'monitored',
+}
 
 function fmt3(n) {
   return n != null ? Number(n).toFixed(3) : '—'
@@ -26,12 +33,14 @@ function fmtTime(s) {
   return `${min}:${sec.toString().padStart(2, '0')}`
 }
 
-function fmtDate(d) {
+function fmtDate(d, locale) {
   if (!d) return '—'
-  return new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return new Date(d).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 export default function PersonDetail() {
+  const { t, i18n } = useTranslation()
+  const dateLocale = i18n.language === 'pt-BR' ? 'pt-BR' : 'en-US'
   const { id } = useParams()
   const navigate = useNavigate()
   const [person, setPerson] = useState(null)
@@ -83,7 +92,7 @@ export default function PersonDetail() {
   }, [id])
 
   async function saveName() {
-    if (!nameInput.trim()) { setNameErr('Nome não pode ser vazio.'); return }
+    if (!nameInput.trim()) { setNameErr(t('personDetail.nameRequired')); return }
     setSaving(true)
     setNameErr('')
     try {
@@ -105,7 +114,7 @@ export default function PersonDetail() {
       const name = person?.name?.replace(/\s+/g, '_') ?? 'pessoa'
       downloadCsv(res.data, `gossipy_pessoa_${id}_${name}.csv`)
     } catch {
-      setExportErr('Erro ao exportar CSV.')
+      setExportErr(t('videoDetail.exportError'))
     } finally {
       setExportLoading(false)
     }
@@ -152,7 +161,7 @@ export default function PersonDetail() {
   }
 
   async function handlePromote() {
-    if (!promoteRegistration.trim()) { setPromoteErr('Matrícula é obrigatória.'); return }
+    if (!promoteRegistration.trim()) { setPromoteErr(t('personDetail.registrationRequired')); return }
     setPromoting(true)
     setPromoteErr('')
     try {
@@ -181,7 +190,7 @@ export default function PersonDetail() {
           <AlertCircle className="w-10 h-10" aria-hidden="true" />
           <p className="text-sm">{loadErr}</p>
           <button onClick={() => navigate('/people')} className="btn-primary text-sm">
-            Voltar para Pessoas
+            {t('personDetail.backToPeople')}
           </button>
         </div>
       </Layout>
@@ -216,7 +225,7 @@ export default function PersonDetail() {
                              border-border text-text-muted hover:text-text-base transition-colors"
                 >
                   <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
-                  Restaurar nome
+                  {t('personDetail.restoreName')}
                 </button>
               )}
               <button
@@ -229,7 +238,7 @@ export default function PersonDetail() {
                 {exportLoading
                   ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
                   : <Download className="w-3.5 h-3.5" aria-hidden="true" />}
-                Exportar CSV
+                {t('personDetail.exportCsv')}
               </button>
               <button
                 onClick={() => setDeleteModalOpen(true)}
@@ -237,7 +246,7 @@ export default function PersonDetail() {
                            border-border text-error-color hover:bg-error-color/10 transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-                Excluir perfil
+                {t('personDetail.deleteProfile')}
               </button>
             </div>
           )}
@@ -247,11 +256,11 @@ export default function PersonDetail() {
 
         <ConfirmModal
           isOpen={deleteModalOpen}
-          title="Excluir perfil"
-          message={person ? `Esta ação excluirá o perfil de "${person.name}". Digite "excluir" para confirmar. O perfil pode ser restaurado posteriormente.` : ''}
+          title={t('personDetail.deleteConfirmTitle')}
+          message={person ? t('personDetail.deleteConfirmMessage', { name: person.name }) : ''}
           variant="danger"
           requireTyping
-          confirmWord="excluir"
+          confirmWord={t('personDetail.deleteConfirmWord')}
           onConfirm={handleDeletePerson}
           onCancel={() => setDeleteModalOpen(false)}
         />
@@ -264,7 +273,7 @@ export default function PersonDetail() {
             {/* Avatar */}
             <button
               onClick={() => imgSrc && setPhotoModalOpen(true)}
-              aria-label={imgSrc ? `Ampliar foto de ${person.name}` : 'Sem foto de perfil'}
+              aria-label={imgSrc ? t('personDetail.enlargePhotoOf', { name: person.name }) : t('personDetail.noProfilePhoto')}
               disabled={!imgSrc}
               className="w-20 h-20 rounded-2xl overflow-hidden bg-surface border border-border flex-shrink-0
                          transition-all duration-200 enabled:cursor-pointer enabled:hover:ring-2
@@ -272,7 +281,7 @@ export default function PersonDetail() {
                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               {imgSrc ? (
-                <img src={imgSrc} alt={`Foto de ${person.name}`} className="w-full h-full object-cover" />
+                <img src={imgSrc} alt={t('people.photoOf', { name: person.name })} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <UserCircle className="w-10 h-10 text-text-muted" aria-hidden="true" />
@@ -284,7 +293,7 @@ export default function PersonDetail() {
               isOpen={photoModalOpen}
               onClose={() => setPhotoModalOpen(false)}
               src={imgSrc}
-              alt={`Foto de ${person.name}`}
+              alt={t('people.photoOf', { name: person.name })}
             />
 
             {/* Name + meta */}
@@ -299,18 +308,18 @@ export default function PersonDetail() {
                       onChange={(e) => setNameInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditing(false) }}
                       autoFocus
-                      aria-label="Nome da pessoa"
+                      aria-label={t('personDetail.nameAriaLabel')}
                       className="flex-1 bg-surface border border-border rounded-lg px-3 py-2 text-sm
                                  text-text-base focus:outline-none focus:ring-2 focus:ring-primary
                                  focus:border-transparent transition-colors duration-200"
                     />
-                    <button onClick={saveName} disabled={saving} aria-label="Confirmar nome"
+                    <button onClick={saveName} disabled={saving} aria-label={t('personDetail.confirmName')}
                       className="w-8 h-8 flex items-center justify-center rounded-lg bg-success/20
                                  text-success hover:bg-success/30 transition-colors duration-200 cursor-pointer">
                       <Check className="w-4 h-4" aria-hidden="true" />
                     </button>
                     <button onClick={() => { setEditing(false); setNameInput(person.name); setNameErr('') }}
-                      aria-label="Cancelar edição"
+                      aria-label={t('personDetail.cancelEdit')}
                       className="w-8 h-8 flex items-center justify-center rounded-lg bg-border
                                  text-text-muted hover:text-text-base transition-colors duration-200 cursor-pointer">
                       <X className="w-4 h-4" aria-hidden="true" />
@@ -321,7 +330,7 @@ export default function PersonDetail() {
               ) : (
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl font-bold text-text-base truncate">{person.name}</h1>
-                  <button onClick={() => setEditing(true)} aria-label="Editar nome"
+                  <button onClick={() => setEditing(true)} aria-label={t('personDetail.editName')}
                     className="text-text-muted hover:text-primary transition-colors duration-200 cursor-pointer flex-shrink-0">
                     <Pencil className="w-4 h-4" aria-hidden="true" />
                   </button>
@@ -329,31 +338,30 @@ export default function PersonDetail() {
               )}
 
               <p className="text-text-muted text-xs">
-                ID #{person.id} · Cadastrado em{' '}
-                {new Date(person.created_at).toLocaleDateString('pt-BR')}
+                {t('personDetail.id', { id: person.id })} · {t('personDetail.registeredOn', { date: new Date(person.created_at).toLocaleDateString(dateLocale) })}
               </p>
 
               {/* Category + notes */}
               {editingMeta ? (
                 <div className="space-y-2 pt-1">
                   <div className="flex items-center gap-2">
-                    <label className="text-xs text-text-muted w-20 flex-shrink-0">Categoria</label>
+                    <label className="text-xs text-text-muted w-20 flex-shrink-0">{t('common.category')}</label>
                     <select
                       value={categoryInput}
                       onChange={(e) => setCategoryInput(e.target.value)}
                       className="flex-1 bg-surface border border-border rounded-lg px-2 py-1.5 text-sm
                                  text-text-base focus:outline-none focus:ring-2 focus:ring-primary"
                     >
-                      {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                      {CATEGORIES.map((c) => <option key={c} value={c}>{t(`people.category.${CATEGORY_KEY[c]}`)}</option>)}
                     </select>
                   </div>
                   <div className="flex items-start gap-2">
-                    <label className="text-xs text-text-muted w-20 flex-shrink-0 pt-1.5">Notas</label>
+                    <label className="text-xs text-text-muted w-20 flex-shrink-0 pt-1.5">{t('personDetail.notesLabel')}</label>
                     <textarea
                       value={notesInput}
                       onChange={(e) => setNotesInput(e.target.value)}
                       rows={3}
-                      placeholder="Observações sobre esta pessoa…"
+                      placeholder={t('personDetail.notesPlaceholder')}
                       className="flex-1 bg-surface border border-border rounded-lg px-3 py-2 text-sm
                                  text-text-base focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                     />
@@ -361,11 +369,11 @@ export default function PersonDetail() {
                   <div className="flex gap-2">
                     <button onClick={saveMeta} disabled={savingMeta}
                       className="btn-primary text-xs px-3 py-1.5">
-                      {savingMeta ? 'Salvando…' : 'Salvar'}
+                      {savingMeta ? t('videoDetail.saving') : t('common.save')}
                     </button>
                     <button onClick={() => { setEditingMeta(false); setMetaErr('') }}
                       className="text-xs px-3 py-1.5 border border-border rounded-lg text-text-muted hover:text-text-base">
-                      Cancelar
+                      {t('common.cancel')}
                     </button>
                   </div>
                   {metaErr && <p className="text-xs text-error-color">{metaErr}</p>}
@@ -377,7 +385,7 @@ export default function PersonDetail() {
                     {person.notes && (
                       <p className="text-xs text-text-muted italic">{person.notes}</p>
                     )}
-                    <button onClick={() => setEditingMeta(true)} aria-label="Editar categoria e notas"
+                    <button onClick={() => setEditingMeta(true)} aria-label={t('personDetail.editMeta')}
                       className="text-text-muted hover:text-primary transition-colors duration-200 cursor-pointer flex-shrink-0 ml-auto">
                       <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
                     </button>
@@ -387,47 +395,47 @@ export default function PersonDetail() {
                   {person.employee ? (
                     <div className="flex items-center gap-2 text-xs text-success" data-testid="employee-badge">
                       <BadgeCheck className="w-3.5 h-3.5" aria-hidden="true" />
-                      <span>Funcionário — Matrícula <strong>{person.employee.registration}</strong></span>
+                      <span>{t('personDetail.employeeLabel')} <strong>{person.employee.registration}</strong></span>
                       {person.employee.department && <span className="text-text-muted">· {person.employee.department}</span>}
                       {person.employee.role && <span className="text-text-muted">· {person.employee.role}</span>}
                     </div>
                   ) : person.category === 'Funcionário' && (
                     promoteOpen ? (
                       <div className="space-y-2 pt-1 border border-border rounded-xl p-3 bg-surface" data-testid="promote-form">
-                        <p className="text-xs font-semibold text-text-base">Promover a Funcionário</p>
+                        <p className="text-xs font-semibold text-text-base">{t('personDetail.promoteToEmployee')}</p>
                         <div className="flex items-center gap-2">
-                          <label className="text-xs text-text-muted w-24 flex-shrink-0">Matrícula*</label>
+                          <label className="text-xs text-text-muted w-24 flex-shrink-0">{t('personDetail.promoteRegistrationLabel')}</label>
                           <input
                             type="text"
                             value={promoteRegistration}
                             onChange={(e) => setPromoteRegistration(e.target.value)}
-                            placeholder="ex: MAT001"
-                            aria-label="Matrícula"
+                            placeholder={t('personDetail.promoteRegistrationPlaceholder')}
+                            aria-label={t('personDetail.promoteRegistrationLabel')}
                             data-testid="promote-registration-input"
                             className="flex-1 bg-bg border border-border rounded-lg px-2 py-1.5 text-sm
                                        text-text-base focus:outline-none focus:ring-2 focus:ring-primary"
                           />
                         </div>
                         <div className="flex items-center gap-2">
-                          <label className="text-xs text-text-muted w-24 flex-shrink-0">Departamento</label>
+                          <label className="text-xs text-text-muted w-24 flex-shrink-0">{t('personDetail.promoteDepartmentLabel')}</label>
                           <input
                             type="text"
                             value={promoteDepartment}
                             onChange={(e) => setPromoteDepartment(e.target.value)}
-                            placeholder="ex: TI"
-                            aria-label="Departamento"
+                            placeholder={t('personDetail.promoteDepartmentPlaceholder')}
+                            aria-label={t('personDetail.promoteDepartmentLabel')}
                             className="flex-1 bg-bg border border-border rounded-lg px-2 py-1.5 text-sm
                                        text-text-base focus:outline-none focus:ring-2 focus:ring-primary"
                           />
                         </div>
                         <div className="flex items-center gap-2">
-                          <label className="text-xs text-text-muted w-24 flex-shrink-0">Cargo</label>
+                          <label className="text-xs text-text-muted w-24 flex-shrink-0">{t('personDetail.promoteRoleLabel')}</label>
                           <input
                             type="text"
                             value={promoteRole}
                             onChange={(e) => setPromoteRole(e.target.value)}
-                            placeholder="ex: Analista"
-                            aria-label="Cargo"
+                            placeholder={t('personDetail.promoteRolePlaceholder')}
+                            aria-label={t('personDetail.promoteRoleLabel')}
                             className="flex-1 bg-bg border border-border rounded-lg px-2 py-1.5 text-sm
                                        text-text-base focus:outline-none focus:ring-2 focus:ring-primary"
                           />
@@ -440,13 +448,13 @@ export default function PersonDetail() {
                             data-testid="promote-confirm-btn"
                             className="btn-primary text-xs px-3 py-1.5"
                           >
-                            {promoting ? 'Salvando…' : 'Confirmar'}
+                            {promoting ? t('videoDetail.saving') : t('common.confirm')}
                           </button>
                           <button
                             onClick={() => { setPromoteOpen(false); setPromoteErr('') }}
                             className="text-xs px-3 py-1.5 border border-border rounded-lg text-text-muted hover:text-text-base"
                           >
-                            Cancelar
+                            {t('common.cancel')}
                           </button>
                         </div>
                       </div>
@@ -458,7 +466,7 @@ export default function PersonDetail() {
                                    border-primary/40 text-primary hover:bg-primary/10 transition-colors"
                       >
                         <BadgeCheck className="w-3.5 h-3.5" aria-hidden="true" />
-                        Promover a Funcionário
+                        {t('personDetail.promoteToEmployee')}
                       </button>
                     )
                   )}
@@ -472,10 +480,10 @@ export default function PersonDetail() {
         {stats && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: 'Vídeos', value: stats.video_count },
-              { label: 'Tempo total', value: `${stats.total_seconds.toFixed(1)}s` },
-              { label: 'Primeira vez', value: fmtDate(stats.first_seen) },
-              { label: 'Última vez', value: fmtDate(stats.last_seen) },
+              { label: t('personDetail.videos'), value: stats.video_count },
+              { label: t('personDetail.totalTime'), value: `${stats.total_seconds.toFixed(1)}s` },
+              { label: t('personDetail.firstSeen'), value: fmtDate(stats.first_seen, dateLocale) },
+              { label: t('personDetail.lastSeen'), value: fmtDate(stats.last_seen, dateLocale) },
             ].map(({ label, value }) => (
               <div key={label} className="card py-3 text-center">
                 <p className="text-xs text-text-muted mb-1">{label}</p>
@@ -494,16 +502,16 @@ export default function PersonDetail() {
         {/* Timeline */}
         <div className="card p-0 overflow-hidden">
           <div className="px-4 py-3 border-b border-border">
-            <h2 className="text-sm font-semibold text-text-base">Timeline de aparições</h2>
+            <h2 className="text-sm font-semibold text-text-base">{t('personDetail.appearanceTimeline')}</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">Vídeo</th>
-                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">Início</th>
-                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">Fim</th>
-                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">Confiança</th>
+                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">{t('personDetail.video')}</th>
+                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">{t('personDetail.start')}</th>
+                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">{t('personDetail.end')}</th>
+                  <th className="text-left px-4 py-2.5 text-text-muted font-medium">{t('personDetail.confidence')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -520,7 +528,7 @@ export default function PersonDetail() {
                 ) : timeline.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-4 py-8 text-center text-text-muted text-sm">
-                      Nenhuma aparição registrada.
+                      {t('people.noAppearances')}
                     </td>
                   </tr>
                 ) : (
@@ -530,7 +538,7 @@ export default function PersonDetail() {
                         <button
                           type="button"
                           onClick={() => navigate(`/videos/${a.video_id}`)}
-                          title="Ver detalhes do vídeo"
+                          title={t('personDetail.viewVideoDetails')}
                           className="inline-flex items-center gap-1 text-primary hover:underline cursor-pointer"
                         >
                           {sanitizeFileName(a.file_name)}
@@ -543,7 +551,7 @@ export default function PersonDetail() {
                           data-testid={`timeline-seek-${a.video_id}-${a.id}`}
                           onClick={() => navigate(`/videos/${a.video_id}`, { state: { seekTo: a.timestamp_start } })}
                           className="text-primary hover:underline cursor-pointer"
-                          title="Ir para este momento no vídeo"
+                          title={t('personDetail.goToMoment')}
                         >
                           {fmtTime(a.timestamp_start)}
                         </button>

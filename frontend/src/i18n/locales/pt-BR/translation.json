@@ -33,7 +33,8 @@
     "unknown": "Desconhecido",
     "active": "Ativo",
     "inactive": "Inativo",
-    "all": "Todos"
+    "all": "Todos",
+    "deactivate": "Desativar"
   },
 
   "nav": {
@@ -195,10 +196,14 @@
     "title": "Pessoas",
     "count": "{{count}} de {{total}} pessoas",
     "searchPlaceholder": "Buscar por nome...",
+    "searchAriaLabel": "Buscar pessoa por nome",
     "searchByFace": "Buscar por rosto",
     "selectForMerge": "Selecionar para mesclar",
     "cancelMerge": "Cancelar",
     "merge": "Mesclar",
+    "mergeProfiles": "Mesclar perfis",
+    "grid": "Grade",
+    "table": "Tabela",
     "mergeSelected": "{{count}} perfis selecionados — Selecione o perfil principal",
     "noPeople": "Nenhuma pessoa encontrada",
     "category": {
@@ -214,16 +219,40 @@
     "deleteConfirmTitle": "Excluir pessoa",
     "deleteConfirmMessage": "O perfil de {{name}} será marcado como excluído. Os dados são preservados para fins de auditoria e podem ser restaurados.",
     "deletedBadge": "Excluído",
+    "selectPerson": "Selecionar {{name}}",
+    "deselectPerson": "Desmarcar {{name}}",
+    "viewDetailsOf": "Ver detalhes de {{name}}",
+    "photoOf": "Foto de {{name}}",
+    "viewProfileOf": "Ver perfil de {{name}}",
+    "deletePersonAria": "Excluir {{name}}",
+    "restorePersonAria": "Restaurar {{name}}",
+    "registeredOnShort": "Cadastrado em {{date}}",
+    "showDeleted": "Exibir excluídos",
+    "mergeModeActive": "Modo mescla ativo",
+    "mergeInstruction": "Selecione 2 ou mais perfis. Depois defina qual é o perfil principal antes de mesclar.",
+    "gridView": "Visão em grade",
+    "tableView": "Visão em tabela",
+    "registeredColumn": "Cadastrado",
+    "noResultsForSearch": "Nenhuma pessoa encontrada para esta busca.",
+    "noPeopleYet": "Nenhuma pessoa catalogada ainda.",
+    "deletePersonConfirmMessage": "Tem certeza que deseja excluir \"{{name}}\"? Esta ação pode ser desfeita restaurando o perfil.",
     "faceSearch": {
       "title": "Buscar por rosto",
       "instruction": "Envie uma foto para encontrar pessoas correspondentes",
       "dragDrop": "Arraste uma foto aqui ou clique para selecionar",
+      "dragDropArea": "Área de upload para busca por face",
+      "selectImage": "Selecionar imagem para busca por face",
       "search": "Buscar",
       "clear": "Limpar busca",
       "noResults": "Nenhuma correspondência encontrada",
+      "noResultsYet": "Nenhum resultado ainda. Envie uma imagem com face visível.",
       "noFaceDetected": "Nenhum rosto detectado na imagem",
       "confidence": "{{percent}}% de confiança",
-      "queryTime": "Busca concluída em {{ms}}ms"
+      "queryTime": "Busca concluída em {{ms}}ms",
+      "viewProfile": "Ver perfil",
+      "searching": "Buscando…",
+      "resultsCount": "{{count}} resultado",
+      "resultsCount_plural": "{{count}} resultados"
     }
   },
 
@@ -264,13 +293,33 @@
     "editName": "Editar nome",
     "editCategory": "Editar categoria",
     "editNotes": "Editar observações",
+    "editMeta": "Editar categoria e notas",
     "saveChanges": "Salvar alterações",
     "deleteConfirmTitle": "Excluir perfil",
-    "deleteConfirmMessage": "Esta ação marca o perfil como excluído. Os dados são preservados e podem ser restaurados. Digite 'delete' para confirmar.",
-    "deleteConfirmWord": "delete",
+    "deleteConfirmMessage": "Esta ação excluirá o perfil de \"{{name}}\". Digite \"excluir\" para confirmar. O perfil pode ser restaurado posteriormente.",
+    "deleteConfirmWord": "excluir",
     "restoreNameConfirmTitle": "Restaurar nome original",
     "restoreNameConfirmMessage": "O nome será redefinido para 'Desconhecido #{{id}}'.",
-    "mergeProfiles": "Mesclar perfis"
+    "mergeProfiles": "Mesclar perfis",
+    "nameRequired": "Nome não pode ser vazio.",
+    "nameAriaLabel": "Nome da pessoa",
+    "confirmName": "Confirmar nome",
+    "cancelEdit": "Cancelar edição",
+    "notesLabel": "Notas",
+    "notesPlaceholder": "Observações sobre esta pessoa…",
+    "enlargePhotoOf": "Ampliar foto de {{name}}",
+    "noProfilePhoto": "Sem foto de perfil",
+    "employeeLabel": "Funcionário — Matrícula",
+    "promoteToEmployee": "Promover a Funcionário",
+    "promoteRegistrationLabel": "Matrícula*",
+    "promoteDepartmentLabel": "Departamento",
+    "promoteRoleLabel": "Cargo",
+    "promoteRegistrationPlaceholder": "ex: MAT001",
+    "promoteDepartmentPlaceholder": "ex: TI",
+    "promoteRolePlaceholder": "ex: Analista",
+    "registrationRequired": "Matrícula é obrigatória.",
+    "viewVideoDetails": "Ver detalhes do vídeo",
+    "goToMoment": "Ir para este momento no vídeo"
   },
 
   "employees": {
@@ -319,7 +368,9 @@
       }
     },
     "deactivateConfirmTitle": "Desativar funcionário",
-    "deactivateConfirmMessage": "{{name}} será marcado como inativo. O perfil será preservado."
+    "deactivateConfirmMessage": "{{name}} será marcado como inativo. O perfil será preservado.",
+    "deactivateConfirmGeneric": "Este funcionário será marcado como inativo. O perfil será preservado.",
+    "deactivateAria": "Desativar"
   },
 
   "alerts": {

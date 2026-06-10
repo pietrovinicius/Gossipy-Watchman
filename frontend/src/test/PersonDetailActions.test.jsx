@@ -53,21 +53,21 @@ beforeEach(() => {
 describe('PersonDetail — ações de exclusão e restauração de nome', () => {
   it('exibe botão "Excluir perfil"', async () => {
     renderPage()
-    expect(await screen.findByRole('button', { name: /excluir perfil/i })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /delete profile/i })).toBeTruthy()
   })
 
   it('abre ConfirmModal com requireTyping="excluir" e chama DELETE somente após digitar a palavra', async () => {
     api.delete.mockResolvedValue({ data: { ...PERSON_NAMED, deleted_at: '2026-03-01T00:00:00Z' } })
     renderPage()
 
-    fireEvent.click(await screen.findByRole('button', { name: /excluir perfil/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /delete profile/i }))
 
     const dialog = await screen.findByRole('dialog')
-    const confirmBtn = within(dialog).getByRole('button', { name: /confirmar/i })
+    const confirmBtn = within(dialog).getByRole('button', { name: /confirm/i })
     expect(confirmBtn).toBeDisabled()
 
     const input = within(dialog).getByRole('textbox')
-    fireEvent.change(input, { target: { value: 'excluir' } })
+    fireEvent.change(input, { target: { value: 'delete' } })
     expect(confirmBtn).not.toBeDisabled()
 
     fireEvent.click(confirmBtn)
@@ -78,21 +78,21 @@ describe('PersonDetail — ações de exclusão e restauração de nome', () => 
 
   it('exibe botão "Restaurar nome" quando nome não começa com "Desconhecido"', async () => {
     renderPage()
-    expect(await screen.findByRole('button', { name: /restaurar nome/i })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /restore original name/i })).toBeTruthy()
   })
 
   it('NÃO exibe botão "Restaurar nome" quando nome já é "Desconhecido #N"', async () => {
     api.get.mockImplementation(defaultGetImpl(PERSON_UNKNOWN))
     renderPage()
     await screen.findByText('Desconhecido #5')
-    expect(screen.queryByRole('button', { name: /restaurar nome/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /restore original name/i })).toBeNull()
   })
 
   it('clicar em "Restaurar nome" chama POST /people/{id}/reset-name e atualiza exibição', async () => {
     api.post.mockResolvedValue({ data: PERSON_UNKNOWN })
     renderPage()
 
-    fireEvent.click(await screen.findByRole('button', { name: /restaurar nome/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /restore original name/i }))
 
     await vi.waitFor(() => {
       expect(api.post).toHaveBeenCalledWith('/people/5/reset-name')
@@ -111,11 +111,11 @@ describe('PersonDetail — ações de exclusão e restauração de nome', () => 
       </MemoryRouter>
     )
 
-    fireEvent.click(await screen.findByRole('button', { name: /excluir perfil/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /delete profile/i }))
     const dialog = await screen.findByRole('dialog')
     const input = within(dialog).getByRole('textbox')
-    fireEvent.change(input, { target: { value: 'excluir' } })
-    fireEvent.click(within(dialog).getByRole('button', { name: /confirmar/i }))
+    fireEvent.change(input, { target: { value: 'delete' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: /confirm/i }))
 
     await vi.waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith('/people/5')

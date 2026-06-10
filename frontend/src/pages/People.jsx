@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Search, UserCircle, ChevronRight, GitMerge, ScanFace, X, Loader2, Link, Trash2, RotateCcw, Eye, LayoutGrid, Table2, ChevronUp, ChevronDown } from 'lucide-react'
 import Layout from '../components/Layout'
@@ -11,13 +12,15 @@ import { useAuthImage } from '../hooks/useAuthImage'
 import { useFaceSearch } from '../hooks/useFaceSearch.js'
 
 function PersonCard({ person, onRename, onClick, selectable, selected, onToggleSelect, onDelete, onRestore }) {
+  const { t, i18n } = useTranslation()
   const filename = person.profile_image_path
     ? person.profile_image_path.split('/').pop()
     : null
   const imgSrc = useAuthImage(filename)
   const isDeleted = Boolean(person.deleted_at)
 
-  const created = new Date(person.created_at).toLocaleDateString('pt-BR')
+  const dateLocale = i18n.language === 'pt-BR' ? 'pt-BR' : 'en-US'
+  const created = new Date(person.created_at).toLocaleDateString(dateLocale)
 
   return (
     <div
@@ -29,14 +32,14 @@ function PersonCard({ person, onRename, onClick, selectable, selected, onToggleS
       {isDeleted && (
         <span className="absolute top-2 left-2 text-[10px] font-medium px-2 py-0.5 rounded-full
                          bg-error-color/20 text-error-color">
-          Excluído
+          {t('people.deletedBadge')}
         </span>
       )}
 
       {!selectable && !isDeleted && (
         <button
           onClick={() => onDelete(person)}
-          aria-label={`Excluir ${person.name}`}
+          aria-label={t('people.deletePersonAria', { name: person.name })}
           className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-lg
                      text-text-muted hover:text-error-color hover:bg-error-color/10
                      opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer"
@@ -48,7 +51,7 @@ function PersonCard({ person, onRename, onClick, selectable, selected, onToggleS
       {isDeleted && (
         <button
           onClick={() => onRestore(person)}
-          aria-label={`Restaurar ${person.name}`}
+          aria-label={t('people.restorePersonAria', { name: person.name })}
           className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-lg
                      text-text-muted hover:text-primary hover:bg-primary/10
                      transition-colors duration-200 cursor-pointer"
@@ -60,7 +63,7 @@ function PersonCard({ person, onRename, onClick, selectable, selected, onToggleS
       {selectable && (
         <button
           onClick={() => onToggleSelect(person.id)}
-          aria-label={selected ? `Desmarcar ${person.name}` : `Selecionar ${person.name}`}
+          aria-label={selected ? t('people.deselectPerson', { name: person.name }) : t('people.selectPerson', { name: person.name })}
           className={`absolute top-2 right-2 w-5 h-5 rounded border-2 transition-colors
                       ${selected
                         ? 'bg-primary border-primary'
@@ -74,10 +77,10 @@ function PersonCard({ person, onRename, onClick, selectable, selected, onToggleS
           onClick={selectable ? () => onToggleSelect(person.id) : onClick}
           className="w-14 h-14 rounded-xl overflow-hidden bg-surface flex-shrink-0 border border-border
                      focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-          aria-label={`Ver detalhes de ${person.name}`}
+          aria-label={t('people.viewDetailsOf', { name: person.name })}
         >
           {imgSrc ? (
-            <img src={imgSrc} alt={`Foto de ${person.name}`} className="w-full h-full object-cover" />
+            <img src={imgSrc} alt={t('people.photoOf', { name: person.name })} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <UserCircle className="w-8 h-8 text-text-muted" aria-hidden="true" />
@@ -94,7 +97,7 @@ function PersonCard({ person, onRename, onClick, selectable, selected, onToggleS
                        transition-colors duration-200 bg-transparent border-none outline-none w-full"
           />
           <div className="flex items-center gap-2 mt-0.5">
-            <p className="text-text-muted text-xs">Cadastrado em {created}</p>
+            <p className="text-text-muted text-xs">{t('people.registeredOnShort', { date: created })}</p>
             <CategoryBadge category={person.category} />
           </div>
         </div>
@@ -103,7 +106,7 @@ function PersonCard({ person, onRename, onClick, selectable, selected, onToggleS
           <button
             onClick={onClick}
             className="focus-visible:ring-2 focus-visible:ring-primary rounded p-0.5"
-            aria-label={`Ver detalhes de ${person.name}`}
+            aria-label={t('people.viewDetailsOf', { name: person.name })}
           >
             <ChevronRight className="w-4 h-4 text-text-muted group-hover:text-primary flex-shrink-0
                                       transition-colors duration-200" aria-hidden="true" />
@@ -115,6 +118,7 @@ function PersonCard({ person, onRename, onClick, selectable, selected, onToggleS
 }
 
 export default function People() {
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const [people, setPeople] = useState(null)
   const [search, setSearch] = useState('')
@@ -217,10 +221,12 @@ export default function People() {
     }
   }
 
+  const dateLocale = i18n.language === 'pt-BR' ? 'pt-BR' : 'en-US'
+
   const filtered = (people?.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   ) ?? []).slice().sort((a, b) => {
-    const cmp = a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
+    const cmp = a.name.localeCompare(b.name, dateLocale, { sensitivity: 'base' })
     return sortDir === 'asc' ? cmp : -cmp
   })
 
@@ -228,11 +234,11 @@ export default function People() {
     <Layout>
       <div className="max-w-4xl mx-auto space-y-6 pb-24">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl font-bold text-text-base">Pessoas</h1>
+          <h1 className="text-2xl font-bold text-text-base">{t('people.title')}</h1>
           <div className="flex items-center gap-3">
             {people && (
               <p className="text-text-muted text-sm">
-                {filtered.length} de {people.length} pessoa{people.length !== 1 ? 's' : ''}
+                {t('people.count', { count: filtered.length, total: people.length })}
               </p>
             )}
             <button
@@ -244,7 +250,7 @@ export default function People() {
                             : 'border-border text-text-muted hover:text-text-base'}`}
             >
               <Eye className="w-3.5 h-3.5" aria-hidden="true" />
-              Exibir excluídos
+              {t('people.showDeleted')}
             </button>
             {people && people.length >= 2 && (
               <button
@@ -255,7 +261,7 @@ export default function People() {
                               : 'border-border text-text-muted hover:text-text-base'}`}
               >
                 <GitMerge className="w-3.5 h-3.5" aria-hidden="true" />
-                {mergeMode ? 'Modo mescla ativo' : 'Mesclar perfis'}
+                {mergeMode ? t('people.mergeModeActive') : t('people.mergeProfiles')}
               </button>
             )}
           </div>
@@ -270,7 +276,7 @@ export default function People() {
             aria-expanded={faceSearchOpen}
           >
             <ScanFace className="w-4 h-4" aria-hidden="true" />
-            Buscar por face
+            {t('people.faceSearch.title')}
           </button>
 
           {faceSearchOpen && (
@@ -280,7 +286,7 @@ export default function People() {
                 onDragLeave={() => setDragOver(false)}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
-                aria-label="Área de upload para busca por face"
+                aria-label={t('people.faceSearch.dragDropArea')}
                 className={`flex flex-col items-center justify-center gap-2 py-8 rounded-lg border-2 border-dashed
                             cursor-pointer transition-colors
                             ${dragOver ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
@@ -290,7 +296,7 @@ export default function People() {
                   : <ScanFace className="w-8 h-8 text-text-muted" aria-hidden="true" />
                 }
                 <p className="text-sm text-text-muted">
-                  {faceLoading ? 'Buscando…' : 'Arraste uma imagem ou clique para selecionar'}
+                  {faceLoading ? t('people.faceSearch.searching') : t('people.faceSearch.dragDrop')}
                 </p>
               </div>
               <input
@@ -299,7 +305,7 @@ export default function People() {
                 accept="image/jpeg,image/png"
                 className="hidden"
                 onChange={handleFileSelect}
-                aria-label="Selecionar imagem para busca por face"
+                aria-label={t('people.faceSearch.selectImage')}
               />
 
               {faceError && (
@@ -309,7 +315,7 @@ export default function People() {
               {faceResults.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs text-text-muted">
-                    {faceResults.length} resultado{faceResults.length !== 1 ? 's' : ''}
+                    {t('people.faceSearch.resultsCount', { count: faceResults.length })}
                     {queryTimeMs !== null && ` — ${queryTimeMs}ms`}
                   </p>
                   {faceResults.map((r) => (
@@ -317,14 +323,14 @@ export default function People() {
                                                        bg-card rounded-lg px-3 py-2">
                       <span className="font-medium text-text-base">{r.person_name}</span>
                       <div className="flex items-center gap-3">
-                        <span className="text-xs text-text-muted">{r.confidence_pct}% confiança</span>
+                        <span className="text-xs text-text-muted">{t('people.faceSearch.confidence', { percent: r.confidence_pct })}</span>
                         <button
                           onClick={() => navigate(`/people/${r.person_id}`)}
                           className="text-primary hover:underline text-xs flex items-center gap-1 cursor-pointer"
-                          aria-label={`Ver perfil de ${r.person_name}`}
+                          aria-label={t('people.viewProfileOf', { name: r.person_name })}
                         >
                           <Link className="w-3 h-3" aria-hidden="true" />
-                          Ver perfil
+                          {t('people.faceSearch.viewProfile')}
                         </button>
                       </div>
                     </div>
@@ -334,7 +340,7 @@ export default function People() {
 
               {!faceLoading && faceResults.length === 0 && !faceError && (
                 <p className="text-xs text-text-muted text-center">
-                  Nenhum resultado ainda. Envie uma imagem com face visível.
+                  {t('people.faceSearch.noResultsYet')}
                 </p>
               )}
             </div>
@@ -348,8 +354,8 @@ export default function People() {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nome…"
-            aria-label="Buscar pessoa por nome"
+            placeholder={t('people.searchPlaceholder')}
+            aria-label={t('people.searchAriaLabel')}
             className="w-full bg-surface border border-border rounded-lg pl-9 pr-4 py-2.5 text-sm
                        text-text-base placeholder-text-muted focus:outline-none focus:ring-2
                        focus:ring-primary focus:border-transparent transition-colors duration-200"
@@ -360,31 +366,31 @@ export default function People() {
         <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 w-fit">
           <button
             onClick={() => setViewMode('grid')}
-            aria-label="Visão em grade"
+            aria-label={t('people.gridView')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors
                         ${viewMode === 'grid'
                           ? 'bg-primary text-white'
                           : 'text-text-muted hover:text-text-base'}`}
           >
             <LayoutGrid className="w-3.5 h-3.5" aria-hidden="true" />
-            Grade
+            {t('people.grid')}
           </button>
           <button
             onClick={() => setViewMode('table')}
-            aria-label="Visão em tabela"
+            aria-label={t('people.tableView')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors
                         ${viewMode === 'table'
                           ? 'bg-primary text-white'
                           : 'text-text-muted hover:text-text-base'}`}
           >
             <Table2 className="w-3.5 h-3.5" aria-hidden="true" />
-            Tabela
+            {t('people.table')}
           </button>
         </div>
 
         {mergeMode && (
           <p className="text-xs text-text-muted bg-surface border border-border rounded-lg px-3 py-2">
-            Selecione 2 ou mais perfis. Depois defina qual é o perfil principal antes de mesclar.
+            {t('people.mergeInstruction')}
           </p>
         )}
 
@@ -403,7 +409,7 @@ export default function People() {
           <div className="text-center py-16 text-text-muted">
             <UserCircle className="w-12 h-12 mx-auto mb-3 opacity-40" aria-hidden="true" />
             <p className="text-sm">
-              {search ? 'Nenhuma pessoa encontrada para esta busca.' : 'Nenhuma pessoa catalogada ainda.'}
+              {search ? t('people.noResultsForSearch') : t('people.noPeopleYet')}
             </p>
           </div>
         ) : viewMode === 'table' ? (
@@ -418,14 +424,14 @@ export default function People() {
                         onClick={() => setSortDir((d) => d === 'asc' ? 'desc' : 'asc')}
                         className="flex items-center gap-1 text-text-muted hover:text-text-base transition-colors cursor-pointer"
                       >
-                        Nome
+                        {t('common.name')}
                         {sortDir === 'asc'
                           ? <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />
                           : <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />}
                       </button>
                     </th>
-                    <th className="text-left px-4 py-2.5 text-text-muted font-medium">Categoria</th>
-                    <th className="text-left px-4 py-2.5 text-text-muted font-medium">Cadastrado</th>
+                    <th className="text-left px-4 py-2.5 text-text-muted font-medium">{t('common.category')}</th>
+                    <th className="text-left px-4 py-2.5 text-text-muted font-medium">{t('people.registeredColumn')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -444,13 +450,13 @@ export default function People() {
                             checked={selected.includes(p.id)}
                             onChange={() => toggleSelect(p.id)}
                             className="mr-2 accent-primary"
-                            aria-label={selected.includes(p.id) ? `Desmarcar ${p.name}` : `Selecionar ${p.name}`}
+                            aria-label={selected.includes(p.id) ? t('people.deselectPerson', { name: p.name }) : t('people.selectPerson', { name: p.name })}
                           />
                         )}
                         {p.name}
                         {p.deleted_at && (
                           <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-error-color/20 text-error-color">
-                            Excluído
+                            {t('people.deletedBadge')}
                           </span>
                         )}
                       </td>
@@ -458,7 +464,7 @@ export default function People() {
                         <CategoryBadge category={p.category} />
                       </td>
                       <td className="px-4 py-3 text-text-muted text-xs">
-                        {new Date(p.created_at).toLocaleDateString('pt-BR')}
+                        {new Date(p.created_at).toLocaleDateString(dateLocale)}
                       </td>
                     </tr>
                   ))}
@@ -487,10 +493,10 @@ export default function People() {
 
       <ConfirmModal
         isOpen={personToDelete !== null}
-        title="Excluir pessoa"
-        message={personToDelete ? `Tem certeza que deseja excluir "${personToDelete.name}"? Esta ação pode ser desfeita restaurando o perfil.` : ''}
+        title={t('people.deleteConfirmTitle')}
+        message={personToDelete ? t('people.deletePersonConfirmMessage', { name: personToDelete.name }) : ''}
         variant="danger"
-        confirmLabel="Excluir"
+        confirmLabel={t('common.delete')}
         onConfirm={() => handleDelete(personToDelete)}
         onCancel={() => setPersonToDelete(null)}
       />

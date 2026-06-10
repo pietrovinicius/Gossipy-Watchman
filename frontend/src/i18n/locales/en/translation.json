@@ -33,7 +33,8 @@
     "unknown": "Unknown",
     "active": "Active",
     "inactive": "Inactive",
-    "all": "All"
+    "all": "All",
+    "deactivate": "Deactivate"
   },
 
   "nav": {
@@ -195,10 +196,14 @@
     "title": "People",
     "count": "{{count}} of {{total}} people",
     "searchPlaceholder": "Search by name...",
+    "searchAriaLabel": "Search person by name",
     "searchByFace": "Search by face",
     "selectForMerge": "Select to merge",
     "cancelMerge": "Cancel",
     "merge": "Merge",
+    "mergeProfiles": "Merge profiles",
+    "grid": "Grid",
+    "table": "Table",
     "mergeSelected": "{{count}} profiles selected — Select primary profile",
     "noPeople": "No people found",
     "category": {
@@ -214,16 +219,40 @@
     "deleteConfirmTitle": "Delete person",
     "deleteConfirmMessage": "{{name}}'s profile will be marked as deleted. Data is preserved for audit purposes and can be restored.",
     "deletedBadge": "Deleted",
+    "selectPerson": "Select {{name}}",
+    "deselectPerson": "Deselect {{name}}",
+    "viewDetailsOf": "View details of {{name}}",
+    "photoOf": "Photo of {{name}}",
+    "viewProfileOf": "View profile of {{name}}",
+    "deletePersonAria": "Delete {{name}}",
+    "restorePersonAria": "Restore {{name}}",
+    "registeredOnShort": "Registered on {{date}}",
+    "showDeleted": "Show deleted",
+    "mergeModeActive": "Merge mode active",
+    "mergeInstruction": "Select 2 or more profiles. Then set which is the primary profile before merging.",
+    "gridView": "Grid view",
+    "tableView": "Table view",
+    "registeredColumn": "Registered",
+    "noResultsForSearch": "No people found for this search.",
+    "noPeopleYet": "No people cataloged yet.",
+    "deletePersonConfirmMessage": "Are you sure you want to delete \"{{name}}\"? This action can be undone by restoring the profile.",
     "faceSearch": {
       "title": "Search by face",
       "instruction": "Upload a photo to find matching people",
       "dragDrop": "Drag a photo here or click to select",
+      "dragDropArea": "Upload area for face search",
+      "selectImage": "Select image for face search",
       "search": "Search",
       "clear": "Clear search",
       "noResults": "No matches found",
+      "noResultsYet": "No results yet. Upload an image with a visible face.",
       "noFaceDetected": "No face detected in the image",
       "confidence": "{{percent}}% confidence",
-      "queryTime": "Search completed in {{ms}}ms"
+      "queryTime": "Search completed in {{ms}}ms",
+      "viewProfile": "View profile",
+      "searching": "Searching…",
+      "resultsCount": "{{count}} result",
+      "resultsCount_plural": "{{count}} results"
     }
   },
 
@@ -264,13 +293,33 @@
     "editName": "Edit name",
     "editCategory": "Edit category",
     "editNotes": "Edit notes",
+    "editMeta": "Edit category and notes",
     "saveChanges": "Save changes",
     "deleteConfirmTitle": "Delete profile",
-    "deleteConfirmMessage": "This action marks the profile as deleted. Data is preserved and can be restored. Type 'delete' to confirm.",
+    "deleteConfirmMessage": "This action will delete the profile of \"{{name}}\". Type \"delete\" to confirm. The profile can be restored later.",
     "deleteConfirmWord": "delete",
     "restoreNameConfirmTitle": "Restore original name",
     "restoreNameConfirmMessage": "The name will be reset to 'Unknown #{{id}}'.",
-    "mergeProfiles": "Merge profiles"
+    "mergeProfiles": "Merge profiles",
+    "nameRequired": "Name cannot be empty.",
+    "nameAriaLabel": "Person name",
+    "confirmName": "Confirm name",
+    "cancelEdit": "Cancel edit",
+    "notesLabel": "Notes",
+    "notesPlaceholder": "Notes about this person…",
+    "enlargePhotoOf": "Enlarge photo of {{name}}",
+    "noProfilePhoto": "No profile photo",
+    "employeeLabel": "Employee — ID/Badge",
+    "promoteToEmployee": "Promote to Employee",
+    "promoteRegistrationLabel": "ID/Badge*",
+    "promoteDepartmentLabel": "Department",
+    "promoteRoleLabel": "Role",
+    "promoteRegistrationPlaceholder": "e.g. EMP001",
+    "promoteDepartmentPlaceholder": "e.g. IT",
+    "promoteRolePlaceholder": "e.g. Analyst",
+    "registrationRequired": "ID/Badge is required.",
+    "viewVideoDetails": "View video details",
+    "goToMoment": "Go to this moment in the video"
   },
 
   "employees": {
@@ -319,7 +368,9 @@
       }
     },
     "deactivateConfirmTitle": "Deactivate employee",
-    "deactivateConfirmMessage": "{{name}} will be marked as inactive. Their profile will be preserved."
+    "deactivateConfirmMessage": "{{name}} will be marked as inactive. Their profile will be preserved.",
+    "deactivateConfirmGeneric": "This employee will be marked as inactive. Their profile will be preserved.",
+    "deactivateAria": "Deactivate"
   },
 
   "alerts": {

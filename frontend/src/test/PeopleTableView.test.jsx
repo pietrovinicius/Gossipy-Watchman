@@ -51,14 +51,14 @@ describe('People — view toggle tabela', () => {
   it('exibe botão de toggle para visão de tabela', async () => {
     renderPeople()
     await waitFor(() => screen.getByText('Zara Silva'))
-    expect(screen.getByRole('button', { name: /tabela/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /table/i })).toBeTruthy()
   })
 
   it('clicar em Tabela exibe os nomes em linhas de tabela', async () => {
     renderPeople()
     await waitFor(() => screen.getByText('Zara Silva'))
 
-    fireEvent.click(screen.getByRole('button', { name: /tabela/i }))
+    fireEvent.click(screen.getByRole('button', { name: /table/i }))
 
     await waitFor(() => {
       // todos os nomes visíveis na tabela
@@ -71,7 +71,7 @@ describe('People — view toggle tabela', () => {
     renderPeople()
     await waitFor(() => screen.getByText('Zara Silva'))
 
-    fireEvent.click(screen.getByRole('button', { name: /tabela/i }))
+    fireEvent.click(screen.getByRole('button', { name: /table/i }))
 
     await waitFor(() => screen.getAllByRole('row'))
 
@@ -86,7 +86,7 @@ describe('People — view toggle tabela', () => {
     renderPeople()
     await waitFor(() => screen.getByText('Zara Silva'))
 
-    fireEvent.click(screen.getByRole('button', { name: /tabela/i }))
+    fireEvent.click(screen.getByRole('button', { name: /table/i }))
     await waitFor(() => screen.getAllByRole('row'))
 
     // clica no header Nome para inverter
