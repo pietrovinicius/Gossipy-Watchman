@@ -1,62 +1,62 @@
 # Gossipy Watchman
 
-Sistema web de análise de vídeo para identificação, catalogação e registro temporal de pessoas via reconhecimento facial — portfólio técnico demonstrando arquitetura assíncrona, visão computacional e separação limpa de camadas.
+Web-based video analysis system for identifying, cataloging, and tracking the temporal appearance of people via facial recognition — a technical portfolio project demonstrating asynchronous architecture, computer vision, and clean layer separation.
 
 ---
 
-## Telas do Sistema
+## System Screens
 
-| Tela | Descrição visual |
+| Screen | Visual description |
 |------|-----------------|
-| **Login** | Fundo preto OLED, logo com ícone de escudo vermelho, campos de usuário/senha com toggle de visibilidade, botão primário azul |
-| **Dashboard** | 4 cards de métricas (vídeos processados, fila, pessoas, desconhecidos), tabela dos 10 vídeos mais recentes com badges coloridos por status, auto-refresh a cada 15s |
-| **Upload** | Área de drag-and-drop com borda tracejada, barra de progresso animada durante envio, card de sucesso com link para o Dashboard |
-| **Pessoas** | Galeria em grid 3 colunas (responsiva), avatar de rosto extraído pelo pipeline, campo de busca em tempo real por nome |
-| **Detalhe da Pessoa** | Foto ampliada, nome editável inline com confirmação/cancelamento, tabela de timeline com vídeo, início, fim e confiança de cada aparição |
+| **Login** | OLED black background, logo with red shield icon, username/password fields with visibility toggle, primary blue button |
+| **Dashboard** | 4 metric cards (processed videos, queue, people, unknowns), table of the 10 most recent videos with color-coded status badges, auto-refresh every 15s |
+| **Upload** | Drag-and-drop area with dashed border, animated progress bar during upload, success card with link to the Dashboard |
+| **People** | 3-column responsive grid gallery, face thumbnail extracted by the pipeline, real-time name search field |
+| **Person Detail** | Enlarged photo, inline-editable name with confirm/cancel, timeline table with video, start, end, and confidence for each appearance |
 
 ---
 
-## Business Case — Cenários de Uso
+## Business Case — Use Scenarios
 
-- **Auditoria de acesso a áreas restritas**: identifica automaticamente quais funcionários ou visitantes acessaram salas de UTI, centro cirúrgico ou farmácia, com registro de horário exato
-- **Compliance de atendimento**: confirma presença de profissionais habilitados nos atendimentos, gerando evidência auditável para órgãos reguladores (ANS, CFM, ANVISA)
-- **Monitoramento de pacientes de alto risco**: detecta quando pacientes com histórico de evasão ou risco de queda aparecem em áreas não autorizadas e registra todos os eventos temporalmente
+- **Restricted area access auditing**: automatically identifies which employees or visitors accessed ICU rooms, surgical centers, or pharmacies, with exact timestamps
+- **Care compliance**: confirms the presence of qualified professionals during care, generating auditable evidence for regulatory bodies (ANS, CFM, ANVISA)
+- **High-risk patient monitoring**: detects when patients with a history of elopement or fall risk appear in unauthorized areas and logs all events with timestamps
 
 ---
 
 ## Stack
 
-| Camada | Tecnologia |
+| Layer | Technology |
 |--------|-----------|
 | **Backend** | Python 3.11+, FastAPI 0.111+, Uvicorn |
 | **Frontend** | React 18, Vite, Tailwind CSS 3, Axios, React Router v6, Lucide React |
-| **Banco de dados** | SQLite (dev) via SQLAlchemy 2.x |
-| **Visão computacional** | OpenCV 4.9+, InsightFace 0.7+ (buffalo_l), ONNX Runtime 1.17+, NumPy 2.x |
-| **Testes** | pytest 8, pytest-asyncio 0.23, httpx |
+| **Database** | SQLite (dev) via SQLAlchemy 2.x |
+| **Computer Vision** | OpenCV 4.9+, InsightFace 0.7+ (buffalo_l), ONNX Runtime 1.17+, NumPy 2.x |
+| **Testing** | pytest 8, pytest-asyncio 0.23, httpx |
 
 ---
 
-## Como Rodar Localmente
+## Running Locally
 
 ### macOS / Linux
 
 ```bash
-# Criar e ativar virtualenv
+# Create and activate virtualenv
 python3 -m venv venv
 source venv/bin/activate
 
-# Instalar dependências
+# Install dependencies
 pip install -r requirements.txt
 
-# Configurar variáveis de ambiente
+# Configure environment variables
 cp .env.example .env
-# Edite .env preenchendo JWT_SECRET_KEY e ADMIN_PASSWORD_HASH conforme
-# os comandos documentados no próprio .env.example
+# Edit .env and fill in JWT_SECRET_KEY and ADMIN_PASSWORD_HASH using
+# the commands documented in .env.example itself
 
-# Criar diretórios de storage (se não existirem)
+# Create storage directories (if they don't exist)
 mkdir -p storage/videos storage/faces storage/models
 
-# Iniciar servidor de desenvolvimento
+# Start the development server
 uvicorn app.main:app --reload --workers 1 --host 0.0.0.0 --port 8000
 ```
 
@@ -64,88 +64,88 @@ uvicorn app.main:app --reload --workers 1 --host 0.0.0.0 --port 8000
 
 ### Windows 11
 
-#### 1. Pré-requisitos
+#### 1. Prerequisites
 
-| Ferramenta | Versão mínima | Download |
+| Tool | Minimum version | Download |
 |-----------|--------------|---------|
-| Python | 3.11 | [python.org/downloads](https://www.python.org/downloads/) — **NÃO usar a versão da Microsoft Store** |
+| Python | 3.11 | [python.org/downloads](https://www.python.org/downloads/) — **do NOT use the Microsoft Store version** |
 | Node.js | 18 LTS | [nodejs.org](https://nodejs.org/) |
-| ffmpeg | qualquer | `winget install ffmpeg` ou [ffmpeg.org/download.html](https://ffmpeg.org/download.html) — adicionar ao PATH |
-| Git | qualquer | [git-scm.com](https://git-scm.com/) |
+| ffmpeg | any | `winget install ffmpeg` or [ffmpeg.org/download.html](https://ffmpeg.org/download.html) — add to PATH |
+| Git | any | [git-scm.com](https://git-scm.com/) |
 
-> **Atenção Python:** Durante a instalação, marque **"Add Python to PATH"**. Use o instalador de [python.org](https://python.org), não a Microsoft Store — a versão da Store causa erros com extensões C (OpenCV, ONNX Runtime).
+> **Python warning:** During installation, check **"Add Python to PATH"**. Use the installer from [python.org](https://python.org), not the Microsoft Store — the Store version causes errors with C extensions (OpenCV, ONNX Runtime).
 
-#### 2. Clonar e configurar ambiente
+#### 2. Clone and set up the environment
 
-Abra o **PowerShell** (ou Terminal) na pasta onde deseja instalar:
+Open **PowerShell** (or Terminal) in the folder where you want to install:
 
 ```powershell
 git clone https://github.com/pietrovinicius/Gossipy-Watchman.git
 cd "Gossipy-Watchman"
 
-# Criar e ativar virtualenv
+# Create and activate virtualenv
 python -m venv venv
 venv\Scripts\activate
 
-# Instalar dependências
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-> Se aparecer erro `Microsoft Visual C++ 14.0 is required`, instale o [Build Tools for Visual Studio](https://visualstudio.microsoft.com/visual-cpp-build-tools/) com workload **"C++ build tools"** antes de rodar o pip.
+> If you get the error `Microsoft Visual C++ 14.0 is required`, install the [Build Tools for Visual Studio](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with the **"C++ build tools"** workload before running pip.
 
-#### 3. Configurar variáveis de ambiente
+#### 3. Configure environment variables
 
 ```powershell
 copy .env.example .env
 ```
 
-Abra o `.env` em qualquer editor e configure os campos obrigatórios:
+Open `.env` in any editor and configure the required fields:
 
 ```env
-# Gere com: python -c "import secrets; print(secrets.token_hex(32))"
-JWT_SECRET_KEY=COLE-SUA-CHAVE-AQUI
+# Generate with: python -c "import secrets; print(secrets.token_hex(32))"
+JWT_SECRET_KEY=PASTE-YOUR-KEY-HERE
 
-# Gere com: python -c "from passlib.context import CryptContext; print(CryptContext(['bcrypt']).hash('watchman'))"
-ADMIN_PASSWORD_HASH=COLE-O-HASH-AQUI
+# Generate with: python -c "from passlib.context import CryptContext; print(CryptContext(['bcrypt']).hash('watchman'))"
+ADMIN_PASSWORD_HASH=PASTE-THE-HASH-HERE
 ```
 
-Adicione ao final do `.env` as otimizações para Windows 16 GB RAM:
+Add the following Windows 16 GB RAM optimizations to the end of `.env`:
 
 ```env
-# Otimizações Windows
+# Windows optimizations
 INSIGHTFACE_DET_SIZE=640
 INSIGHTFACE_INTRA_OP_NUM_THREADS=4
 INSIGHTFACE_PROVIDERS=["CPUExecutionProvider"]
 ```
 
-#### 4. Criar diretórios de storage
+#### 4. Create storage directories
 
 ```powershell
 New-Item -ItemType Directory -Force -Path storage\videos, storage\faces, storage\models
 ```
 
-#### 5. Verificar ffmpeg
+#### 5. Verify ffmpeg
 
 ```powershell
 ffmpeg -version
 ```
 
-Se não reconhecer o comando, adicione o diretório `bin/` do ffmpeg ao PATH:
-`Configurações do Sistema → Variáveis de Ambiente → Path → Novo → C:\ffmpeg\bin`
+If the command isn't recognized, add the ffmpeg `bin/` directory to PATH:
+`System Settings → Environment Variables → Path → New → C:\ffmpeg\bin`
 
-#### 6. Iniciar backend
+#### 6. Start the backend
 
 ```powershell
-# Com virtualenv ativo (venv\Scripts\activate)
+# With the virtualenv active (venv\Scripts\activate)
 uvicorn app.main:app --reload --workers 1 --host 0.0.0.0 --port 8000
 ```
 
-> **`--workers 1` é obrigatório no Windows.** O Windows não suporta `fork` — múltiplos workers causam falha silenciosa na inicialização do ONNX Runtime.
+> **`--workers 1` is mandatory on Windows.** Windows doesn't support `fork` — multiple workers cause a silent failure during ONNX Runtime initialization.
 
-A API estará disponível em `http://localhost:8000`.  
-Documentação Swagger: `http://localhost:8000/docs`.
+The API will be available at `http://localhost:8000`.
+Swagger docs: `http://localhost:8000/docs`.
 
-#### 7. Iniciar frontend
+#### 7. Start the frontend
 
 ```powershell
 cd frontend
@@ -153,25 +153,25 @@ npm install
 npm run dev
 ```
 
-O frontend estará disponível em `http://localhost:5173`.
+The frontend will be available at `http://localhost:5173`.
 
-#### 8. Na primeira execução
+#### 8. On first run
 
-O InsightFace baixa automaticamente o modelo `buffalo_l` (~200 MB) na primeira chamada de processamento de vídeo. O download ocorre para `%USERPROFILE%\.insightface\models\buffalo_l\`. Aguarde — pode levar alguns minutos dependendo da conexão.
+InsightFace automatically downloads the `buffalo_l` model (~200 MB) on the first video processing call. The download goes to `%USERPROFILE%\.insightface\models\buffalo_l\`. This may take a few minutes depending on your connection.
 
-#### Solução de problemas comuns no Windows
+#### Common Windows troubleshooting
 
-| Erro | Causa | Solução |
+| Error | Cause | Solution |
 |------|-------|---------|
-| `PermissionError: [WinError 32] The process cannot access the file` | Windows mantém handle aberto em arquivo recém-fechado | Aguardar e tentar novamente; o sistema já tem retry automático (safe_unlink) |
-| `OnnxRuntimeError: No such file or directory` | Modelo buffalo_l não baixado ainda | Verificar conexão; deletar `%USERPROFILE%\.insightface\models\buffalo_l\` e deixar baixar novamente |
-| `uvicorn: error: unrecognized arguments: --workers` | Versão antiga do uvicorn | `pip install --upgrade uvicorn[standard]` |
-| `Error loading shared library libmagic` | Resíduo de instalação anterior | Ignorar; python-magic foi removido do requirements.txt (não é usado) |
-| Porta 8000 já em uso | Outro processo na porta | `netstat -ano \| findstr :8000` para identificar PID, depois `taskkill /PID <numero> /F` |
+| `PermissionError: [WinError 32] The process cannot access the file` | Windows keeps a handle open on a recently closed file | Wait and retry; the system already has automatic retry (safe_unlink) |
+| `OnnxRuntimeError: No such file or directory` | buffalo_l model not yet downloaded | Check your connection; delete `%USERPROFILE%\.insightface\models\buffalo_l\` and let it download again |
+| `uvicorn: error: unrecognized arguments: --workers` | Outdated uvicorn version | `pip install --upgrade uvicorn[standard]` |
+| `Error loading shared library libmagic` | Leftover from a previous install | Ignore; python-magic was removed from requirements.txt (not used) |
+| Port 8000 already in use | Another process on the port | `netstat -ano \| findstr :8000` to find the PID, then `taskkill /PID <number> /F` |
 
 ---
 
-### Frontend (todas as plataformas)
+### Frontend (all platforms)
 
 ```bash
 cd frontend
@@ -179,105 +179,105 @@ npm install
 npm run dev
 ```
 
-O frontend estará disponível em `http://localhost:5173`.
+The frontend will be available at `http://localhost:5173`.
 
-**Credenciais de acesso (portfólio):** `admin` / `watchman`
+**Login credentials (portfolio):** `admin` / `watchman`
 
-### Testes
+### Tests
 
 ```bash
-# Na raiz do projeto, com virtualenv ativo
+# From the project root, with virtualenv active
 python -m pytest tests/unit/ -v
 ```
 
 ---
 
-## Estrutura de Diretórios
+## Directory Structure
 
 ```
 gossipy-watchman/
 ├── app/
-│   ├── api/v1/          # Routers FastAPI (health, upload, videos, people, timeline)
-│   ├── core/            # settings.py — todas as constantes de configuração
+│   ├── api/v1/          # FastAPI routers (health, upload, videos, people, timeline)
+│   ├── core/            # settings.py — all configuration constants
 │   ├── db/              # session.py, init_db.py
 │   ├── models/          # Person, Video (VideoStatus Enum), Appearance
 │   ├── schemas/         # Pydantic: VideoCreate/Response, PersonResponse/Update, AppearanceResponse
-│   ├── services/        # Lógica de negócio: video, person, appearance, frame, face
-│   ├── workers/         # video_worker.py — pipeline CV assíncrono
-│   └── main.py          # App FastAPI, CORS, StaticFiles /faces
+│   ├── services/        # Business logic: video, person, appearance, frame, face
+│   ├── workers/         # video_worker.py — async CV pipeline
+│   └── main.py          # FastAPI app, CORS, /faces StaticFiles
 ├── frontend/            # Vite + React
 │   └── src/
 │       ├── pages/       # Login, Dashboard, Upload, People, PersonDetail
 │       ├── components/  # Layout, ProtectedRoute
 │       └── services/    # api.js (Axios)
 ├── storage/
-│   ├── videos/          # Vídeos enviados pelo usuário
-│   └── faces/           # Recortes de rostos (.jpg) e embeddings (.npy)
+│   ├── videos/          # Videos uploaded by users
+│   └── faces/           # Face crops (.jpg) and embeddings (.npy)
 ├── tests/
-│   ├── unit/            # 7 módulos de testes unitários
-│   └── integration/     # 5 módulos de testes de integração
-├── changelog/           # Fragmentos de changelog por tarefa (v0.01–v0.28)
-├── CHANGELOG.md         # Histórico consolidado (gerado em releases)
-├── CLAUDE.md            # Guia operacional para agentes de IA
+│   ├── unit/            # 7 unit test modules
+│   └── integration/     # 5 integration test modules
+├── changelog/           # Per-task changelog fragments (v0.01–v0.28)
+├── CHANGELOG.md         # Consolidated history (generated at releases)
+├── CLAUDE.md            # Operational guide for AI agents
 └── requirements.txt
 ```
 
 ---
 
-## Endpoints da API
+## API Endpoints
 
-| Método | Path | Descrição |
+| Method | Path | Description |
 |--------|------|-----------|
 | `GET` | `/api/v1/health` | Health check |
-| `POST` | `/api/v1/videos/upload` | Upload de vídeo (multipart, HTTP 202, dispara pipeline em background) |
-| `GET` | `/api/v1/videos` | Listagem paginada de vídeos (`?skip=0&limit=50`) |
-| `GET` | `/api/v1/videos/{id}` | Detalhe de vídeo |
-| `GET` | `/api/v1/videos/{id}/status` | Status do processamento (polling) |
-| `GET` | `/api/v1/people` | Listagem paginada de pessoas catalogadas |
-| `GET` | `/api/v1/people/{id}` | Detalhe de pessoa |
-| `PATCH` | `/api/v1/people/{id}` | Renomear pessoa (body: `{"name": "..."}`) |
-| `GET` | `/api/v1/people/{id}/timeline` | Timeline de aparições com `file_name` do vídeo |
-| `GET` | `/faces/{person_id}.jpg` | Imagem de rosto (estático) |
+| `POST` | `/api/v1/videos/upload` | Video upload (multipart, HTTP 202, triggers background pipeline) |
+| `GET` | `/api/v1/videos` | Paginated video listing (`?skip=0&limit=50`) |
+| `GET` | `/api/v1/videos/{id}` | Video detail |
+| `GET` | `/api/v1/videos/{id}/status` | Processing status (polling) |
+| `GET` | `/api/v1/people` | Paginated listing of cataloged people |
+| `GET` | `/api/v1/people/{id}` | Person detail |
+| `PATCH` | `/api/v1/people/{id}` | Rename person (body: `{"name": "..."}`) |
+| `GET` | `/api/v1/people/{id}/timeline` | Appearance timeline with the video's `file_name` |
+| `GET` | `/faces/{person_id}.jpg` | Face image (static) |
 
 ---
 
-## Decisões Arquiteturais Relevantes
+## Relevant Architectural Decisions
 
-**`FACE_RECOGNITION_TOLERANCE = 0.6` como constante nomeada**
-Centralizada em `app/core/settings.py`. Permite ajuste sem alterar código de lógica — qualquer engenheiro encontra e modifica em um único lugar.
+**`FACE_RECOGNITION_TOLERANCE = 0.6` as a named constant**
+Centralized in `app/core/settings.py`. Allows tuning without touching logic code — any engineer can find and adjust it in a single place.
 
-**Embeddings em `.npy` por `person_id`**
-Cada pessoa tem seu embedding salvo em `storage/faces/{id}_embedding.npy`. Evita armazenar vetores de 128 floats no banco relacional; carregamento via `np.load` é O(1) por pessoa.
+**Embeddings as `.npy` per `person_id`**
+Each person's embedding is saved at `storage/faces/{id}_embedding.npy`. Avoids storing 128-float vectors in the relational database; loading via `np.load` is O(1) per person.
 
 **`AppearanceWithVideo` dataclass**
-O modelo `Appearance` (ORM) não carrega `file_name` (campo de `Video`). Em vez de relationship lazy ou coluna redundante, o `get_timeline()` faz JOIN explícito e projeta numa dataclass, mantendo os modelos ORM limpos e o SQL auditável.
+The `Appearance` ORM model doesn't carry `file_name` (a field of `Video`). Instead of a lazy relationship or a redundant column, `get_timeline()` performs an explicit JOIN and projects the result into a dataclass, keeping ORM models clean and the SQL auditable.
 
-**`StaticPool` nos fixtures de testes de integração**
-SQLite in-memory cria banco isolado por conexão. Sem `StaticPool`, o fixture e o endpoint veem bancos diferentes. Com `StaticPool`, uma conexão única é compartilhada entre todas as sessions do mesmo engine de teste.
+**`StaticPool` in integration test fixtures**
+SQLite in-memory creates an isolated database per connection. Without `StaticPool`, the fixture and the endpoint see different databases. With `StaticPool`, a single connection is shared across all sessions of the same test engine.
 
-**`setuptools<71` pinado no `requirements.txt`**
-`face-recognition-models` importa `pkg_resources` (removido do setuptools ≥ 71). Python 3.14 não tem `pkg_resources` na stdlib. O pin garante compatibilidade sem patch no código de terceiros.
+**`setuptools<71` pinned in `requirements.txt`**
+`face-recognition-models` imports `pkg_resources` (removed from setuptools ≥ 71). Python 3.14 doesn't ship `pkg_resources` in the stdlib. The pin guarantees compatibility without patching third-party code.
 
-**`_engine` opcional no `process_video()`**
-O worker cria seu próprio engine (roda em thread separada, fora do ciclo de vida da requisição FastAPI). O parâmetro `_engine` permite injeção de engine de teste sem monkey-patch de `create_engine` — padrão mais seguro e explícito.
+**Optional `_engine` in `process_video()`**
+The worker creates its own engine (runs in a separate thread, outside the FastAPI request lifecycle). The `_engine` parameter allows injecting a test engine without monkey-patching `create_engine` — a safer, more explicit pattern.
 
-**`get_db()` sem parâmetro + `get_db_with_engine()`**
-FastAPI `Depends()` não aceita parâmetros extras na função injetada. Separar as duas funções permite `dependency_overrides` limpo nos testes de integração sem alterar a assinatura de produção.
-
----
-
-## Próximos Passos
-
-1. **Auth real** — JWT no backend (FastAPI + python-jose) + refresh token no frontend
-2. **WebSocket** — progresso de processamento em tempo real sem polling a cada 15s
-3. **Threshold ajustável** — endpoint para alterar `FACE_RECOGNITION_TOLERANCE` em runtime via UI
-4. **Vídeo player** — exibir o vídeo com marcadores temporais sobrepostos nas aparições
-5. **Export** — endpoint de download CSV/JSON da timeline para análise externa
-6. **Docker** — `docker-compose.yml` para rodar backend + frontend com um único `docker compose up`
-7. **CI/CD** — GitHub Actions com `pytest` + `npm run build` em cada push para `main`
+**`get_db()` without parameters + `get_db_with_engine()`**
+FastAPI's `Depends()` doesn't accept extra parameters on the injected function. Splitting the two functions allows clean `dependency_overrides` in integration tests without changing the production signature.
 
 ---
 
-## Licença
+## Next Steps
+
+1. **Real auth** — JWT on the backend (FastAPI + python-jose) + refresh token on the frontend
+2. **WebSocket** — real-time processing progress without polling every 15s
+3. **Adjustable threshold** — endpoint to change `FACE_RECOGNITION_TOLERANCE` at runtime via UI
+4. **Video player** — display the video with temporal markers overlaid on appearances
+5. **Export** — CSV/JSON timeline download endpoint for external analysis
+6. **Docker** — `docker-compose.yml` to run backend + frontend with a single `docker compose up`
+7. **CI/CD** — GitHub Actions running `pytest` + `npm run build` on every push to `main`
+
+---
+
+## License
 
 MIT © 2026 Pietro Lima
