@@ -1,4 +1,7 @@
+import { useTranslation } from 'react-i18next'
+
 export default function MergeActionBar({ selected, primaryId, onSetPrimary, onMerge, onCancel }) {
+  const { t } = useTranslation()
   if (selected.length === 0) return null
 
   const canMerge = primaryId !== null && selected.length >= 2
@@ -8,7 +11,7 @@ export default function MergeActionBar({ selected, primaryId, onSetPrimary, onMe
                     flex items-center gap-3 px-5 py-3 rounded-2xl
                     bg-card border border-border shadow-2xl shadow-black/40">
       <span className="text-sm text-text-muted">
-        {selected.length} selecionado{selected.length !== 1 ? 's' : ''}
+        {t('people.selectedCount', { count: selected.length })}
       </span>
 
       {primaryId === null && selected.length >= 1 && (
@@ -17,32 +20,32 @@ export default function MergeActionBar({ selected, primaryId, onSetPrimary, onMe
           className="text-xs px-3 py-1.5 rounded-lg bg-surface border border-border
                      text-text-muted hover:text-text-base transition-colors"
         >
-          Definir principal
+          {t('people.setPrimary')}
         </button>
       )}
 
       {primaryId !== null && (
-        <span className="text-xs text-primary">Principal: #{primaryId}</span>
+        <span className="text-xs text-primary">{t('people.primaryLabel', { id: primaryId })}</span>
       )}
 
       <button
         onClick={onMerge}
         disabled={!canMerge}
-        aria-label="Mesclar perfis selecionados"
+        aria-label={t('people.mergeSelectedAria')}
         className="text-xs px-4 py-1.5 rounded-lg bg-primary text-bg font-medium
                    disabled:opacity-40 disabled:cursor-not-allowed
                    hover:enabled:opacity-90 transition-opacity"
       >
-        Mesclar
+        {t('people.merge')}
       </button>
 
       <button
         onClick={onCancel}
-        aria-label="Cancelar seleção"
+        aria-label={t('people.cancelSelectionAria')}
         className="text-xs px-3 py-1.5 rounded-lg border border-border
                    text-text-muted hover:text-text-base transition-colors"
       >
-        Cancelar
+        {t('people.cancelMerge')}
       </button>
     </div>
   )

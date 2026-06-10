@@ -119,7 +119,7 @@ describe('People — exclusão e restauração', () => {
     fireEvent.click(deleteBtn)
 
     const dialog = await screen.findByRole('dialog')
-    const cancelBtn = within(dialog).getByRole('button', { name: /cancelar/i })
+    const cancelBtn = within(dialog).getByRole('button', { name: /cancel/i })
     fireEvent.click(cancelBtn)
 
     expect(api.delete).not.toHaveBeenCalled()

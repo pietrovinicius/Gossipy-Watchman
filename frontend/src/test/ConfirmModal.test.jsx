@@ -38,8 +38,8 @@ describe('ConfirmModal', () => {
     expect(dialog).toHaveAttribute('aria-modal', 'true')
     expect(screen.getByText('Excluir vídeo')).toBeTruthy()
     expect(screen.getByText('Tem certeza?')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /confirmar/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /cancelar/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /confirm/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeTruthy()
   })
 
   it('chama onConfirm ao clicar no botão de confirmação', () => {
@@ -52,7 +52,7 @@ describe('ConfirmModal', () => {
         onCancel={onCancel}
       />
     )
-    fireEvent.click(screen.getByRole('button', { name: /confirmar/i }))
+    fireEvent.click(screen.getByRole('button', { name: /confirm/i }))
     expect(onConfirm).toHaveBeenCalled()
   })
 
@@ -66,7 +66,7 @@ describe('ConfirmModal', () => {
         onCancel={onCancel}
       />
     )
-    fireEvent.click(screen.getByRole('button', { name: /cancelar/i }))
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
     expect(onCancel).toHaveBeenCalled()
   })
 
@@ -95,7 +95,7 @@ describe('ConfirmModal', () => {
         onCancel={onCancel}
       />
     )
-    const confirmBtn = screen.getByRole('button', { name: /confirmar/i })
+    const confirmBtn = screen.getByRole('button', { name: /confirm/i })
     expect(confirmBtn.className).toMatch(/bg-red-600/)
   })
 
@@ -111,7 +111,7 @@ describe('ConfirmModal', () => {
         onCancel={onCancel}
       />
     )
-    const confirmBtn = screen.getByRole('button', { name: /confirmar/i })
+    const confirmBtn = screen.getByRole('button', { name: /confirm/i })
     const input = screen.getByRole('textbox')
 
     expect(confirmBtn).toBeDisabled()

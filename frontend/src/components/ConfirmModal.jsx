@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 
 const VARIANT_BUTTON_CLASSES = {
   danger: 'bg-red-600 hover:bg-red-700 focus-visible:ring-red-600',
@@ -25,14 +26,15 @@ export default function ConfirmModal({
   isOpen,
   title,
   message,
-  confirmLabel = 'Confirmar',
-  cancelLabel = 'Cancelar',
+  confirmLabel,
+  cancelLabel,
   variant = 'danger',
   onConfirm,
   onCancel,
   requireTyping = false,
   confirmWord = '',
 }) {
+  const { t } = useTranslation()
   const [typedValue, setTypedValue] = useState('')
 
   useEffect(() => {
@@ -80,7 +82,7 @@ export default function ConfirmModal({
             type="text"
             value={typedValue}
             onChange={(e) => setTypedValue(e.target.value)}
-            placeholder={`Digite "${confirmWord}" para confirmar`}
+            placeholder={t('confirmModal.typeToConfirm', { word: confirmWord })}
             className="mt-4 w-full rounded-lg border border-neutral-300 dark:border-neutral-700
                        bg-transparent px-3 py-2 text-sm text-neutral-900 dark:text-neutral-50
                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -94,7 +96,7 @@ export default function ConfirmModal({
                        hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors duration-200
                        cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            {cancelLabel}
+            {cancelLabel ?? t('confirmModal.cancel')}
           </button>
           <button
             onClick={onConfirm}
@@ -103,7 +105,7 @@ export default function ConfirmModal({
                         cursor-pointer focus-visible:outline-none focus-visible:ring-2
                         disabled:opacity-50 disabled:cursor-not-allowed ${buttonVariantClass}`}
           >
-            {confirmLabel}
+            {confirmLabel ?? t('confirmModal.confirm')}
           </button>
         </div>
       </div>

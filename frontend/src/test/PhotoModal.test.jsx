@@ -55,7 +55,7 @@ describe('PhotoModal', () => {
 
   it('botão de fechar possui aria-label acessível', () => {
     render(<PhotoModal isOpen={true} onClose={onClose} src="foto.jpg" alt="Foto de João" />)
-    const closeBtn = screen.getByRole('button', { name: /fechar/i })
+    const closeBtn = screen.getByRole('button', { name: /close/i })
     fireEvent.click(closeBtn)
     expect(onClose).toHaveBeenCalled()
   })

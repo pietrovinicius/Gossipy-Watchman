@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 
 const MAX_NATIVE_RATE = 16
 const HIGH_SPEED_INTERVAL_MS = 200
@@ -18,6 +19,7 @@ export function VideoPlayer({
   onPlay,
   onPause,
 }) {
+  const { t } = useTranslation()
   const videoRef = useRef(null)
   const highSpeedIntervalRef = useRef(null)
   const [error, setError] = useState(null)
@@ -76,7 +78,7 @@ export function VideoPlayer({
   }
 
   const handleError = () => {
-    setError('Erro ao carregar vídeo. Verifique se o servidor está online.')
+    setError(t('videoDetail.loadError'))
   }
 
   const handleSpeedClick = (speed) => {
@@ -206,8 +208,8 @@ export function VideoPlayer({
                 className="text-xs text-primary hover:underline self-start"
               >
                 {legendExpanded
-                  ? 'Recolher legenda'
-                  : `Ver legenda (${people.length} pessoas)`}
+                  ? t('videoDetail.hideLegend')
+                  : t('videoDetail.showLegend', { count: people.length })}
               </button>
               {legendExpanded && (
                 <div className="text-xs text-text-muted flex flex-wrap gap-x-3 gap-y-1">

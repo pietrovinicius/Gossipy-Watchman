@@ -197,7 +197,10 @@
     "deleteConfirmMessage": "Esta ação excluirá o vídeo \"{{name}}\". Digite \"excluir\" para confirmar. O vídeo pode ser restaurado posteriormente.",
     "deleteConfirmWord": "excluir",
     "reprocessConfirmTitle": "Reprocessar vídeo",
-    "reprocessConfirmMessage": "O status de \"{{name}}\" voltará para Pendente e o worker de visão computacional será disparado novamente. Aparições anteriores serão substituídas."
+    "reprocessConfirmMessage": "O status de \"{{name}}\" voltará para Pendente e o worker de visão computacional será disparado novamente. Aparições anteriores serão substituídas.",
+    "loadError": "Erro ao carregar vídeo. Verifique se o servidor está online.",
+    "hideLegend": "Recolher legenda",
+    "showLegend": "Ver legenda ({{count}} pessoas)"
   },
   "people": {
     "title": "Pessoas",
@@ -260,7 +263,13 @@
       "searching": "Buscando…",
       "resultsCount": "{{count}} resultado",
       "resultsCount_other": "{{count}} resultados"
-    }
+    },
+    "selectedCount": "{{count}} selecionado",
+    "selectedCount_other": "{{count}} selecionados",
+    "setPrimary": "Definir principal",
+    "primaryLabel": "Principal: #{{id}}",
+    "mergeSelectedAria": "Mesclar perfis selecionados",
+    "cancelSelectionAria": "Cancelar seleção"
   },
   "personDetail": {
     "backToPeople": "Voltar para Pessoas",

@@ -197,7 +197,10 @@
     "deleteConfirmMessage": "This action will delete video \"{{name}}\". Type \"delete\" to confirm. The video can be restored later.",
     "deleteConfirmWord": "delete",
     "reprocessConfirmTitle": "Reprocess video",
-    "reprocessConfirmMessage": "The status of \"{{name}}\" will revert to Pending and the computer vision worker will run again. Previous appearances will be replaced."
+    "reprocessConfirmMessage": "The status of \"{{name}}\" will revert to Pending and the computer vision worker will run again. Previous appearances will be replaced.",
+    "loadError": "Error loading video. Check if the server is online.",
+    "hideLegend": "Hide legend",
+    "showLegend": "Show legend ({{count}} people)"
   },
   "people": {
     "title": "People",
@@ -260,7 +263,13 @@
       "searching": "Searching…",
       "resultsCount": "{{count}} result",
       "resultsCount_other": "{{count}} results"
-    }
+    },
+    "selectedCount": "{{count}} selected",
+    "selectedCount_other": "{{count}} selected",
+    "setPrimary": "Set primary",
+    "primaryLabel": "Primary: #{{id}}",
+    "mergeSelectedAria": "Merge selected profiles",
+    "cancelSelectionAria": "Cancel selection"
   },
   "personDetail": {
     "backToPeople": "Back to People",

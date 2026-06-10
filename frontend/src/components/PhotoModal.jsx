@@ -1,11 +1,13 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
 
 /**
  * @param {{ isOpen: boolean, onClose: () => void, src: string | null, alt: string }} props
  */
 export default function PhotoModal({ isOpen, onClose, src, alt }) {
+  const { t } = useTranslation()
   useEffect(() => {
     if (!isOpen) return
 
@@ -35,7 +37,7 @@ export default function PhotoModal({ isOpen, onClose, src, alt }) {
     >
       <button
         onClick={onClose}
-        aria-label="Fechar"
+        aria-label={t('common.close')}
         className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full
                    bg-white/10 text-white hover:bg-white/20 transition-colors duration-200 cursor-pointer
                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"

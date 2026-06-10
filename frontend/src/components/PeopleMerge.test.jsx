@@ -14,21 +14,21 @@ describe('MergeActionBar', () => {
     render(
       <MergeActionBar selected={[1, 2, 3]} primaryId={1} onSetPrimary={vi.fn()} onMerge={vi.fn()} onCancel={vi.fn()} />
     )
-    expect(screen.getByText(/3 selecionad/i)).toBeInTheDocument()
+    expect(screen.getByText(/3 selected/i)).toBeInTheDocument()
   })
 
   it('disables merge button when no primary set', () => {
     render(
       <MergeActionBar selected={[1, 2]} primaryId={null} onSetPrimary={vi.fn()} onMerge={vi.fn()} onCancel={vi.fn()} />
     )
-    expect(screen.getByRole('button', { name: /mesclar/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /merge/i })).toBeDisabled()
   })
 
   it('enables merge button when primary is set and at least 2 selected', () => {
     render(
       <MergeActionBar selected={[1, 2]} primaryId={1} onSetPrimary={vi.fn()} onMerge={vi.fn()} onCancel={vi.fn()} />
     )
-    expect(screen.getByRole('button', { name: /mesclar/i })).not.toBeDisabled()
+    expect(screen.getByRole('button', { name: /merge/i })).not.toBeDisabled()
   })
 
   it('calls onMerge when merge button clicked', () => {
@@ -36,7 +36,7 @@ describe('MergeActionBar', () => {
     render(
       <MergeActionBar selected={[1, 2]} primaryId={1} onSetPrimary={vi.fn()} onMerge={onMerge} onCancel={vi.fn()} />
     )
-    fireEvent.click(screen.getByRole('button', { name: /mesclar/i }))
+    fireEvent.click(screen.getByRole('button', { name: /merge/i }))
     expect(onMerge).toHaveBeenCalledOnce()
   })
 
@@ -45,7 +45,7 @@ describe('MergeActionBar', () => {
     render(
       <MergeActionBar selected={[1, 2]} primaryId={1} onSetPrimary={vi.fn()} onMerge={vi.fn()} onCancel={onCancel} />
     )
-    fireEvent.click(screen.getByRole('button', { name: /cancelar/i }))
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
     expect(onCancel).toHaveBeenCalledOnce()
   })
 })

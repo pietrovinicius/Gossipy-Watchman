@@ -153,7 +153,7 @@ describe('VideoPlayer — Barra de Presença', () => {
 
     expect(screen.queryByText('Desconhecido #10')).toBeFalsy()
     expect(screen.getByTestId('legend-toggle')).toBeTruthy()
-    expect(screen.getByTestId('legend-toggle').textContent).toMatch(/8 pessoas/)
+    expect(screen.getByTestId('legend-toggle').textContent).toMatch(/8 people/)
   })
 
   it('clicar no toggle expande a legenda', () => {
@@ -169,7 +169,7 @@ describe('VideoPlayer — Barra de Presença', () => {
     fireEvent.click(screen.getByTestId('legend-toggle'))
 
     expect(screen.getByText('Desconhecido #10')).toBeTruthy()
-    expect(screen.getByTestId('legend-toggle').textContent).toMatch(/Recolher/)
+    expect(screen.getByTestId('legend-toggle').textContent).toMatch(/Hide/)
   })
 
   it('legenda sempre visível quando há 5 ou menos pessoas', () => {
