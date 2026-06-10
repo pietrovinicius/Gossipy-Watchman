@@ -333,7 +333,7 @@ function AddPersonModal({ isOpen, onClose, onSubmit, currentTime, isSubmitting, 
 }
 
 export default function VideoDetail() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
@@ -547,7 +547,7 @@ export default function VideoDetail() {
                   </h1>
                   <StatusBadge status={detail.video.status} />
                 </div>
-                <p className="text-xs text-text-muted">{t('videoDetail.sentAt', { date: formatDateTime(detail.video.uploaded_at) })}</p>
+                <p className="text-xs text-text-muted">{t('videoDetail.sentAt', { date: formatDateTime(detail.video.uploaded_at, i18n.language) })}</p>
               </div>
               <div className="flex items-center gap-2">
                 {!detail.video.deleted_at && detail.video.status === 'Concluído' && (

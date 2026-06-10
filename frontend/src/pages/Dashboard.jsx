@@ -162,7 +162,7 @@ export default function Dashboard() {
   const unknown   = people?.filter((p) => p.name.startsWith('Desconhecido')).length ?? null
   const recent    = videos?.slice(0, 10) ?? []
 
-  const fmt = formatDateTime
+  const fmt = (dateStr) => formatDateTime(dateStr, i18n.language)
 
   return (
     <Layout>

@@ -11,10 +11,10 @@ export function parseUtcDate(dateStr) {
   return new Date(iso)
 }
 
-export function formatDateTime(dateStr) {
+export function formatDateTime(dateStr, locale = 'pt-BR') {
   const date = parseUtcDate(dateStr)
   if (!date) return ''
-  return date.toLocaleString('pt-BR', {
+  return date.toLocaleString(locale, {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   })

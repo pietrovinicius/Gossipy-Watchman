@@ -25,9 +25,19 @@ describe('parseUtcDate', () => {
 })
 
 describe('formatDateTime', () => {
-  it('formats a naive UTC timestamp converted to local time in pt-BR', () => {
+  it('formats a naive UTC timestamp converted to local time in pt-BR by default', () => {
     const result = formatDateTime('2026-06-07T12:00:02.905879')
     expect(result).toMatch(/^\d{2}\/\d{2}\/\d{4}, \d{2}:\d{2}$/)
+  })
+
+  it('formats a naive UTC timestamp in pt-BR locale as DD/MM/YYYY, HH:mm', () => {
+    const result = formatDateTime('2026-06-07T12:00:02.905879', 'pt-BR')
+    expect(result).toMatch(/^\d{2}\/\d{2}\/\d{4}, \d{2}:\d{2}$/)
+  })
+
+  it('formats a naive UTC timestamp in en locale as M/D/YYYY, h:mm AM/PM', () => {
+    const result = formatDateTime('2026-06-07T12:00:02.905879', 'en')
+    expect(result).toMatch(/^\d{1,2}\/\d{1,2}\/\d{4}, \d{1,2}:\d{2}\s?(AM|PM)$/)
   })
 
   it('returns empty string for falsy input', () => {
