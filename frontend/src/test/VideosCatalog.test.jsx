@@ -55,7 +55,7 @@ describe('VideosCatalog', () => {
 
   it('renders catalog with title', async () => {
     renderWithProviders(<VideosCatalog />)
-    const headings = screen.getAllByText('Vídeos')
+    const headings = screen.getAllByText('Videos')
     expect(headings.length).toBeGreaterThan(0)
   })
 
@@ -69,13 +69,13 @@ describe('VideosCatalog', () => {
   it('displays video status badge', async () => {
     renderWithProviders(<VideosCatalog />)
     await waitFor(() => {
-      expect(screen.getByText('Concluído')).toBeInTheDocument()
+      expect(screen.getByText('Completed')).toBeInTheDocument()
     })
   })
 
   it('calls API with search query after debounce', async () => {
     renderWithProviders(<VideosCatalog />)
-    const searchInput = screen.getByPlaceholderText('Buscar por nome...')
+    const searchInput = screen.getByPlaceholderText('Search by filename...')
     fireEvent.change(searchInput, { target: { value: 'birthday' } })
 
     await waitFor(
@@ -89,7 +89,7 @@ describe('VideosCatalog', () => {
 
   it('filters by status when dropdown changes', async () => {
     renderWithProviders(<VideosCatalog />)
-    const statusSelect = screen.getByDisplayValue('Todos')
+    const statusSelect = screen.getByDisplayValue('All')
     fireEvent.change(statusSelect, { target: { value: 'Concluído' } })
 
     await waitFor(() => {
@@ -100,8 +100,8 @@ describe('VideosCatalog', () => {
 
   it('toggles layout between grid and list', () => {
     renderWithProviders(<VideosCatalog />)
-    const gridBtn = screen.getByTitle('Layout grid')
-    const listBtn = screen.getByTitle('Layout lista')
+    const gridBtn = screen.getByTitle('Grid')
+    const listBtn = screen.getByTitle('List')
 
     fireEvent.click(listBtn)
     expect(localStorage.getItem('gw-videos-layout')).toBe('list')
@@ -112,7 +112,7 @@ describe('VideosCatalog', () => {
 
   it('toggles include_deleted when eye icon clicked', async () => {
     renderWithProviders(<VideosCatalog />)
-    const toggleBtn = screen.getByTitle('Mostrar excluídos')
+    const toggleBtn = screen.getByTitle('Show deleted')
     fireEvent.click(toggleBtn)
 
     await waitFor(() => {
@@ -124,7 +124,7 @@ describe('VideosCatalog', () => {
   it('displays people count for video', async () => {
     renderWithProviders(<VideosCatalog />)
     await waitFor(() => {
-      expect(screen.getByText(/👤 3 pessoas/)).toBeInTheDocument()
+      expect(screen.getByText(/👤 3 people/)).toBeInTheDocument()
     })
   })
 
@@ -170,17 +170,17 @@ describe('VideosCatalog', () => {
 
     renderWithProviders(<VideosCatalog />)
     await waitFor(() => {
-      expect(screen.getByText('Exibindo 1-1 de 1 vídeos')).toBeInTheDocument()
+      expect(screen.getByText('Showing 1-1 of 1 videos')).toBeInTheDocument()
     })
 
-    const nextBtn = screen.getByTitle('Próxima página')
+    const nextBtn = screen.getByTitle('Next page')
     expect(nextBtn).not.toBeDisabled()
   })
 
   it('next button disabled on last page', async () => {
     renderWithProviders(<VideosCatalog />)
     await waitFor(() => {
-      const nextBtn = screen.getByTitle('Próxima página')
+      const nextBtn = screen.getByTitle('Next page')
       expect(nextBtn).toBeDisabled()
     })
   })
@@ -188,12 +188,12 @@ describe('VideosCatalog', () => {
   it('delete action opens confirm modal', async () => {
     renderWithProviders(<VideosCatalog />)
     await waitFor(() => {
-      const deleteBtn = screen.getAllByTitle('Excluir')[0]
+      const deleteBtn = screen.getAllByTitle('Delete')[0]
       fireEvent.click(deleteBtn)
     })
 
     await waitFor(() => {
-      expect(screen.getByText('Excluir vídeo?')).toBeInTheDocument()
+      expect(screen.getByText('Delete video')).toBeInTheDocument()
     })
   })
 
@@ -208,7 +208,7 @@ describe('VideosCatalog', () => {
 
     renderWithProviders(<VideosCatalog />)
     await waitFor(() => {
-      const exportBtn = screen.getAllByTitle('Exportar CSV')[0]
+      const exportBtn = screen.getAllByTitle('Export CSV')[0]
       fireEvent.click(exportBtn)
     })
 
@@ -235,7 +235,7 @@ describe('VideosCatalog', () => {
 
     renderWithProviders(<VideosCatalog />)
     await waitFor(() => {
-      expect(screen.getByText('Nenhum vídeo encontrado')).toBeInTheDocument()
+      expect(screen.getByText('No videos found')).toBeInTheDocument()
     })
   })
 })

@@ -74,7 +74,7 @@ describe('Alerts page', () => {
     await renderAlerts()
 
     await waitFor(() => {
-      expect(screen.getByText(/nenhum alerta/i)).toBeTruthy()
+      expect(screen.getByText(/no alerts/i)).toBeTruthy()
     })
   })
 
@@ -87,7 +87,7 @@ describe('Alerts page', () => {
 
     await waitFor(() => screen.getByText('Suspeito A'))
 
-    const btn = screen.getAllByRole('button', { name: /marcar como visto/i })[0]
+    const btn = screen.getAllByRole('button', { name: /mark as seen/i })[0]
     fireEvent.click(btn)
 
     await waitFor(() => {

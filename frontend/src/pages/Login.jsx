@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Eye, EyeOff, Shield } from 'lucide-react'
 import axios from 'axios'
 
 const AUTH_URL = 'http://localhost:8000/api/v1/auth/login'
 
 export default function Login() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -26,7 +28,7 @@ export default function Login() {
       sessionStorage.setItem('token', res.data.access_token)
       navigate('/dashboard')
     } catch {
-      setError('Usuário ou senha incorretos.')
+      setError(t('auth.loginError'))
     } finally {
       setLoading(false)
     }
@@ -44,7 +46,7 @@ export default function Login() {
             Gossipy<span className="text-accent">Watchman</span>
           </h1>
           <p className="text-text-muted mt-2 text-sm">
-            Sistema de análise e identificação facial
+            {t('auth.subtitle')}
           </p>
         </div>
 
@@ -57,7 +59,7 @@ export default function Login() {
                   htmlFor="username"
                   className="block text-sm font-medium text-text-muted mb-1.5"
                 >
-                  Usuário
+                  {t('auth.username')}
                 </label>
                 <input
                   id="username"
@@ -69,7 +71,7 @@ export default function Login() {
                   className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-text-base
                              placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary
                              focus:border-transparent transition-colors duration-200"
-                  placeholder="admin"
+                  placeholder={t('auth.placeholderUsername')}
                 />
               </div>
 
@@ -78,7 +80,7 @@ export default function Login() {
                   htmlFor="password"
                   className="block text-sm font-medium text-text-muted mb-1.5"
                 >
-                  Senha
+                  {t('auth.password')}
                 </label>
                 <div className="relative">
                   <input
@@ -91,12 +93,12 @@ export default function Login() {
                     className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 pr-10
                                text-text-base placeholder-text-muted focus:outline-none focus:ring-2
                                focus:ring-primary focus:border-transparent transition-colors duration-200"
-                    placeholder="••••••••"
+                    placeholder={t('auth.placeholderPassword')}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPass((v) => !v)}
-                    aria-label={showPass ? 'Ocultar senha' : 'Mostrar senha'}
+                    aria-label={showPass ? t('auth.hidePassword') : t('auth.showPassword')}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted
                                hover:text-text-base transition-colors duration-200 cursor-pointer"
                   >
@@ -120,7 +122,7 @@ export default function Login() {
                 disabled={loading}
                 className="w-full btn-primary py-2.5 text-base"
               >
-                {loading ? 'Verificando...' : 'Entrar'}
+                {loading ? t('auth.verifying') : t('auth.login')}
               </button>
             </div>
           </form>

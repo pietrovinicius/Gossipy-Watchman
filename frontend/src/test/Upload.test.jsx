@@ -48,7 +48,7 @@ describe('Upload — upload multipart', () => {
     const input = document.querySelector('input[type="file"]')
     fireEvent.change(input, { target: { files: [makeDavFile()] } })
 
-    const btn = screen.getByRole('button', { name: /enviar vídeo/i })
+    const btn = screen.getByRole('button', { name: /send video/i })
     fireEvent.click(btn)
 
     await waitFor(() => expect(api.post).toHaveBeenCalled())
@@ -68,7 +68,7 @@ describe('Upload — upload multipart', () => {
     const input = document.querySelector('input[type="file"]')
     fireEvent.change(input, { target: { files: [makeDavFile()] } })
 
-    const btn = screen.getByRole('button', { name: /enviar vídeo/i })
+    const btn = screen.getByRole('button', { name: /send video/i })
     fireEvent.click(btn)
 
     await waitFor(() =>
@@ -82,7 +82,7 @@ describe('Upload — upload multipart', () => {
     const input = document.querySelector('input[type="file"]')
     fireEvent.change(input, { target: { files: [makeDavFile()] } })
 
-    const removeBtn = screen.getByRole('button', { name: /remover arquivo/i })
+    const removeBtn = screen.getByRole('button', { name: /remove file/i })
     expect(() => fireEvent.click(removeBtn)).not.toThrow()
   })
 })

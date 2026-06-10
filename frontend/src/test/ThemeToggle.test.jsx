@@ -47,28 +47,28 @@ describe('ThemeToggle (dentro da Sidebar)', () => {
     mockTheme = 'dark'
     await renderLayout()
 
-    const [button] = screen.getAllByRole('button', { name: /modo claro/i })
+    const [button] = screen.getAllByRole('button', { name: /light mode/i })
     fireEvent.click(button)
 
     expect(toggleThemeMock).toHaveBeenCalledTimes(1)
   })
 
-  it('tem aria-label "Modo claro" quando tema é dark e "Modo escuro" quando tema é light', async () => {
+  it('tem aria-label "Light mode" quando tema é dark e "Dark mode" quando tema é light', async () => {
     mockTheme = 'dark'
     const { unmount } = await renderLayout()
-    expect(screen.getAllByRole('button', { name: 'Modo claro' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: 'Light mode' }).length).toBeGreaterThan(0)
     unmount()
 
     mockTheme = 'light'
     await renderLayout()
-    expect(screen.getAllByRole('button', { name: 'Modo escuro' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: 'Dark mode' }).length).toBeGreaterThan(0)
   })
 
   it('botão tem cursor-pointer', async () => {
     mockTheme = 'dark'
     await renderLayout()
 
-    const [button] = screen.getAllByRole('button', { name: /modo claro/i })
+    const [button] = screen.getAllByRole('button', { name: /light mode/i })
     expect(button.className).toContain('cursor-pointer')
   })
 })

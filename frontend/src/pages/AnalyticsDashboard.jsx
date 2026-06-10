@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { BarChart2, Users, Video, Layers } from 'lucide-react'
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar,
@@ -22,6 +23,7 @@ function MetricCard({ label, value, Icon }) {
 }
 
 export default function AnalyticsDashboard() {
+  const { t } = useTranslation()
   const [overview, setOverview] = useState(null)
   const [timeline, setTimeline] = useState([])
   const [topPeople, setTopPeople] = useState([])
@@ -43,7 +45,7 @@ export default function AnalyticsDashboard() {
         setTopPeople(tpRes.data)
         setPerVideo(pvRes.data.slice(0, 10))
       } catch (err) {
-        setError(err.message || 'Erro ao carregar analytics.')
+        setError(err.message || t('analytics.errorLoading'))
       } finally {
         setLoading(false)
       }
@@ -55,7 +57,7 @@ export default function AnalyticsDashboard() {
     return (
       <Layout>
         <div className="flex justify-center py-24">
-          <div role="status" aria-label="Carregando analytics"
+          <div role="status" aria-label={t('analytics.loading')}
                className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       </Layout>
@@ -75,26 +77,26 @@ export default function AnalyticsDashboard() {
       <div className="max-w-5xl mx-auto space-y-8">
         <div className="flex items-center gap-3">
           <BarChart2 className="w-6 h-6 text-primary" aria-hidden="true" />
-          <h1 className="text-xl font-bold text-text-base">Analytics</h1>
+          <h1 className="text-xl font-bold text-text-base">{t('analytics.title')}</h1>
         </div>
 
         {/* Metric cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <MetricCard label="Vídeos processados" value={overview?.total_videos ?? 0} Icon={Video} />
-          <MetricCard label="Pessoas catalogadas" value={overview?.total_people ?? 0} Icon={Users} />
-          <MetricCard label="Aparições registradas" value={overview?.total_appearances ?? 0} Icon={Layers} />
+          <MetricCard label={t('analytics.videosProcessed')} value={overview?.total_videos ?? 0} Icon={Video} />
+          <MetricCard label={t('analytics.peopleCataloged')} value={overview?.total_people ?? 0} Icon={Users} />
+          <MetricCard label={t('analytics.appearancesRegistered')} value={overview?.total_appearances ?? 0} Icon={Layers} />
         </div>
 
         {/* Timeline */}
         <div className="bg-surface border border-border rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-text-base mb-4">Atividade — últimos 30 dias</h2>
+          <h2 className="text-sm font-semibold text-text-base mb-4">{t('analytics.activityLast30Days')}</h2>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={timeline}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
               <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--chart-text)" }} />
               <YAxis tick={{ fontSize: 10, fill: "var(--chart-text)" }} allowDecimals={false} />
               <Tooltip />
-              <Line type="monotone" dataKey="count" name="Vídeos" stroke="#6366f1" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="count" name={t('analytics.videosProcessed')} stroke="#6366f1" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -102,21 +104,21 @@ export default function AnalyticsDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Top pessoas */}
           <div className="bg-surface border border-border rounded-xl p-5">
-            <h2 className="text-sm font-semibold text-text-base mb-4">Top pessoas por aparições</h2>
+            <h2 className="text-sm font-semibold text-text-base mb-4">{t('analytics.topPeopleByAppearances')}</h2>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={topPeople} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                 <XAxis type="number" tick={{ fontSize: 10, fill: "var(--chart-text)" }} allowDecimals={false} />
                 <YAxis dataKey="person_name" type="category" tick={{ fontSize: 10, fill: "var(--chart-text)" }} width={80} />
                 <Tooltip />
-                <Bar dataKey="appearance_count" name="Aparições" fill="#6366f1" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="appearance_count" name={t('analytics.appearances')} fill="#6366f1" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
             <ol className="mt-3 space-y-1">
               {topPeople.slice(0, 5).map((p, i) => (
                 <li key={p.person_id} className="flex justify-between text-xs text-text-muted">
                   <span>{i + 1}. {p.person_name}</span>
-                  <span>{p.appearance_count} aparições</span>
+                  <span>{p.appearance_count} {t('analytics.appearances')}</span>
                 </li>
               ))}
             </ol>
@@ -124,14 +126,14 @@ export default function AnalyticsDashboard() {
 
           {/* Aparições por vídeo */}
           <div className="bg-surface border border-border rounded-xl p-5">
-            <h2 className="text-sm font-semibold text-text-base mb-4">Aparições por vídeo (top 10)</h2>
+            <h2 className="text-sm font-semibold text-text-base mb-4">{t('analytics.appearancesPerVideoTop10')}</h2>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={perVideo}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                 <XAxis dataKey="file_name" tick={{ fontSize: 9, fill: "var(--chart-text)" }} />
                 <YAxis tick={{ fontSize: 10, fill: "var(--chart-text)" }} allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="count" name="Aparições" fill="#22d3ee" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" name={t('analytics.appearances')} fill="#22d3ee" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

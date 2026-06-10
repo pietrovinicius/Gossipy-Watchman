@@ -36,7 +36,6 @@
     "all": "All",
     "deactivate": "Deactivate"
   },
-
   "nav": {
     "dashboard": "Dashboard",
     "upload": "Upload",
@@ -52,7 +51,6 @@
     "openMenu": "Open menu",
     "closeMenu": "Close menu"
   },
-
   "auth": {
     "title": "Gossipy Watchman",
     "subtitle": "Facial Recognition Surveillance System",
@@ -66,7 +64,6 @@
     "placeholderUsername": "admin",
     "placeholderPassword": "••••••••"
   },
-
   "dashboard": {
     "title": "Dashboard",
     "updatedAt": "Updated at {{time}} · auto-refresh {{interval}}s",
@@ -91,9 +88,8 @@
     "viewVideoDetails": "View video details",
     "apiUnreachable": "API unreachable: {{error}}"
   },
-
   "upload": {
-    "title": "Upload Video",
+    "title": "Video Upload",
     "dragDrop": "Drag and drop your video here",
     "orClick": "or click to select",
     "acceptedFormats": "Accepted formats: MP4, AVI, MKV, MOV, TS",
@@ -110,9 +106,18 @@
     "newUpload": "New upload",
     "goToDashboard": "Go to Dashboard",
     "invalidFormat": "Invalid format. Use MP4, AVI, MKV, MOV or TS.",
-    "fileTooLarge": "File exceeds the {{size}}MB limit."
+    "fileTooLarge": "File exceeds the {{size}}MB limit.",
+    "invalidExtension": "Unsupported format: \"{{ext}}\". Use .mp4, .avi, .mkv, .mov, .ts or .dav.",
+    "uploadAreaAria": "Upload area — drag a file or click to select",
+    "dropHere": "Drag a file here",
+    "formats": "Formats: .mp4, .avi, .mkv, .mov, .ts, .dav",
+    "maxSizeGb": "Maximum: {{size}} GB",
+    "removeFile": "Remove file",
+    "sentSuccess": "Video sent successfully!",
+    "trackInDashboard": "Track in Dashboard",
+    "sendVideo": "Send video",
+    "sending": "Sending..."
   },
-
   "videos": {
     "title": "Videos",
     "subtitle": "Complete archive of analyses",
@@ -129,20 +134,23 @@
       "grid": "Grid",
       "list": "List"
     },
+    "totalCount": "{{count}} video",
+    "totalCount_other": "{{count}} videos",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
     "showing": "Showing {{start}}-{{end}} of {{total}} videos",
     "noVideos": "No videos found",
     "noVideosFiltered": "Try adjusting your search filters",
     "noVideosEmpty": "Upload your first video",
     "goToUpload": "Go to Upload",
     "people": "{{count}} person",
-    "people_plural": "{{count}} people",
+    "people_other": "{{count}} people",
     "noPeople": "No faces detected",
     "deleteConfirmTitle": "Delete video",
     "deleteConfirmMessage": "This video will be marked as deleted. Appearance data is preserved for audit purposes.",
     "reprocessConfirmTitle": "Reprocess video",
     "reprocessConfirmMessage": "The video will be reprocessed with current pipeline settings (CNN model, current threshold). Newly detected people will be added without removing existing ones."
   },
-
   "videoDetail": {
     "backToDashboard": "Back to Dashboard",
     "exportCsv": "Export CSV",
@@ -159,7 +167,7 @@
     "noFacesHint": "If you expected to find people, try adjusting FACE_RECOGNITION_TOLERANCE in .env to a higher value.",
     "processing": "Video still being processed. Please wait...",
     "appearances": "{{count}} appearance",
-    "appearances_plural": "{{count}} appearances",
+    "appearances_other": "{{count}} appearances",
     "presentFor": "Present for {{seconds}}",
     "firstSeen": "First seen at {{time}}s",
     "lastSeen": "Last seen at {{time}}s",
@@ -191,7 +199,6 @@
     "reprocessConfirmTitle": "Reprocess video",
     "reprocessConfirmMessage": "The status of \"{{name}}\" will revert to Pending and the computer vision worker will run again. Previous appearances will be replaced."
   },
-
   "people": {
     "title": "People",
     "count": "{{count}} of {{total}} people",
@@ -214,7 +221,7 @@
     },
     "registeredOn": "Registered on {{date}}",
     "videos": "{{count}} video",
-    "videos_plural": "{{count}} videos",
+    "videos_other": "{{count}} videos",
     "noAppearances": "No appearances registered",
     "deleteConfirmTitle": "Delete person",
     "deleteConfirmMessage": "{{name}}'s profile will be marked as deleted. Data is preserved for audit purposes and can be restored.",
@@ -252,10 +259,9 @@
       "viewProfile": "View profile",
       "searching": "Searching…",
       "resultsCount": "{{count}} result",
-      "resultsCount_plural": "{{count}} results"
+      "resultsCount_other": "{{count}} results"
     }
   },
-
   "personDetail": {
     "backToPeople": "Back to People",
     "exportCsv": "Export CSV",
@@ -321,11 +327,10 @@
     "viewVideoDetails": "View video details",
     "goToMoment": "Go to this moment in the video"
   },
-
   "employees": {
     "title": "Employees",
     "count": "{{count}} employee",
-    "count_plural": "{{count}} employees",
+    "count_other": "{{count}} employees",
     "register": "Register Employee",
     "showInactive": "Show inactive",
     "columns": {
@@ -372,7 +377,6 @@
     "deactivateConfirmGeneric": "This employee will be marked as inactive. Their profile will be preserved.",
     "deactivateAria": "Deactivate"
   },
-
   "alerts": {
     "title": "Alerts",
     "markAllSeen": "Mark all as seen",
@@ -382,9 +386,9 @@
     "detectedIn": "Detected in",
     "at": "at",
     "inVideo": "in video",
-    "viewProfile": "View profile"
+    "viewProfile": "View profile",
+    "markSeen": "Mark as seen"
   },
-
   "analytics": {
     "title": "Analytics",
     "dailyActivity": "Daily activity",
@@ -394,9 +398,16 @@
     "noData": "Insufficient data — process videos to see analytics",
     "people": "people",
     "appearances": "appearances",
-    "seconds": "seconds"
+    "seconds": "seconds",
+    "videosProcessed": "Videos processed",
+    "peopleCataloged": "People cataloged",
+    "appearancesRegistered": "Appearances registered",
+    "activityLast30Days": "Activity — last 30 days",
+    "topPeopleByAppearances": "Top people by appearances",
+    "appearancesPerVideoTop10": "Appearances per video (top 10)",
+    "errorLoading": "Error loading analytics.",
+    "loading": "Loading analytics"
   },
-
   "status": {
     "pending": "Pending",
     "processing": "Processing",
@@ -405,13 +416,11 @@
     "converting": "Converting",
     "repairing": "Repairing"
   },
-
   "confirmModal": {
     "typeToConfirm": "Type '{{word}}' to confirm",
     "confirm": "Confirm",
     "cancel": "Cancel"
   },
-
   "errors": {
     "serverOffline": "Unable to connect to server. Check if the backend is running.",
     "unauthorized": "Session expired. Please sign in again.",

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   Search,
   Download,
@@ -19,14 +20,16 @@ import { useAuthVideoThumbnail } from '../hooks/useAuthVideoThumbnail'
 import { useVideoActions } from '../hooks/useVideoActions'
 
 const STATUS_COLORS = {
-  'Pendente': { bg: 'bg-yellow-100', text: 'text-yellow-800', dark: 'dark:bg-yellow-900 dark:text-yellow-200' },
-  'Processando': { bg: 'bg-blue-100', text: 'text-blue-800', dark: 'dark:bg-blue-900 dark:text-blue-200' },
-  'Concluído': { bg: 'bg-green-100', text: 'text-green-800', dark: 'dark:bg-green-900 dark:text-green-200' },
-  'Erro': { bg: 'bg-red-100', text: 'text-red-800', dark: 'dark:bg-red-900 dark:text-red-200' },
+  'Pendente': { bg: 'bg-yellow-100', text: 'text-yellow-800', dark: 'dark:bg-yellow-900 dark:text-yellow-200', key: 'status.pending' },
+  'Processando': { bg: 'bg-blue-100', text: 'text-blue-800', dark: 'dark:bg-blue-900 dark:text-blue-200', key: 'status.processing' },
+  'Concluído': { bg: 'bg-green-100', text: 'text-green-800', dark: 'dark:bg-green-900 dark:text-green-200', key: 'status.completed' },
+  'Erro': { bg: 'bg-red-100', text: 'text-red-800', dark: 'dark:bg-red-900 dark:text-red-200', key: 'status.error' },
 }
 
 function VideoCard({ video, onDelete, onReprocess, onExport, loading, loadingAction }) {
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const dateLocale = i18n.language === 'pt-BR' ? 'pt-BR' : 'en-US'
   const status = video.status
   const colors = STATUS_COLORS[status] || STATUS_COLORS['Pendente']
   const thumbnailSrc = useAuthVideoThumbnail(video.id, Boolean(video.thumbnail_path))
@@ -52,11 +55,11 @@ function VideoCard({ video, onDelete, onReprocess, onExport, loading, loadingAct
         <div className={`absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center`}>
           <div className="text-center">
             <div className="text-white text-lg">▶</div>
-            <div className="text-white text-xs mt-1">Ver detalhes</div>
+            <div className="text-white text-xs mt-1">{t('personDetail.viewVideoDetails')}</div>
           </div>
         </div>
         <div className={`absolute top-2 right-2 px-2 py-1 rounded text-xs font-medium ${colors.bg} ${colors.text} ${colors.dark}`}>
-          {status}
+          {colors.key ? t(colors.key) : status}
         </div>
       </div>
 
@@ -66,7 +69,7 @@ function VideoCard({ video, onDelete, onReprocess, onExport, loading, loadingAct
           {video.file_name}
         </h3>
         <p className="text-xs text-text-muted mt-1">
-          {new Date(video.uploaded_at).toLocaleDateString('pt-BR', {
+          {new Date(video.uploaded_at).toLocaleDateString(dateLocale, {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
@@ -74,7 +77,7 @@ function VideoCard({ video, onDelete, onReprocess, onExport, loading, loadingAct
             minute: '2-digit',
           })}
         </p>
-        <p className="text-xs text-text-muted mt-1">👤 {video.people_count} pessoas</p>
+        <p className="text-xs text-text-muted mt-1">👤 {t('videos.people', { count: video.people_count })}</p>
 
         {/* Mini Galeria */}
         <div className="mt-3 flex items-center gap-2">
@@ -110,7 +113,7 @@ function VideoCard({ video, onDelete, onReprocess, onExport, loading, loadingAct
         </div>
 
         {video.people_count === 0 && video.status === 'Concluído' && (
-          <p className="text-xs text-text-muted mt-2">Nenhuma face detectada</p>
+          <p className="text-xs text-text-muted mt-2">{t('videos.noPeople')}</p>
         )}
       </div>
 
@@ -120,7 +123,7 @@ function VideoCard({ video, onDelete, onReprocess, onExport, loading, loadingAct
           onClick={() => onExport(video.id, video.file_name)}
           disabled={loading === video.id && loadingAction === 'export'}
           className="p-2 hover:bg-card rounded-lg text-text-muted hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Exportar CSV"
+          title={t('videoDetail.exportCsv')}
         >
           {loading === video.id && loadingAction === 'export' ? (
             <RefreshCw className="w-4 h-4 animate-spin" />
@@ -134,7 +137,7 @@ function VideoCard({ video, onDelete, onReprocess, onExport, loading, loadingAct
             onClick={() => onReprocess(video.id)}
             disabled={loading === video.id && loadingAction === 'reprocess'}
             className="p-2 hover:bg-card rounded-lg text-text-muted hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Reprocessar"
+            title={t('common.reprocess')}
           >
             {loading === video.id && loadingAction === 'reprocess' ? (
               <RefreshCw className="w-4 h-4 animate-spin" />
@@ -148,7 +151,7 @@ function VideoCard({ video, onDelete, onReprocess, onExport, loading, loadingAct
           onClick={() => onDelete(video.id)}
           disabled={loading === video.id && loadingAction === 'delete'}
           className="p-2 hover:bg-card rounded-lg text-text-muted hover:text-error-color transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Excluir"
+          title={t('common.delete')}
         >
           {loading === video.id && loadingAction === 'delete' ? (
             <RefreshCw className="w-4 h-4 animate-spin" />
@@ -179,6 +182,7 @@ function VideoCardSkeleton() {
 }
 
 export default function VideosCatalog() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { theme } = useTheme()
   const [videos, setVideos] = useState([])
@@ -225,7 +229,7 @@ export default function VideosCatalog() {
       setTotal(res.data.total)
       setTotalPages(res.data.total_pages)
     } catch (error) {
-      console.error('Erro ao buscar vídeos:', error)
+      console.error('Error fetching videos:', error)
     } finally {
       setLoading(false)
     }
@@ -267,9 +271,9 @@ export default function VideosCatalog() {
       <div className="p-6 max-w-full">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-text-base">Vídeos</h1>
+          <h1 className="text-3xl font-bold text-text-base">{t('videos.title')}</h1>
           <p className="text-text-muted mt-2">
-            {total} vídeos
+            {t('videos.totalCount', { count: total })}
           </p>
         </div>
 
@@ -279,7 +283,7 @@ export default function VideosCatalog() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
             <input
               type="text"
-              placeholder="Buscar por nome..."
+              placeholder={t('videos.searchPlaceholder')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-card text-text-base placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
@@ -291,11 +295,11 @@ export default function VideosCatalog() {
             onChange={(e) => setStatus(e.target.value)}
             className="px-3 py-2 rounded-lg border border-border bg-card text-text-base focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            <option value="">Todos</option>
-            <option value="Pendente">Pendente</option>
-            <option value="Processando">Processando</option>
-            <option value="Concluído">Concluído</option>
-            <option value="Erro">Erro</option>
+            <option value="">{t('common.all')}</option>
+            <option value="Pendente">{t('status.pending')}</option>
+            <option value="Processando">{t('status.processing')}</option>
+            <option value="Concluído">{t('status.completed')}</option>
+            <option value="Erro">{t('status.error')}</option>
           </select>
 
           <select
@@ -303,11 +307,11 @@ export default function VideosCatalog() {
             onChange={(e) => setSortBy(e.target.value)}
             className="px-3 py-2 rounded-lg border border-border bg-card text-text-base focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            <option value="uploaded_at_desc">Mais recente</option>
-            <option value="uploaded_at_asc">Mais antigo</option>
-            <option value="name_asc">Nome A→Z</option>
-            <option value="name_desc">Nome Z→A</option>
-            <option value="people_desc">Mais pessoas</option>
+            <option value="uploaded_at_desc">{t('videos.sortOptions.newest')}</option>
+            <option value="uploaded_at_asc">{t('videos.sortOptions.oldest')}</option>
+            <option value="name_asc">{t('videos.sortOptions.nameAsc')}</option>
+            <option value="name_desc">{t('videos.sortOptions.nameDesc')}</option>
+            <option value="people_desc">{t('videos.sortOptions.mostPeople')}</option>
           </select>
 
           <div className="flex gap-2 border border-border rounded-lg p-1 bg-card">
@@ -318,7 +322,7 @@ export default function VideosCatalog() {
                   ? 'bg-primary/20 text-primary'
                   : 'text-text-muted hover:text-text-base'
               }`}
-              title="Layout grid"
+              title={t('videos.layout.grid')}
             >
               ⊞
             </button>
@@ -329,7 +333,7 @@ export default function VideosCatalog() {
                   ? 'bg-primary/20 text-primary'
                   : 'text-text-muted hover:text-text-base'
               }`}
-              title="Layout lista"
+              title={t('videos.layout.list')}
             >
               ⊟
             </button>
@@ -342,7 +346,7 @@ export default function VideosCatalog() {
                 ? 'border-primary bg-primary/10 text-primary'
                 : 'border-border bg-card text-text-muted hover:text-text-base'
             }`}
-            title="Mostrar excluídos"
+            title={t('common.showDeleted')}
           >
             {includeDeleted ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
           </button>
@@ -358,16 +362,16 @@ export default function VideosCatalog() {
         ) : videos.length === 0 ? (
           <div className="text-center py-12">
             <Film className="w-16 h-16 text-text-muted mx-auto opacity-20 mb-4" />
-            <p className="text-text-muted">Nenhum vídeo encontrado</p>
+            <p className="text-text-muted">{t('videos.noVideos')}</p>
             {(query || status) && (
-              <p className="text-sm text-text-muted mt-1">Tente ajustar os filtros de busca</p>
+              <p className="text-sm text-text-muted mt-1">{t('videos.noVideosFiltered')}</p>
             )}
             {!query && !status && (
               <button
                 onClick={() => navigate('/upload')}
                 className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
               >
-                Ir para Upload
+                {t('videos.goToUpload')}
               </button>
             )}
           </div>
@@ -390,7 +394,7 @@ export default function VideosCatalog() {
             {/* Pagination */}
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-border pt-6">
               <p className="text-sm text-text-muted">
-                Exibindo {startIndex}-{endIndex} de {total} vídeos
+                {t('videos.showing', { start: startIndex, end: endIndex, total })}
               </p>
 
               <div className="flex items-center gap-2">
@@ -398,7 +402,7 @@ export default function VideosCatalog() {
                   onClick={() => setPage(Math.max(1, page - 1))}
                   disabled={page === 1}
                   className="p-2 rounded-lg border border-border hover:bg-card disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Página anterior"
+                  title={t('videos.previousPage')}
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -438,7 +442,7 @@ export default function VideosCatalog() {
                   onClick={() => setPage(Math.min(totalPages, page + 1))}
                   disabled={page === totalPages}
                   className="p-2 rounded-lg border border-border hover:bg-card disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Próxima página"
+                  title={t('videos.nextPage')}
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -450,8 +454,8 @@ export default function VideosCatalog() {
 
       <ConfirmModal
         isOpen={deleteConfirm !== null}
-        title="Excluir vídeo?"
-        message="Esta ação não pode ser desfeita."
+        title={t('videos.deleteConfirmTitle')}
+        message={t('videos.deleteConfirmMessage')}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteConfirm(null)}
         isDangerous

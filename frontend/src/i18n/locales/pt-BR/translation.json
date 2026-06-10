@@ -36,7 +36,6 @@
     "all": "Todos",
     "deactivate": "Desativar"
   },
-
   "nav": {
     "dashboard": "Dashboard",
     "upload": "Upload",
@@ -52,7 +51,6 @@
     "openMenu": "Abrir menu",
     "closeMenu": "Fechar menu"
   },
-
   "auth": {
     "title": "Gossipy Watchman",
     "subtitle": "Sistema de Vigilância por Reconhecimento Facial",
@@ -66,7 +64,6 @@
     "placeholderUsername": "admin",
     "placeholderPassword": "••••••••"
   },
-
   "dashboard": {
     "title": "Dashboard",
     "updatedAt": "Atualizado às {{time}} · auto-refresh {{interval}}s",
@@ -91,9 +88,8 @@
     "viewVideoDetails": "Ver detalhes do vídeo",
     "apiUnreachable": "API inacessível: {{error}}"
   },
-
   "upload": {
-    "title": "Enviar Vídeo",
+    "title": "Upload de Vídeo",
     "dragDrop": "Arraste e solte seu vídeo aqui",
     "orClick": "ou clique para selecionar",
     "acceptedFormats": "Formatos aceitos: MP4, AVI, MKV, MOV, TS",
@@ -110,9 +106,18 @@
     "newUpload": "Novo upload",
     "goToDashboard": "Ir para o Dashboard",
     "invalidFormat": "Formato inválido. Use MP4, AVI, MKV, MOV ou TS.",
-    "fileTooLarge": "Arquivo excede o limite de {{size}}MB."
+    "fileTooLarge": "Arquivo excede o limite de {{size}}MB.",
+    "invalidExtension": "Formato não suportado: \"{{ext}}\". Use .mp4, .avi, .mkv, .mov, .ts ou .dav.",
+    "uploadAreaAria": "Área de upload — arraste um arquivo ou clique para selecionar",
+    "dropHere": "Arraste um arquivo aqui",
+    "formats": "Formatos: .mp4, .avi, .mkv, .mov, .ts, .dav",
+    "maxSizeGb": "Máximo: {{size}} GB",
+    "removeFile": "Remover arquivo",
+    "sentSuccess": "Vídeo enviado com sucesso!",
+    "trackInDashboard": "Acompanhar no Dashboard",
+    "sendVideo": "Enviar vídeo",
+    "sending": "Enviando..."
   },
-
   "videos": {
     "title": "Vídeos",
     "subtitle": "Acervo completo de análises",
@@ -129,20 +134,23 @@
       "grid": "Grade",
       "list": "Lista"
     },
+    "totalCount": "{{count}} vídeo",
+    "totalCount_other": "{{count}} vídeos",
+    "previousPage": "Página anterior",
+    "nextPage": "Próxima página",
     "showing": "Mostrando {{start}}-{{end}} de {{total}} vídeos",
     "noVideos": "Nenhum vídeo encontrado",
     "noVideosFiltered": "Tente ajustar os filtros de busca",
     "noVideosEmpty": "Envie seu primeiro vídeo",
     "goToUpload": "Ir para Upload",
     "people": "{{count}} pessoa",
-    "people_plural": "{{count}} pessoas",
+    "people_other": "{{count}} pessoas",
     "noPeople": "Nenhum rosto detectado",
     "deleteConfirmTitle": "Excluir vídeo",
     "deleteConfirmMessage": "Este vídeo será marcado como excluído. Os dados de aparições são preservados para fins de auditoria.",
     "reprocessConfirmTitle": "Reprocessar vídeo",
     "reprocessConfirmMessage": "O vídeo será reprocessado com as configurações atuais do pipeline (modelo CNN, threshold atual). Pessoas recém-detectadas serão adicionadas sem remover as existentes."
   },
-
   "videoDetail": {
     "backToDashboard": "Voltar ao Dashboard",
     "exportCsv": "Exportar CSV",
@@ -159,7 +167,7 @@
     "noFacesHint": "Se você esperava encontrar pessoas, tente ajustar o FACE_RECOGNITION_TOLERANCE no .env para um valor maior.",
     "processing": "Vídeo ainda em processamento. Aguarde...",
     "appearances": "{{count}} aparição",
-    "appearances_plural": "{{count}} aparições",
+    "appearances_other": "{{count}} aparições",
     "presentFor": "Presente por {{seconds}}",
     "firstSeen": "Primeira vez visto aos {{time}}s",
     "lastSeen": "Última vez visto aos {{time}}s",
@@ -191,7 +199,6 @@
     "reprocessConfirmTitle": "Reprocessar vídeo",
     "reprocessConfirmMessage": "O status de \"{{name}}\" voltará para Pendente e o worker de visão computacional será disparado novamente. Aparições anteriores serão substituídas."
   },
-
   "people": {
     "title": "Pessoas",
     "count": "{{count}} de {{total}} pessoas",
@@ -214,7 +221,7 @@
     },
     "registeredOn": "Cadastrado em {{date}}",
     "videos": "{{count}} vídeo",
-    "videos_plural": "{{count}} vídeos",
+    "videos_other": "{{count}} vídeos",
     "noAppearances": "Nenhuma aparição registrada",
     "deleteConfirmTitle": "Excluir pessoa",
     "deleteConfirmMessage": "O perfil de {{name}} será marcado como excluído. Os dados são preservados para fins de auditoria e podem ser restaurados.",
@@ -252,10 +259,9 @@
       "viewProfile": "Ver perfil",
       "searching": "Buscando…",
       "resultsCount": "{{count}} resultado",
-      "resultsCount_plural": "{{count}} resultados"
+      "resultsCount_other": "{{count}} resultados"
     }
   },
-
   "personDetail": {
     "backToPeople": "Voltar para Pessoas",
     "exportCsv": "Exportar CSV",
@@ -321,11 +327,10 @@
     "viewVideoDetails": "Ver detalhes do vídeo",
     "goToMoment": "Ir para este momento no vídeo"
   },
-
   "employees": {
     "title": "Funcionários",
     "count": "{{count}} funcionário",
-    "count_plural": "{{count}} funcionários",
+    "count_other": "{{count}} funcionários",
     "register": "Cadastrar Funcionário",
     "showInactive": "Mostrar inativos",
     "columns": {
@@ -372,7 +377,6 @@
     "deactivateConfirmGeneric": "Este funcionário será marcado como inativo. O perfil será preservado.",
     "deactivateAria": "Desativar"
   },
-
   "alerts": {
     "title": "Alertas",
     "markAllSeen": "Marcar todos como vistos",
@@ -382,9 +386,9 @@
     "detectedIn": "Detectado em",
     "at": "às",
     "inVideo": "no vídeo",
-    "viewProfile": "Ver perfil"
+    "viewProfile": "Ver perfil",
+    "markSeen": "Marcar como visto"
   },
-
   "analytics": {
     "title": "Análises",
     "dailyActivity": "Atividade diária",
@@ -394,9 +398,16 @@
     "noData": "Dados insuficientes — processe vídeos para ver as análises",
     "people": "pessoas",
     "appearances": "aparições",
-    "seconds": "segundos"
+    "seconds": "segundos",
+    "videosProcessed": "Vídeos processados",
+    "peopleCataloged": "Pessoas catalogadas",
+    "appearancesRegistered": "Aparições registradas",
+    "activityLast30Days": "Atividade — últimos 30 dias",
+    "topPeopleByAppearances": "Top pessoas por aparições",
+    "appearancesPerVideoTop10": "Aparições por vídeo (top 10)",
+    "errorLoading": "Erro ao carregar analytics.",
+    "loading": "Carregando analytics"
   },
-
   "status": {
     "pending": "Pendente",
     "processing": "Processando",
@@ -405,13 +416,11 @@
     "converting": "Convertendo",
     "repairing": "Reparando"
   },
-
   "confirmModal": {
     "typeToConfirm": "Digite '{{word}}' para confirmar",
     "confirm": "Confirmar",
     "cancel": "Cancelar"
   },
-
   "errors": {
     "serverOffline": "Não foi possível conectar ao servidor. Verifique se o backend está em execução.",
     "unauthorized": "Sessão expirada. Faça login novamente.",

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard,
   Upload,
@@ -20,9 +21,10 @@ import { useTheme } from '../contexts/ThemeContext'
 import { LanguageToggle } from './LanguageToggle'
 
 function ThemeToggle() {
+  const { t } = useTranslation()
   const { theme, toggleTheme } = useTheme()
   const isDark = theme === 'dark'
-  const label = isDark ? 'Modo claro' : 'Modo escuro'
+  const label = isDark ? t('common.lightMode') : t('common.darkMode')
 
   return (
     <button
@@ -70,6 +72,7 @@ function NavItem({ to, label, Icon, badge, onClick }) {
 }
 
 export default function Layout({ children }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [unseenCount, setUnseenCount] = useState(0)
@@ -79,13 +82,13 @@ export default function Layout({ children }) {
   }, [])
 
   const navItems = [
-    { to: '/dashboard', label: 'Dashboard',    icon: LayoutDashboard },
-    { to: '/upload',    label: 'Upload',       icon: Upload },
-    { to: '/people',    label: 'Pessoas',      icon: Users },
-    { to: '/employees', label: 'Funcionários', icon: BadgeCheck },
-    { to: '/videos',    label: 'Vídeos',       icon: Film },
-    { to: '/alerts',    label: 'Alertas',      icon: Bell, badge: unseenCount },
-    { to: '/analytics', label: 'Analytics',    icon: BarChart2 },
+    { to: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+    { to: '/upload',    label: t('nav.upload'),    icon: Upload },
+    { to: '/people',    label: t('nav.people'),    icon: Users },
+    { to: '/employees', label: t('nav.employees'), icon: BadgeCheck },
+    { to: '/videos',    label: t('nav.videos'),    icon: Film },
+    { to: '/alerts',    label: t('nav.alerts'),    icon: Bell, badge: unseenCount },
+    { to: '/analytics', label: t('nav.analytics'), icon: BarChart2 },
   ]
 
   function handleLogout() {
@@ -105,7 +108,7 @@ export default function Layout({ children }) {
       </div>
 
       {/* Nav */}
-      <nav aria-label="Menu principal" className="flex-1 space-y-1 px-2">
+      <nav aria-label={t('nav.mainMenu')} className="flex-1 space-y-1 px-2">
         {navItems.map(({ to, label, icon: Icon, badge }) => (
           <NavItem key={to} to={to} label={label} Icon={Icon} badge={badge} onClick={() => setSidebarOpen(false)} />
         ))}
@@ -122,7 +125,7 @@ export default function Layout({ children }) {
                      transition-colors duration-200 cursor-pointer"
         >
           <LogOut className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
-          <span>Sair</span>
+          <span>{t('nav.logout')}</span>
         </button>
       </div>
     </div>
@@ -133,7 +136,7 @@ export default function Layout({ children }) {
       {/* Desktop sidebar */}
       <aside
         className="hidden md:flex flex-col w-56 bg-surface border-r border-border fixed inset-y-0 left-0 z-20"
-        aria-label="Sidebar"
+        aria-label={t('nav.sidebar')}
       >
         {sidebarContent}
       </aside>
@@ -152,11 +155,11 @@ export default function Layout({ children }) {
         className={`fixed inset-y-0 left-0 w-56 bg-surface border-r border-border z-40 md:hidden
                     transform transition-transform duration-300
                     ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
-        aria-label="Sidebar mobile"
+        aria-label={t('nav.mobileSidebar')}
       >
         <button
           onClick={() => setSidebarOpen(false)}
-          aria-label="Fechar menu"
+          aria-label={t('nav.closeMenu')}
           className="absolute top-4 right-4 text-text-muted hover:text-text-base cursor-pointer"
         >
           <X className="w-5 h-5" aria-hidden="true" />
@@ -170,7 +173,7 @@ export default function Layout({ children }) {
         <header className="md:hidden flex items-center gap-3 px-4 py-3 bg-surface border-b border-border sticky top-0 z-10">
           <button
             onClick={() => setSidebarOpen(true)}
-            aria-label="Abrir menu"
+            aria-label={t('nav.openMenu')}
             className="text-text-muted hover:text-text-base cursor-pointer"
           >
             <Menu className="w-5 h-5" aria-hidden="true" />

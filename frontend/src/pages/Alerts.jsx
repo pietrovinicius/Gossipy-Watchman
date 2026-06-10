@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Bell, CheckCheck, AlertTriangle, Clock, Video } from 'lucide-react'
 import Layout from '../components/Layout'
 import api from '../services/api'
 import { useGlobalWebSocket } from '../hooks/useGlobalWebSocket.js'
 
 function AlertRow({ alert, onMarkSeen }) {
+  const { t, i18n } = useTranslation()
+  const dateLocale = i18n.language === 'pt-BR' ? 'pt-BR' : 'en-US'
   return (
     <div
       data-seen={String(alert.seen)}
@@ -36,16 +39,16 @@ function AlertRow({ alert, onMarkSeen }) {
 
       <div className="flex-shrink-0 text-right">
         <p className="text-xs text-text-muted">
-          {new Date(alert.created_at).toLocaleString('pt-BR')}
+          {new Date(alert.created_at).toLocaleString(dateLocale)}
         </p>
         {!alert.seen && (
           <button
-            aria-label="Marcar como visto"
+            aria-label={t('alerts.markSeen')}
             onClick={() => onMarkSeen(alert.id)}
             className="mt-2 flex items-center gap-1 text-xs text-primary hover:text-primary/80 cursor-pointer"
           >
             <CheckCheck className="w-3 h-3" aria-hidden="true" />
-            Marcar como visto
+            {t('alerts.markSeen')}
           </button>
         )}
       </div>
@@ -54,6 +57,7 @@ function AlertRow({ alert, onMarkSeen }) {
 }
 
 export default function Alerts() {
+  const { t } = useTranslation()
   const [alerts, setAlerts] = useState([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
@@ -110,12 +114,12 @@ export default function Alerts() {
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center gap-3 mb-6">
           <Bell className="w-6 h-6 text-primary" aria-hidden="true" />
-          <h1 className="text-xl font-bold text-text-base">Alertas de Watchlist</h1>
+          <h1 className="text-xl font-bold text-text-base">{t('alerts.title')}</h1>
         </div>
 
         {loading && (
           <div className="flex justify-center py-16">
-            <div role="status" aria-label="Carregando alertas"
+            <div role="status" aria-label={t('common.loading')}
                  className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         )}
@@ -123,7 +127,7 @@ export default function Alerts() {
         {!loading && alerts.length === 0 && (
           <div className="text-center py-16 text-text-muted">
             <Bell className="w-12 h-12 mx-auto mb-3 opacity-30" aria-hidden="true" />
-            <p>Nenhum alerta registrado.</p>
+            <p>{t('alerts.noAlerts')}</p>
           </div>
         )}
 

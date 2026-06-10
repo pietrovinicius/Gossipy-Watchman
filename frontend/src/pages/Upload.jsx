@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { UploadCloud, FileVideo, CheckCircle, AlertCircle, X } from 'lucide-react'
 import Layout from '../components/Layout'
 import api from '../services/api'
@@ -14,6 +15,7 @@ function getExt(name) {
 }
 
 export default function Upload() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const inputRef = useRef(null)
   const [file, setFile] = useState(null)
@@ -30,7 +32,7 @@ export default function Upload() {
     setExtError('')
     resetProgress()
     if (!ALLOWED.includes(getExt(f.name))) {
-      setExtError(`Formato não suportado: "${getExt(f.name)}". Use .mp4, .avi, .mkv, .mov, .ts ou .dav.`)
+      setExtError(t('upload.invalidExtension', { ext: getExt(f.name) }))
       setFile(null)
       return
     }
@@ -77,26 +79,26 @@ export default function Upload() {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto space-y-6">
-        <h1 className="text-2xl font-bold text-text-base">Upload de Vídeo</h1>
+        <h1 className="text-2xl font-bold text-text-base">{t('upload.title')}</h1>
 
         {result ? (
           /* Success state */
           <div className="card border-success/30 bg-success/5 text-center space-y-4">
             <CheckCircle className="w-12 h-12 text-success mx-auto" aria-hidden="true" />
-            <h2 className="text-lg font-semibold text-text-base">Vídeo enviado com sucesso!</h2>
+            <h2 className="text-lg font-semibold text-text-base">{t('upload.sentSuccess')}</h2>
             <div className="text-sm text-text-muted space-y-1">
               <p>ID: <span className="font-mono text-text-base">#{result.id}</span></p>
-              <p>Status: <span className="text-warning font-medium">{result.status}</span></p>
+              <p>{t('common.status')}: <span className="text-warning font-medium">{result.status}</span></p>
             </div>
             <div className="flex gap-3 justify-center">
               <button onClick={() => navigate('/dashboard')} className="btn-primary">
-                Acompanhar no Dashboard
+                {t('upload.trackInDashboard')}
               </button>
               <button onClick={reset} className="px-4 py-2 rounded-lg border border-border
                                                   text-text-muted hover:text-text-base
                                                   hover:border-primary/50 transition-colors
                                                   duration-200 cursor-pointer text-sm">
-                Novo upload
+                {t('upload.newUpload')}
               </button>
             </div>
           </div>
@@ -106,7 +108,7 @@ export default function Upload() {
             <div
               role="button"
               tabIndex={0}
-              aria-label="Área de upload — arraste um arquivo ou clique para selecionar"
+              aria-label={t('upload.uploadAreaAria')}
               onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
               onDragLeave={() => setDragging(false)}
               onDrop={handleDrop}
@@ -120,10 +122,10 @@ export default function Upload() {
                           }`}
             >
               <UploadCloud className="w-12 h-12 text-text-muted mx-auto mb-3" aria-hidden="true" />
-              <p className="text-text-base font-medium">Arraste um arquivo aqui</p>
-              <p className="text-text-muted text-sm mt-1">ou clique para selecionar</p>
-              <p className="text-xs text-text-muted mt-2">Formatos: .mp4, .avi, .mkv, .mov, .ts, .dav</p>
-              <p className="text-xs text-text-muted">Máximo: {MAX_SIZE_GB} GB</p>
+              <p className="text-text-base font-medium">{t('upload.dropHere')}</p>
+              <p className="text-text-muted text-sm mt-1">{t('upload.orClick')}</p>
+              <p className="text-xs text-text-muted mt-2">{t('upload.formats')}</p>
+              <p className="text-xs text-text-muted">{t('upload.maxSizeGb', { size: MAX_SIZE_GB })}</p>
               <input
                 ref={inputRef}
                 type="file"
@@ -152,7 +154,7 @@ export default function Upload() {
                 </div>
                 <button
                   onClick={reset}
-                  aria-label="Remover arquivo"
+                  aria-label={t('upload.removeFile')}
                   className="text-text-muted hover:text-error-color transition-colors duration-200 cursor-pointer"
                 >
                   <X className="w-4 h-4" aria-hidden="true" />
@@ -164,7 +166,7 @@ export default function Upload() {
             {uploading && (
               <div aria-label={`Upload ${progress}%`} className="space-y-2">
                 <div className="flex justify-between text-xs text-text-muted">
-                  <span>Enviando...</span>
+                  <span>{t('upload.sending')}</span>
                   <span>{progress}%</span>
                 </div>
                 <div className="h-2 bg-border rounded-full overflow-hidden">
@@ -174,9 +176,9 @@ export default function Upload() {
                   />
                 </div>
                 <div className="text-xs text-text-muted space-y-0.5">
-                  <div>📤 {formatBytes(loaded)} de {formatBytes(total)}</div>
+                  <div>📤 {formatBytes(loaded)} {t('upload.of')} {formatBytes(total)}</div>
                   <div>⚡ {formatSpeed(speed)}</div>
-                  <div>⏱ Tempo restante: {formatEta(eta)}</div>
+                  <div>⏱ {t('upload.remaining')}: {formatEta(eta)}</div>
                 </div>
               </div>
             )}
@@ -197,12 +199,12 @@ export default function Upload() {
               {uploading ? (
                 <>
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" aria-hidden="true" />
-                  Enviando…
+                  {t('upload.sending')}
                 </>
               ) : (
                 <>
                   <UploadCloud className="w-4 h-4" aria-hidden="true" />
-                  Enviar vídeo
+                  {t('upload.sendVideo')}
                 </>
               )}
             </button>
