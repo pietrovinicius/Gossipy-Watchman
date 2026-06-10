@@ -5,6 +5,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.22.0] — 2026-06-10
+
+### Sprint 17 — Internacionalização (i18n EN / pt-BR)
+
+#### Adicionado
+- **chore(i18n)**: instalação e configuração de `react-i18next`, `i18next` e `i18next-browser-languagedetector`. Idioma padrão inglês (fallback), detecção/persistência via `localStorage` (`gw-language`).
+- **chore(i18n)**: catálogo completo de strings (392 chaves) organizado por namespace (common, nav, auth, dashboard, upload, videos, videoDetail, people, personDetail, employees, alerts, analytics, status, confirmModal, errors), em `en` e `pt-BR` com paridade total.
+- **feat(i18n)**: hook `useLanguage` e componente `LanguageToggle` na sidebar (🇧🇷/🇺🇸), acima do `ThemeToggle`, com persistência via `localStorage`.
+- **feat(i18n)**: migração completa para `react-i18next` de Layout, Login, Dashboard, VideoDetail, People, PersonDetail, Employees, Upload, VideosCatalog, Alerts, AnalyticsDashboard, ConfirmModal, MergeActionBar, PhotoModal, VideoPlayer (15 arquivos).
+- **feat(formatDate)**: `formatDateTime(dateStr, locale)` agora aceita locale opcional; Dashboard e VideoDetail exibem DD/MM/AAAA HH:mm em pt-BR e M/D/AAAA h:mm AM/PM em en, conforme `i18n.language`.
+- **docs**: cronograma de sprints atualizado com seção "Sprint 17"; README.md traduzido integralmente para inglês.
+
+#### Corrigido
+- **fix(i18n)**: bug crítico de pluralização — i18next v26 (API v4) não reconhece mais sufixo legado `_plural`; renomeado globalmente para `_other` em ambos os arquivos de tradução, restaurando pluralização correta em todos os módulos.
+
+#### Notas
+- Strings em português mantidas intencionalmente: valores internos do backend usados como chaves de lookup (`Pendente`, `Processando`, `Concluído`, `Erro`, `Funcionário`, `Visitante`, `Monitorado`, `Desconhecido`, `Todos`).
+- Verificação final: `npm run build` sem erros; suíte 236/237 (1 falha pré-existente em `PersonFrames.test.jsx`, fora de escopo).
+
+---
+
 ## [2.21.0] — 2026-06-09
 
 ### Adicionado
