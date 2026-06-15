@@ -188,3 +188,8 @@ storage/faces/*
 !storage/faces/.gitkeep
 frontend/node_modules/
 frontend/dist/
+
+# AI Agents local state
+.agents/
+.antigravitycli/
+skills-lock.json
