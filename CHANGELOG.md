@@ -13,6 +13,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Language toggle in the sidebar with `localStorage` persistence.
 - Locale-aware date formatting (`DD/MM/YYYY HH:mm` for pt-BR, `M/D/YYYY h:mm AM/PM` for en).
 - Critical fix: i18next v26 dropped the legacy `_plural` suffix in favor of `_other` — renamed globally across both translation catalogs.
+- Docs: split changelog into a concise English `CHANGELOG.md` (recruiter-facing) and a full Portuguese history in `CHANGELOG.pt-BR.md` (renamed via `git mv`, no content loss).
+- Chore: `.gitignore` now excludes local AI-agent config/state (`.agents/`, `.antigravitycli/`, `skills-lock.json`).
 
 ## [2.21.0] — 2026-06-09 — Windows 11 Compatibility & Memory Optimization
 
