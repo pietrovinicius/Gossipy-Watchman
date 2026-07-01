@@ -7,6 +7,29 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.25.0] — 2026-07-01 — One-Click Dev Launcher
+
+- Added `iniciar.bat` at project root: starts backend (`uvicorn --host 0.0.0.0 --port 8002`) and frontend (`npm run dev`) in separate windows with a double-click.
+- Pre-flight checks for `venv`, `.env`, and `frontend/node_modules` with clear error messages if missing.
+
+## [2.24.0] — 2026-07-01 — React Crash Mitigation
+
+- Fixed an app-wide crash (React `insertBefore` `NotFoundError`) caused by browser translation extensions (e.g. Google Translate) mutating the DOM outside React's reconciliation cycle, typically triggered by rapid re-renders (upload progress bar).
+- Root `<div id="root">` marked `translate="no"` / `notranslate` to stop the browser from touching the React-managed subtree.
+- Added `errorElement` (`RouteError` component) to every route, replacing the blank dev-overlay screen with a friendly fallback + "Try again" reload button on unexpected errors.
+
+## [2.23.0] — 2026-07-01 — LAN Access Fix
+
+- Fixed hardcoded `http://localhost:8002` fallback in the frontend (`api.js`, `Login.jsx`, `VideoPlayer.jsx`) that made other machines on the network call their own `localhost` instead of the server — now resolved dynamically via `window.location.hostname`.
+- Backend CORS now accepts any LAN IP on ports 5173/5174 via `allow_origin_regex`, instead of a single hardcoded IP.
+- Documented the required `--host 0.0.0.0` flag for `uvicorn` (previously bound to loopback only) and Windows Firewall rules in `Anotacoes.txt`.
+
+## [2.22.1]–[2.22.3] — 2026-07-01 — Port Conflict Resolution
+
+- Backend port moved 8000 → 8001 → 8002, frontend 5173 → 5174, to avoid conflicts with other local apps (incl. a local Django instance on 8001).
+- CORS and `Anotacoes.txt` updated to match the new ports at each step.
+- Windows path test fix: `str()` → `.as_posix()` for platform-independent path assertions.
+
 ## [2.22.0] — 2026-06-10 — Sprint 17: Internationalization (EN / pt-BR)
 
 - Full i18n migration via `react-i18next`: 392 translation keys across 15 pages/components, English as default with pt-BR fallback.
@@ -60,4 +83,4 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## Test Suite
 
 - **Backend**: 525 pytest tests
-- **Frontend**: 237 vitest tests (236 passing, 1 pre-existing unrelated failure)
+- **Frontend**: 239 vitest tests (238 passing, 1 pre-existing unrelated failure)
