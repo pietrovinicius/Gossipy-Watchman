@@ -162,18 +162,18 @@ BACKEND — Terminal 1:
   macOS/Linux:
     cd /Users/pietrodapenhadelima/Projetos/Gossipy\ Watchman 
     source venv/bin/activate
-    uvicorn app.main:app --reload --port 8000
+    uvicorn app.main:app --reload --port 8001
 
   Windows (PowerShell):
     .\venv\Scripts\Activate.ps1
-    uvicorn app.main:app --reload --port 8000
+    uvicorn app.main:app --reload --port 8001
 
   Windows (CMD):
     venv\Scripts\activate.bat
-    uvicorn app.main:app --reload --port 8000
+    uvicorn app.main:app --reload --port 8001
 
   Confirmar que está rodando:
-    http://localhost:8000/api/v1/health
+    http://localhost:8001/api/v1/health
     Resposta esperada: {"status":"ok","app":"Gossipy Watchman"}
 
 
@@ -181,7 +181,7 @@ FRONTEND — Terminal 2:
   cd frontend
   npm run dev
 
-  Abrir no browser: http://localhost:5173
+  Abrir no browser: http://localhost:5174
 
 
 CREDENCIAIS PADRÃO DE DESENVOLVIMENTO:
@@ -242,8 +242,8 @@ SOLUÇÃO:  1. Verificar se o arquivo .env existe na raiz do projeto
 PROBLEMA: Frontend não consegue conectar ao backend (CORS / Network Error)
 CAUSA:    Backend não está rodando ou está em porta diferente
 SOLUÇÃO:  1. Verificar se o uvicorn está ativo no Terminal 1
-          2. Confirmar que http://localhost:8000/api/v1/health responde
-          3. CORS está configurado para portas 3000 e 5173 — não mudar
+          2. Confirmar que http://localhost:8001/api/v1/health responde
+          3. CORS está configurado para portas 3000, 5173 e 5174 — não mudar
              a porta do npm run dev sem ajustar app/main.py
 
 PROBLEMA: Status do vídeo trava em "Processando"
@@ -322,8 +322,8 @@ WS     | /ws/video/{id}?token=JWT      | JWT  | WebSocket: progresso de processa
 WS     | /ws/global?token=JWT          | JWT  | WebSocket: eventos globais (status, watchlist_alert)
 
 Documentação interativa (apenas com DOCS_ENABLED=true no .env):
-  http://localhost:8000/docs     — Swagger UI
-  http://localhost:8000/redoc    — ReDoc
+  http://localhost:8001/docs     — Swagger UI
+  http://localhost:8001/redoc    — ReDoc
 
 
 ================================================================
@@ -560,7 +560,7 @@ Configurações no .env para câmeras CFTV/Catraca:
 
 Iniciar backend com timeout estendido:
   source venv/bin/activate
-  uvicorn app.main:app --reload --port 8000 --timeout-keep-alive 300
+  uvicorn app.main:app --reload --port 8001 --timeout-keep-alive 300
 
 Formatos suportados:
   MP4, AVI, MKV, MOV, TS
