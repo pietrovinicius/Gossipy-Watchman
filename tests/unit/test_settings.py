@@ -9,13 +9,13 @@ def test_database_url_default():
 def test_storage_videos_is_path():
     from app.core.settings import settings
     assert isinstance(settings.STORAGE_VIDEOS, Path)
-    assert str(settings.STORAGE_VIDEOS) == "storage/videos"
+    assert settings.STORAGE_VIDEOS.as_posix() == "storage/videos"
 
 
 def test_storage_faces_is_path():
     from app.core.settings import settings
     assert isinstance(settings.STORAGE_FACES, Path)
-    assert str(settings.STORAGE_FACES) == "storage/faces"
+    assert settings.STORAGE_FACES.as_posix() == "storage/faces"
 
 
 def test_face_recognition_tolerance_default():
