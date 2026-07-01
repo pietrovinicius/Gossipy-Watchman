@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
+import RouteError from './components/RouteError'
 import Login from './pages/Login'
 
 // Lazy-loaded pages para não bloquear o bundle inicial
@@ -30,16 +31,16 @@ function Protected({ children }) {
 }
 
 const router = createBrowserRouter([
-  { path: '/', element: <Login /> },
-  { path: '/dashboard', element: <Protected><Dashboard /></Protected> },
-  { path: '/videos', element: <Protected><VideosCatalog /></Protected> },
-  { path: '/videos/:id', element: <Protected><VideoDetail /></Protected> },
-  { path: '/upload', element: <Protected><Upload /></Protected> },
-  { path: '/people', element: <Protected><People /></Protected> },
-  { path: '/people/:id', element: <Protected><PersonDetail /></Protected> },
-  { path: '/alerts', element: <Protected><Alerts /></Protected> },
-  { path: '/analytics', element: <Protected><AnalyticsDashboard /></Protected> },
-  { path: '/employees', element: <Protected><Employees /></Protected> },
+  { path: '/', element: <Login />, errorElement: <RouteError /> },
+  { path: '/dashboard', element: <Protected><Dashboard /></Protected>, errorElement: <RouteError /> },
+  { path: '/videos', element: <Protected><VideosCatalog /></Protected>, errorElement: <RouteError /> },
+  { path: '/videos/:id', element: <Protected><VideoDetail /></Protected>, errorElement: <RouteError /> },
+  { path: '/upload', element: <Protected><Upload /></Protected>, errorElement: <RouteError /> },
+  { path: '/people', element: <Protected><People /></Protected>, errorElement: <RouteError /> },
+  { path: '/people/:id', element: <Protected><PersonDetail /></Protected>, errorElement: <RouteError /> },
+  { path: '/alerts', element: <Protected><Alerts /></Protected>, errorElement: <RouteError /> },
+  { path: '/analytics', element: <Protected><AnalyticsDashboard /></Protected>, errorElement: <RouteError /> },
+  { path: '/employees', element: <Protected><Employees /></Protected>, errorElement: <RouteError /> },
 ])
 
 export default router

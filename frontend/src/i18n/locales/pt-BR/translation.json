@@ -437,6 +437,8 @@
     "uploadFailed": "Falha no upload. Tente novamente.",
     "processingFailed": "Falha no processamento. Verifique os logs para mais detalhes.",
     "conversionFailed": "Não foi possível converter o arquivo. Verifique se o ffmpeg está instalado.",
-    "moovAtomNotFound": "Formato de arquivo de vídeo não suportado pela câmera. Tentando reparar..."
+    "moovAtomNotFound": "Formato de arquivo de vídeo não suportado pela câmera. Tentando reparar...",
+    "unexpectedTitle": "Erro inesperado",
+    "unexpectedBody": "Algo deu errado ao carregar esta página. Tente novamente."
   }
 }
