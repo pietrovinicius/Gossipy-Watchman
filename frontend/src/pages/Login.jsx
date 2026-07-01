@@ -4,7 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { Eye, EyeOff, Shield } from 'lucide-react'
 import axios from 'axios'
 
-const AUTH_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:8002'}/api/v1/auth/login`
+const API_BASE =
+  import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:8002`
+const AUTH_URL = `${API_BASE}/api/v1/auth/login`
 
 export default function Login() {
   const { t } = useTranslation()

@@ -160,17 +160,21 @@ INICIAR O PROJETO (USO DIÁRIO)
 BACKEND — Terminal 1:
 
   macOS/Linux:
-    cd /Users/pietrodapenhadelima/Projetos/Gossipy\ Watchman 
+    cd /Users/pietrodapenhadelima/Projetos/Gossipy\ Watchman
     source venv/bin/activate
-    uvicorn app.main:app --reload --port 8002
+    uvicorn app.main:app --reload --host 0.0.0.0 --port 8002
 
   Windows (PowerShell):
     .\venv\Scripts\Activate.ps1
-    uvicorn app.main:app --reload --port 8002
+    uvicorn app.main:app --reload --host 0.0.0.0 --port 8002
 
   Windows (CMD):
     venv\Scripts\activate.bat
-    uvicorn app.main:app --reload --port 8002
+    uvicorn app.main:app --reload --host 0.0.0.0 --port 8002
+
+  ATENÇÃO: sem "--host 0.0.0.0" o uvicorn escuta apenas 127.0.0.1
+  (loopback) e outros computadores da rede não conseguem acessar a API,
+  mesmo com o frontend acessível via IP.
 
   Confirmar que está rodando:
     http://localhost:8002/api/v1/health
@@ -243,8 +247,20 @@ PROBLEMA: Frontend não consegue conectar ao backend (CORS / Network Error)
 CAUSA:    Backend não está rodando ou está em porta diferente
 SOLUÇÃO:  1. Verificar se o uvicorn está ativo no Terminal 1
           2. Confirmar que http://localhost:8002/api/v1/health responde
-          3. CORS está configurado para portas 3000, 5173 e 5174 — não mudar
+          3. CORS está configurado para portas 3000, 5173 e 5174 (via
+             allow_origin_regex para qualquer IP de rede local) — não mudar
              a porta do npm run dev sem ajustar app/main.py
+
+PROBLEMA: Outros computadores da rede não conseguem acessar o frontend/backend
+CAUSA:    1. uvicorn sem "--host 0.0.0.0" (escuta só 127.0.0.1)
+          2. Firewall do Windows bloqueando a porta (5174 e/ou 8002)
+SOLUÇÃO:  1. Subir o backend com "--host 0.0.0.0" (ver seção acima)
+          2. Liberar as portas no Firewall do Windows (PowerShell como
+             Administrador):
+               New-NetFirewallRule -DisplayName "Gossipy Frontend" -Direction Inbound -LocalPort 5174 -Protocol TCP -Action Allow
+               New-NetFirewallRule -DisplayName "Gossipy Backend" -Direction Inbound -LocalPort 8002 -Protocol TCP -Action Allow
+          3. Acessar de outro PC usando o IP mostrado em "Network:" pelo
+             Vite (ex: http://192.168.100.70:5174) — nunca "localhost"
 
 PROBLEMA: Status do vídeo trava em "Processando"
 CAUSA:    Erro silencioso no worker de visão computacional
